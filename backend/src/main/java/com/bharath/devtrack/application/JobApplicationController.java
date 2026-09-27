@@ -18,12 +18,22 @@ public class JobApplicationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public JobApplication create(@Valid @RequestBody CreateJobApplicationRequest request) {
+    public JobApplication create(
+            @Valid @RequestBody CreateJobApplicationRequest request
+    ) {
         return service.create(request);
     }
 
     @GetMapping
     public List<JobApplication> findAll() {
         return service.findAll();
+    }
+
+    @PatchMapping("/{id}/status")
+    public JobApplication updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateApplicationStatusRequest request
+    ) {
+        return service.updateStatus(id, request);
     }
 }

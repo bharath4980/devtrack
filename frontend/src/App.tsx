@@ -2,8 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react';
 import {
   createApplication,
   getApplications,
+  updateApplicationStatus,
 } from './applicationApi';
 import type {
+  ApplicationStatus,
   CreateJobApplicationRequest,
   JobApplication,
 } from './types';
@@ -46,6 +48,11 @@ export default function App() {
     useState<CreateJobApplicationRequest>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  const [statusSavingId, setStatusSavingId] =
+    useState<number | null>(null);
+  const [statusUpdateError, setStatusUpdateError] =
+    useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -143,6 +150,35 @@ export default function App() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleStatusChange(
+    id: number,
+    newStatus: ApplicationStatus,
+  ) {
+    setStatusSavingId(id);
+    setStatusUpdateError('');
+
+    try {
+      const updated = await updateApplicationStatus(
+        id,
+        newStatus,
+      );
+
+      setApplications((current) =>
+        current.map((application) =>
+          application.id === updated.id
+            ? updated
+            : application,
+        ),
+      );
+    } catch {
+      setStatusUpdateError(
+        'Could not update the application status.',
+      );
+    } finally {
+      setStatusSavingId(null);
     }
   }
 
@@ -378,6 +414,10 @@ export default function App() {
             <p>{applicationsError}</p>
           )}
 
+          {statusUpdateError && (
+            <p>{statusUpdateError}</p>
+          )}
+
           {!applicationsLoading &&
             !applicationsError &&
             applications.length === 0 && (
@@ -394,9 +434,47 @@ export default function App() {
                 <p>{application.location}</p>
               )}
 
-              <p>
-                Status: {application.status}
-              </p>
+              <label
+                htmlFor={`status-${application.id}`}
+              >
+                Status
+              </label>
+
+              <select
+                id={`status-${application.id}`}
+                value={application.status}
+                disabled={
+                  statusSavingId === application.id
+                }
+                onChange={(event) =>
+                  void handleStatusChange(
+                    application.id,
+                    event.target
+                      .value as ApplicationStatus,
+                  )
+                }
+              >
+                <option value="SAVED">
+                  Saved
+                </option>
+                <option value="APPLIED">
+                  Applied
+                </option>
+                <option value="INTERVIEW">
+                  Interview
+                </option>
+                <option value="OFFER">
+                  Offer
+                </option>
+                <option value="REJECTED">
+                  Rejected
+                </option>
+              </select>
+
+              {statusSavingId ===
+                application.id && (
+                <p>Updating status…</p>
+              )}
             </div>
           ))}
         </section>

@@ -1,6 +1,8 @@
 package com.bharath.devtrack.application;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -28,5 +30,20 @@ public class JobApplicationService {
 
     public List<JobApplication> findAll() {
         return repository.findAll();
+    }
+
+    public JobApplication updateStatus(
+            Long id,
+            UpdateApplicationStatusRequest request
+    ) {
+        JobApplication application = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Application not found"
+                ));
+
+        application.setStatus(request.status());
+
+        return repository.save(application);
     }
 }
