@@ -2,6 +2,7 @@ import type {
   ApplicationStatus,
   CreateJobApplicationRequest,
   JobApplication,
+  UpdateJobApplicationRequest,
 } from './types';
 
 export async function getApplications(): Promise<JobApplication[]> {
@@ -46,6 +47,25 @@ export async function updateApplicationStatus(
 
   if (!response.ok) {
     throw new Error('Failed to update application status');
+  }
+
+  return response.json();
+}
+
+export async function updateApplication(
+  id: number,
+  application: UpdateJobApplicationRequest,
+): Promise<JobApplication> {
+  const response = await fetch(`/api/applications/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(application),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update application');
   }
 
   return response.json();

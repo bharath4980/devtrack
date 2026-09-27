@@ -36,4 +36,12 @@ public class JobApplicationController {
     ) {
         return service.updateStatus(id, request);
     }
+
+    @PutMapping("/{id}")
+    public JobApplication update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateJobApplicationRequest request
+    ) {
+        return service.update(id, request);
+    }
 }
