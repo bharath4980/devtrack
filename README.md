@@ -2,7 +2,7 @@
 
 A job application tracker I'm building to keep applications and follow-ups in one place.
 
-The backend uses Java 21 and Spring Boot, with PostgreSQL running locally through Docker. So far, it exposes a health endpoint that checks the database connection. Application tracking and the React/TypeScript frontend are next.
+The backend uses Java 21 and Spring Boot, with PostgreSQL running locally through Docker. The React/TypeScript frontend currently checks the backend connection. Application tracking is the next feature.
 
 ## Local database
 
@@ -62,6 +62,28 @@ Open http://localhost:8080/api/health. With the database running, the response s
 ```
 
 The backend reads the password from the root `.env` file when started from `backend`. It listens only on the local machine for now. Spring Boot Actuator supplies the health endpoint; no custom health controller is needed.
+
+## Frontend
+
+You need Node.js and npm. The frontend uses Vite, which requires Node.js 20.19+ on the 20.x line, or 22.12 and newer. Keep the backend running in its own terminal.
+
+In a second terminal, from the repository root:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. The connection card should show **Connected** when the backend and PostgreSQL are available. Use **Check again** to retry after starting either service.
+
+The browser calls `/api/health`. During development, Vite forwards `/api` requests to the backend on port 8080. This avoids needing a separate CORS configuration for local development. This proxy does not come with the production build; deployment will need its own API routing.
+
+To check TypeScript and build the frontend, run this from `frontend`:
+
+```sh
+npm run build
+```
 
 ## Tests
 
