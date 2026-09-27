@@ -1,0 +1,29 @@
+package com.bharath.devtrack.application;
+
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/applications")
+public class JobApplicationController {
+
+    private final JobApplicationService service;
+
+    public JobApplicationController(JobApplicationService service) {
+        this.service = service;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public JobApplication create(@Valid @RequestBody CreateJobApplicationRequest request) {
+        return service.create(request);
+    }
+
+    @GetMapping
+    public List<JobApplication> findAll() {
+        return service.findAll();
+    }
+}
