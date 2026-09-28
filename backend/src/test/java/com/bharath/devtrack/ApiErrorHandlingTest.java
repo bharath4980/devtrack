@@ -23,10 +23,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:errorhandling;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password="
+        "spring.datasource.url=${TEST_DATABASE_URL:jdbc:h2:mem:errorhandling;DB_CLOSE_DELAY=-1}",
+        "spring.datasource.driver-class-name=${TEST_DATABASE_DRIVER:org.h2.Driver}",
+        "spring.datasource.username=${TEST_DATABASE_USER:sa}",
+        "spring.datasource.password=${TEST_DATABASE_PASSWORD:}",
+        "devtrack.auth.account-limit=1000",
+        "devtrack.auth.registration-limit=1000",
+        "devtrack.auth.login-limit=1000"
 })
 @AutoConfigureMockMvc
 class ApiErrorHandlingTest {
@@ -280,6 +283,17 @@ class ApiErrorHandlingTest {
                         jsonPath("$.path")
                                 .value("/api/env")
                 );
+    }
+
+    @Test
+    void unsupportedMethodKeepsItsHttpStatusAndAllowHeader() throws Exception {
+        MockHttpSession session = login(user.getEmail());
+        Csrf csrf = csrf(session);
+        mvc.perform(put("/api/applications").session(session).header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().exists("Allow"))
+                .andExpect(jsonPath("$.status").value(405));
     }
 
     private MockHttpSession login(String email)

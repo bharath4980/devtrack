@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,19 +37,19 @@ public interface JobApplicationRepository
             FROM JobApplication application
             WHERE application.owner.id = :ownerId AND (
                 :search IS NULL
-                OR LOWER(application.company) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(application.title) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(application.location) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(application.company) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'
+                OR LOWER(application.title) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'
+                OR LOWER(application.location) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'
             )
             AND (
                 :status IS NULL
                 OR application.status = :status
             )
-            ORDER BY application.id DESC
             """)
-    List<JobApplication> search(
+    Page<JobApplication> search(
             @Param("ownerId") Long ownerId,
             @Param("search") String search,
-            @Param("status") ApplicationStatus status
+            @Param("status") ApplicationStatus status,
+            Pageable pageable
     );
 }

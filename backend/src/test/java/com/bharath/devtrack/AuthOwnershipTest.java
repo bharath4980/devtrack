@@ -24,10 +24,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:ownership;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password="
+        "spring.datasource.url=${TEST_DATABASE_URL:jdbc:h2:mem:ownership;DB_CLOSE_DELAY=-1}",
+        "spring.datasource.driver-class-name=${TEST_DATABASE_DRIVER:org.h2.Driver}",
+        "spring.datasource.username=${TEST_DATABASE_USER:sa}",
+        "spring.datasource.password=${TEST_DATABASE_PASSWORD:}",
+        "devtrack.auth.account-limit=1000",
+        "devtrack.auth.registration-limit=1000",
+        "devtrack.auth.login-limit=1000"
 })
 @AutoConfigureMockMvc
 class AuthOwnershipTest {
@@ -125,7 +128,7 @@ class AuthOwnershipTest {
                             .header(csrf.header(), csrf.token())
                             .param("email", email).param("password", "wrong-password"))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(content().string(""));
+                    .andExpect(jsonPath("$.message").value("Email or password is incorrect."));
             mvc.perform(get("/api/auth/me").session(csrf.session()))
                     .andExpect(status().isUnauthorized());
         }
@@ -133,7 +136,8 @@ class AuthOwnershipTest {
 
     @Test
     void authenticationAndCsrfAreRequired() throws Exception {
-        mvc.perform(get("/api/applications")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/applications")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/login").param("email", alice.getEmail())
                         .param("password", PASSWORD)).andExpect(status().isForbidden());
@@ -186,11 +190,11 @@ class AuthOwnershipTest {
                 "?search=Houston", "?status=SAVED&search=Acme")) {
             mvc.perform(get("/api/applications" + query).session(session))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].id").value(owned.getId()));
+                    .andExpect(jsonPath("$.items.length()").value(1))
+                    .andExpect(jsonPath("$.items[0].id").value(owned.getId()));
         }
         mvc.perform(get("/api/applications?status=REJECTED").session(session))
-                .andExpect(status().isOk()).andExpect(content().json("[]"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
@@ -243,6 +247,59 @@ class AuthOwnershipTest {
                 .andExpect(status().isNoContent());
         assertThat(session.isInvalid()).isTrue();
         mvc.perform(get("/api/applications")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void paginationAndSortingKeepCountsAndRowsScopedToTheOwner() throws Exception {
+        seed(alice, "Zulu");
+        JobApplication first = seed(alice, "Acme");
+        JobApplication second = seed(alice, "Acme");
+        seed(bob, "Acme");
+        seed(null, "Acme");
+        MockHttpSession session = login(alice.getEmail());
+        mvc.perform(get("/api/applications?size=2&sort=COMPANY").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(second.getId()))
+                .andExpect(jsonPath("$.items[1].id").value(first.getId()));
+        mvc.perform(get("/api/applications?size=2&page=1&sort=COMPANY").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].company").value("Zulu"));
+        mvc.perform(get("/api/applications?size=2&page=9").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(3));
+        for (String query : java.util.List.of("size=0", "size=101", "page=-1", "page=2147483647", "sort=owner")) {
+            mvc.perform(get("/api/applications?" + query).session(session))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        }
+    }
+
+    @Test
+    void searchTreatsWildcardsLiterally() throws Exception {
+        seed(alice, "100%_match!");
+        seed(alice, "100 percent");
+        MockHttpSession session = login(alice.getEmail());
+        mvc.perform(get("/api/applications").param("search", "%_match!").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].company").value("100%_match!"));
+    }
+
+    @Test
+    void postingLinksMustUseHttpOrHttps() throws Exception {
+        MockHttpSession session = login(alice.getEmail());
+        Csrf csrf = csrf(session);
+        for (String url : java.util.List.of("javascript:alert(1)", "ftp://example.com/job", "not a URL")) {
+            String body = json.writeValueAsString(Map.of("company", "Acme", "title", "Engineer",
+                    "postingUrl", url, "applicationDate", "2026-09-27"));
+            mvc.perform(post("/api/applications").session(session).header(csrf.header(), csrf.token())
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors.postingUrl").exists());
+        }
     }
 
     private MockHttpSession login(String email) throws Exception {
