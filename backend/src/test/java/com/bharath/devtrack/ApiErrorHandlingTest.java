@@ -128,6 +128,77 @@ class ApiErrorHandlingTest {
     }
 
     @Test
+    void malformedJsonUsesConsistentBadRequestResponse()
+            throws Exception {
+
+        MockHttpSession session =
+                login(user.getEmail());
+
+        Csrf csrf = csrf(session);
+
+        mvc.perform(
+                        post("/api/applications")
+                                .session(session)
+                                .header(
+                                        csrf.header(),
+                                        csrf.token()
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content("{\"company\":")
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(400)
+                )
+                .andExpect(
+                        jsonPath("$.error")
+                                .value("Bad Request")
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Invalid request body")
+                )
+                .andExpect(
+                        jsonPath("$.path")
+                                .value("/api/applications")
+                );
+    }
+
+    @Test
+    void invalidStatusQueryUsesConsistentBadRequestResponse()
+            throws Exception {
+
+        MockHttpSession session =
+                login(user.getEmail());
+
+        mvc.perform(
+                        get("/api/applications")
+                                .session(session)
+                                .param("status", "WRONG")
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(400)
+                )
+                .andExpect(
+                        jsonPath("$.error")
+                                .value("Bad Request")
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Invalid request parameter")
+                )
+                .andExpect(
+                        jsonPath("$.path")
+                                .value("/api/applications")
+                );
+    }
+
+    @Test
     void missingApplicationUsesConsistentNotFoundResponse()
             throws Exception {
 
