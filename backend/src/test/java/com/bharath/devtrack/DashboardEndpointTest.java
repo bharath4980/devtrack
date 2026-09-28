@@ -61,16 +61,12 @@ class DashboardEndpointTest {
         alice = users.save(
                 new UserAccount(
                         "alice@example.com",
-                        encoder.encode(PASSWORD)
-                )
-        );
+                        encoder.encode(PASSWORD)));
 
         bob = users.save(
                 new UserAccount(
                         "bob@example.com",
-                        encoder.encode(PASSWORD)
-                )
-        );
+                        encoder.encode(PASSWORD)));
     }
 
     @Test
@@ -88,65 +84,55 @@ class DashboardEndpointTest {
                 alice,
                 "Saved One",
                 ApplicationStatus.SAVED,
-                null
-        );
+                null);
 
         seed(
                 alice,
                 "Saved Two",
                 ApplicationStatus.SAVED,
-                null
-        );
+                null);
 
         seed(
                 alice,
                 "Applied",
                 ApplicationStatus.APPLIED,
-                null
-        );
+                null);
 
         seed(
                 alice,
                 "Interview",
                 ApplicationStatus.INTERVIEW,
-                LocalDate.now().plusDays(2)
-        );
+                LocalDate.now().plusDays(2));
 
         seed(
                 alice,
                 "Offer",
                 ApplicationStatus.OFFER,
-                null
-        );
+                null);
 
         seed(
                 alice,
                 "Rejected",
                 ApplicationStatus.REJECTED,
-                null
-        );
+                null);
 
         seed(
                 bob,
                 "Bob Application",
                 ApplicationStatus.OFFER,
-                null
-        );
+                null);
 
         seed(
                 null,
                 "Legacy Application",
                 ApplicationStatus.REJECTED,
-                null
-        );
+                null);
 
-        MockHttpSession session =
-                login(alice.getEmail());
+        MockHttpSession session = login(alice.getEmail());
 
         mvc.perform(
-                        get("/api/dashboard")
-                                .session(session)
-                )
+                get("/api/dashboard")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(6))
                 .andExpect(jsonPath("$.saved").value(2))
@@ -166,118 +152,101 @@ class DashboardEndpointTest {
                 alice,
                 "Interview Six",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(6)
-        );
+                today.plusDays(6));
 
         seed(
                 alice,
                 "Interview Three",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(3)
-        );
+                today.plusDays(3));
 
         seed(
                 alice,
                 "Interview One",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(1)
-        );
+                today.plusDays(1));
 
         seed(
                 alice,
                 "Interview Five",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(5)
-        );
+                today.plusDays(5));
 
         seed(
                 alice,
                 "Interview Two",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(2)
-        );
+                today.plusDays(2));
 
         seed(
                 alice,
                 "Interview Four",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(4)
-        );
+                today.plusDays(4));
 
         seed(
                 alice,
                 "Past Interview",
                 ApplicationStatus.INTERVIEW,
-                today.minusDays(1)
-        );
+                today.minusDays(1));
+        seed(
+                alice,
+                "Applied With Future Interview Date",
+                ApplicationStatus.APPLIED,
+                today.plusDays(1));
 
         seed(
                 bob,
                 "Bob Interview",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(1)
-        );
+                today.plusDays(1));
 
         seed(
                 null,
                 "Legacy Interview",
                 ApplicationStatus.INTERVIEW,
-                today.plusDays(1)
-        );
+                today.plusDays(1));
 
-        MockHttpSession session =
-                login(alice.getEmail());
+        MockHttpSession session = login(alice.getEmail());
 
         mvc.perform(
-                        get("/api/dashboard/interviews")
-                                .session(session)
-                )
+                get("/api/dashboard/interviews")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(5))
                 .andExpect(
                         jsonPath("$[0].company")
-                                .value("Interview One")
-                )
+                                .value("Interview One"))
                 .andExpect(
                         jsonPath("$[1].company")
-                                .value("Interview Two")
-                )
+                                .value("Interview Two"))
                 .andExpect(
                         jsonPath("$[2].company")
-                                .value("Interview Three")
-                )
+                                .value("Interview Three"))
                 .andExpect(
                         jsonPath("$[3].company")
-                                .value("Interview Four")
-                )
+                                .value("Interview Four"))
                 .andExpect(
                         jsonPath("$[4].company")
-                                .value("Interview Five")
-                )
+                                .value("Interview Five"))
                 .andExpect(
                         jsonPath("$[0].interviewDate")
                                 .value(
                                         today.plusDays(1)
-                                                .toString()
-                                )
-                )
+                                                .toString()))
                 .andExpect(
                         jsonPath("$[4].interviewDate")
                                 .value(
                                         today.plusDays(5)
-                                                .toString()
-                                )
-                );
+                                                .toString()));
     }
 
     private JobApplication seed(
             UserAccount owner,
             String company,
             ApplicationStatus status,
-            LocalDate interviewDate
-    ) {
-        JobApplication application =
-                new JobApplication();
+            LocalDate interviewDate) {
+        JobApplication application = new JobApplication();
 
         application.setOwner(owner);
         application.setCompany(company);
@@ -292,22 +261,18 @@ class DashboardEndpointTest {
     private MockHttpSession login(String email)
             throws Exception {
 
-        Csrf csrf =
-                csrf(new MockHttpSession());
+        Csrf csrf = csrf(new MockHttpSession());
 
         mvc.perform(
-                        post("/api/auth/login")
-                                .session(csrf.session())
-                                .header(
-                                        csrf.header(),
-                                        csrf.token()
-                                )
-                                .param("email", email)
-                                .param(
-                                        "password",
-                                        PASSWORD
-                                )
-                )
+                post("/api/auth/login")
+                        .session(csrf.session())
+                        .header(
+                                csrf.header(),
+                                csrf.token())
+                        .param("email", email)
+                        .param(
+                                "password",
+                                PASSWORD))
                 .andExpect(status().isNoContent());
 
         return csrf.session();
@@ -316,31 +281,25 @@ class DashboardEndpointTest {
     private Csrf csrf(MockHttpSession session)
             throws Exception {
 
-        MvcResult result =
-                mvc.perform(
-                                get("/api/auth/csrf")
-                                        .session(session)
-                        )
-                        .andExpect(status().isOk())
-                        .andReturn();
+        MvcResult result = mvc.perform(
+                get("/api/auth/csrf")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andReturn();
 
-        JsonNode token =
-                json.readTree(
-                        result.getResponse()
-                                .getContentAsString()
-                );
+        JsonNode token = json.readTree(
+                result.getResponse()
+                        .getContentAsString());
 
         return new Csrf(
                 session,
                 token.get("headerName").asText(),
-                token.get("token").asText()
-        );
+                token.get("token").asText());
     }
 
     private record Csrf(
             MockHttpSession session,
             String header,
-            String token
-    ) {
+            String token) {
     }
 }

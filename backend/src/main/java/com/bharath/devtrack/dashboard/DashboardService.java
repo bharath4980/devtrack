@@ -46,8 +46,9 @@ public class DashboardService {
             Long ownerId
     ) {
         return repository
-                .findTop5ByOwner_IdAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
+                .findTop5ByOwner_IdAndStatusAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
                         ownerId,
+                        ApplicationStatus.INTERVIEW,
                         LocalDate.now()
                 )
                 .stream()
