@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { getApiErrorMessage } from './apiError';
 import type {
   ApplicationStatus,
   CreateJobApplicationRequest,
@@ -27,7 +28,12 @@ export async function getApplications(
   );
 
   if (!response.ok) {
-    throw new Error('Failed to load applications');
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        'Failed to load applications',
+      ),
+    );
   }
 
   return response.json();
@@ -45,7 +51,12 @@ export async function createApplication(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to save application');
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        'Failed to save application',
+      ),
+    );
   }
 
   return response.json();
@@ -64,7 +75,12 @@ export async function updateApplicationStatus(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update application status');
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        'Failed to update application status',
+      ),
+    );
   }
 
   return response.json();
@@ -83,7 +99,12 @@ export async function updateApplication(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update application');
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        'Failed to update application',
+      ),
+    );
   }
 
   return response.json();
@@ -97,7 +118,11 @@ export async function deleteApplication(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to delete application');
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        'Failed to delete application',
+      ),
+    );
   }
 }
-
