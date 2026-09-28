@@ -8,6 +8,10 @@ The app uses Java 21 and Spring Boot for the backend, PostgreSQL for persistence
 
 > The live demo runs on Render's free tier, so the first request after a period of inactivity can take longer while the service wakes up.
 
+## Preview
+
+![DevTrack dashboard](docs/images/devtrack-dashboard.png)
+
 ## Features
 
 - Register, sign in, and sign out
