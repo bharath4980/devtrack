@@ -60,6 +60,11 @@ public class JobApplicationService {
         return repository.save(application);
     }
 
+    public void delete(Long id) {
+        JobApplication application = findById(id);
+        repository.delete(application);
+    }
+
     private JobApplication findById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(

@@ -5,6 +5,7 @@ import {
 } from 'react';
 import {
   createApplication,
+  deleteApplication,
   getApplications,
   updateApplication,
   updateApplicationStatus,
@@ -78,6 +79,11 @@ export default function App() {
   const [editSaving, setEditSaving] =
     useState(false);
   const [editError, setEditError] = useState('');
+
+  const [deletingId, setDeletingId] =
+    useState<number | null>(null);
+  const [deleteError, setDeleteError] =
+    useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -271,6 +277,37 @@ export default function App() {
       );
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(
+    application: JobApplication,
+  ) {
+    const confirmed = window.confirm(
+      `Delete ${application.company} — ${application.title}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(application.id);
+    setDeleteError('');
+
+    try {
+      await deleteApplication(application.id);
+
+      setApplications((current) =>
+        current.filter(
+          (item) => item.id !== application.id,
+        ),
+      );
+    } catch {
+      setDeleteError(
+        'Could not delete the application. Please try again.',
+      );
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -519,6 +556,10 @@ export default function App() {
 
           {statusUpdateError && (
             <p>{statusUpdateError}</p>
+          )}
+
+          {deleteError && (
+            <p>{deleteError}</p>
           )}
 
           {!applicationsLoading &&
@@ -798,6 +839,24 @@ export default function App() {
                       }
                     >
                       Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        deletingId ===
+                        application.id
+                      }
+                      onClick={() =>
+                        void handleDelete(
+                          application,
+                        )
+                      }
+                    >
+                      {deletingId ===
+                      application.id
+                        ? 'Deleting…'
+                        : 'Delete'}
                     </button>
                   </>
                 )}

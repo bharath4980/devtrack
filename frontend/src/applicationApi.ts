@@ -70,3 +70,15 @@ export async function updateApplication(
 
   return response.json();
 }
+
+export async function deleteApplication(
+  id: number,
+): Promise<void> {
+  const response = await fetch(`/api/applications/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete application');
+  }
+}
