@@ -94,3 +94,22 @@ footer { padding: 22px 0 30px; border-top: 1px solid #dce2d9; color: #67716b; fo
   main { padding: 45px 0; }
   .connection-card { padding: 22px; }
 }
+
+
+.auth-panel { max-width: 560px; }
+.auth-form { display: grid; gap: 12px; }
+.auth-form input {
+  width: 100%; padding: 11px 12px; border: 1px solid #9caea5;
+  border-radius: 5px; background: white; color: inherit; font: inherit;
+}
+.auth-form label { font-weight: 600; font-size: 14px; }
+.auth-form button { margin-top: 8px; }
+.form-help { margin: 0; color: #626e66; font-size: 13px; line-height: 1.5; }
+.form-error { color: #a82e21; }
+.text-button { margin-top: 20px; background: transparent; color: #244e46; border: none; }
+.text-button:hover:not(:disabled) { background: #e8eee8; }
+.account-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 14px; }
+.account-menu span { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .account-menu { justify-content: flex-end; max-width: 65%; }
+}

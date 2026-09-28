@@ -2,7 +2,9 @@
 
 A job application tracker I'm building to keep applications and follow-ups in one place.
 
-The backend uses Java 21 and Spring Boot, with PostgreSQL running locally through Docker. The React/TypeScript frontend currently checks the backend connection. Application tracking is the next feature.
+The backend uses Java 21 and Spring Boot, with PostgreSQL running locally through Docker and a React/TypeScript frontend. You can register, sign in, and create, search, filter, edit, change the status of, and delete your own applications.
+
+If you already have data from the version without login, read [the migration instructions](docs/authentication.md#existing-local-databases) before starting this branch. Existing records are preserved and must be assigned to your account explicitly.
 
 ## Local database
 
@@ -75,7 +77,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. The connection card should show **Connected** when the backend and PostgreSQL are available. Use **Check again** to retry after starting either service.
+Open http://127.0.0.1:5173. Create an account, then sign in. The application screen shows your account email and a **Sign out** button. Search, filters, and all application actions are limited to your account.
 
 The browser calls `/api/health`. During development, Vite forwards `/api` requests to the backend on port 8080. This avoids needing a separate CORS configuration for local development. This proxy does not come with the production build; deployment will need its own API routing.
 
@@ -90,11 +92,13 @@ npm run build
 From `backend`:
 
 ```sh
-mvn test
+mvn clean test
 ```
 
-The initial tests check the health response and that the environment endpoint is not exposed. They use an in-memory H2 database and do not verify PostgreSQL-specific behavior. The local health check above verifies the actual PostgreSQL connection.
+Tests cover health, registration, login/logout, CSRF protection, application ownership, and preservation of existing rows during migration. They use H2; verify the migration and application behavior with local PostgreSQL before merging.
 
-## Next milestone
+See [authentication and ownership](docs/authentication.md) for the request flow, migration steps, and deployment limitations.
 
-Save a job application through the UI and still see it after refreshing the page.
+## Current scope
+
+Applications and accounts persist in PostgreSQL. Login sessions are held in memory and end when the backend restarts. Password reset, email verification, deployment, and a dashboard are not implemented yet.
