@@ -38,7 +38,8 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Edit', exact: true }).click();
   await card.getByLabel('Company', { exact: true }).fill('Acme Labs');
-  await card.getByLabel('Interview date').fill('2099-01-15');
+  const interviewDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await card.getByLabel('Interview date').fill(interviewDate);
   await card.getByRole('button', { name: 'Save changes' }).click();
   const edited = page.getByRole('article', { name: 'Acme Labs — Software Engineer' });
   await edited.getByLabel('Status', { exact: true }).selectOption('INTERVIEW');
