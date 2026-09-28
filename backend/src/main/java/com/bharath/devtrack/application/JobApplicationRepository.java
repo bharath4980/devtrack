@@ -11,6 +11,13 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
 
     Optional<JobApplication> findByIdAndOwner_Id(Long id, Long ownerId);
 
+    long countByOwner_Id(Long ownerId);
+
+    long countByOwner_IdAndStatus(
+            Long ownerId,
+            ApplicationStatus status
+    );
+
     @Query("""
             SELECT application
             FROM JobApplication application
