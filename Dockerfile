@@ -27,12 +27,15 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
+RUN groupadd --gid 10001 devtrack && useradd --uid 10001 --gid devtrack --no-create-home devtrack
+
 ENV SERVER_ADDRESS=0.0.0.0
-ENV SERVER_PORT=8080
 
 COPY --from=backend-build \
     /app/backend/target/devtrack-0.0.1-SNAPSHOT.jar \
     app.jar
+
+USER devtrack
 
 EXPOSE 8080
 

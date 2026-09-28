@@ -79,14 +79,26 @@ The column remains nullable to preserve legacy rows. All new records created by 
 
 ## Scope and deployment
 
-This is a local, single-instance login implementation. It does not yet include password reset, email verification, login rate limiting, or shared session storage. Registration reports a conflict for existing emails, so it can reveal whether an email is registered.
+This is a single-instance session implementation, deployed with the frontend and API under the same HTTPS origin. Render terminates TLS; `SESSION_COOKIE_SECURE=true` protects production cookies. Local HTTP uses `false`. No permissive CORS rules or authentication tokens in localStorage are used.
 
-Before public deployment, add abuse controls, serve the frontend and API under the same HTTPS origin, set `SESSION_COOKIE_SECURE=true`, and configure the deployment's reverse proxy. Local HTTP uses `false`; cookies are still HttpOnly and SameSite=Lax. No permissive CORS rules or authentication tokens in localStorage are used.
+Authentication requests are throttled after CSRF validation and before password hashing:
+
+- Each normalized login email: 10 attempts per 15 minutes.
+- All login attempts together: 100 per minute.
+- All registration attempts together: 20 per hour.
+
+Limits include successful and failed attempts. Blocked requests return structured `429` responses with `Retry-After`. The per-account table is bounded and does not evict active limits when full. Expired entries are cleaned up during requests. Account keys are hashed; passwords and request bodies are not logged by the limiter.
+
+These are deliberately conservative budgets for a low-traffic portfolio demo. They do not rely on `X-Forwarded-For`, which is unsafe to trust without a verified proxy configuration. The tradeoff is that an attacker can temporarily exhaust a shared budget or an account's allowance. They are not a substitute for upstream DDoS protection. Limits and sessions reset on restart; use shared storage and a verified client-IP policy before running multiple replicas. The limits can be adjusted using `DEVTRACK_AUTH_ACCOUNT_LIMIT`, `DEVTRACK_AUTH_LOGIN_LIMIT`, and `DEVTRACK_AUTH_REGISTRATION_LIMIT`; changing a limit does not change its window duration.
+
+Password reset, email verification, and shared sessions are outside this version. Registration reports a conflict for existing emails, so it can reveal whether an email is registered. Public demo users should use sample job data and a unique password.
+
+Security-filter errors (401, 403, 429) use the same JSON shape as controller errors. A restrictive content security policy allows scripts and connections from the app's own origin and blocks embedding the page. Posting links accept only HTTP(S); old invalid links are not rendered as clickable links.
 
 Use `http://127.0.0.1:5173` consistently during development. Switching between `localhost` and `127.0.0.1` switches browser cookie hosts.
 
 ## Verification
 
-`mvn clean test` covers registration validation, password hashing, real login sessions, session-ID and CSRF rotation, authentication/CSRF enforcement, owner scoping across search filters and mutations, logout, and legacy-row preservation. These tests use H2. A run against the local PostgreSQL database is still required before merging.
+`mvn clean test` covers registration validation, password hashing, real login sessions, session-ID and CSRF rotation, authentication/CSRF enforcement, owner scoping across search filters and mutations, logout, and legacy-row preservation. The same endpoint tests run on H2 locally and PostgreSQL in CI. The legacy-schema baseline test uses an isolated H2 fixture. Neither test path touches the deployed database.
 
 `npm run build` checks frontend types and creates the production bundle.

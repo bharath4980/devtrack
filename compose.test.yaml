@@ -1,0 +1,27 @@
+# Disposable test services; no connection to the normal Compose database or volumes.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: devtrack_test
+      POSTGRES_USER: devtrack
+      POSTGRES_PASSWORD: test-only-password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devtrack -d devtrack_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/devtrack_test
+      DATABASE_USER: devtrack
+      POSTGRES_PASSWORD: test-only-password
+      SESSION_COOKIE_SECURE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
