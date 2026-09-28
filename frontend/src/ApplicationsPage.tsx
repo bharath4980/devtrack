@@ -11,6 +11,10 @@ import {
   updateApplication,
   updateApplicationStatus,
 } from './applicationApi';
+import {
+  getDashboardSummary,
+  type DashboardSummary,
+} from './dashboardApi';
 import type {
   ApplicationStatus,
   CreateJobApplicationRequest,
@@ -50,7 +54,21 @@ const emptyForm: CreateJobApplicationRequest = {
   applicationDate: '',
 };
 
-export default function ApplicationsPage({ user, onLogout, signingOut, logoutError }: {
+const emptyDashboard: DashboardSummary = {
+  total: 0,
+  saved: 0,
+  applied: 0,
+  interview: 0,
+  offer: 0,
+  rejected: 0,
+};
+
+export default function ApplicationsPage({
+  user,
+  onLogout,
+  signingOut,
+  logoutError,
+}: {
   user: CurrentUser;
   onLogout: () => void;
   signingOut: boolean;
@@ -59,6 +77,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [status, setStatus] =
     useState<ConnectionStatus>('checking');
   const [attempt, setAttempt] = useState(0);
+
+  const [dashboard, setDashboard] =
+    useState<DashboardSummary>(emptyDashboard);
+  const [dashboardLoading, setDashboardLoading] =
+    useState(true);
+  const [dashboardError, setDashboardError] =
+    useState('');
 
   const [applications, setApplications] = useState<
     JobApplication[]
@@ -95,6 +120,22 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     useState<number | null>(null);
   const [deleteError, setDeleteError] =
     useState('');
+
+  async function loadDashboard() {
+    setDashboardLoading(true);
+    setDashboardError('');
+
+    try {
+      const data = await getDashboardSummary();
+      setDashboard(data);
+    } catch {
+      setDashboardError(
+        'Could not load dashboard summary.',
+      );
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
 
   async function loadApplications(
     searchValue = '',
@@ -172,6 +213,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   }, [attempt]);
 
   useEffect(() => {
+    void loadDashboard();
     void loadApplications();
   }, []);
 
@@ -193,10 +235,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
 
       setForm(emptyForm);
 
-      await loadApplications(
-        search,
-        statusFilter,
-      );
+      await Promise.all([
+        loadDashboard(),
+        loadApplications(
+          search,
+          statusFilter,
+        ),
+      ]);
     } catch {
       setSaveError(
         'Could not save the application. Please try again.',
@@ -237,10 +282,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         newStatus,
       );
 
-      await loadApplications(
-        search,
-        statusFilter,
-      );
+      await Promise.all([
+        loadDashboard(),
+        loadApplications(
+          search,
+          statusFilter,
+        ),
+      ]);
     } catch {
       setStatusUpdateError(
         'Could not update the application status.',
@@ -296,10 +344,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
       setEditingId(null);
       setEditForm(null);
 
-      await loadApplications(
-        search,
-        statusFilter,
-      );
+      await Promise.all([
+        loadDashboard(),
+        loadApplications(
+          search,
+          statusFilter,
+        ),
+      ]);
     } catch {
       setEditError(
         'Could not update the application. Please try again.',
@@ -326,10 +377,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     try {
       await deleteApplication(application.id);
 
-      await loadApplications(
-        search,
-        statusFilter,
-      );
+      await Promise.all([
+        loadDashboard(),
+        loadApplications(
+          search,
+          statusFilter,
+        ),
+      ]);
     } catch {
       setDeleteError(
         'Could not delete the application. Please try again.',
@@ -359,14 +413,24 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
 
         <div className="account-menu">
           <span>{user.email}</span>
-          <button type="button" onClick={onLogout} disabled={signingOut}>
-            {signingOut ? 'Signing out…' : 'Sign out'}
+
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={signingOut}
+          >
+            {signingOut
+              ? 'Signing out…'
+              : 'Sign out'}
           </button>
         </div>
       </header>
 
       <main>
-        {logoutError && <p role="alert">{logoutError}</p>}
+        {logoutError && (
+          <p role="alert">{logoutError}</p>
+        )}
+
         <p className="eyebrow">
           Getting started
         </p>
@@ -381,6 +445,57 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           A place to keep track of where you
           applied and what comes next.
         </p>
+
+        <section className="next-step">
+          <p className="eyebrow">
+            Dashboard
+          </p>
+
+          <h2>Application summary</h2>
+
+          {dashboardLoading && (
+            <p>Loading dashboard…</p>
+          )}
+
+          {dashboardError && (
+            <p>{dashboardError}</p>
+          )}
+
+          {!dashboardLoading &&
+            !dashboardError && (
+              <div className="dashboard-grid">
+                <div className="dashboard-card">
+                  <span>Total</span>
+                  <strong>{dashboard.total}</strong>
+                </div>
+
+                <div className="dashboard-card">
+                  <span>Saved</span>
+                  <strong>{dashboard.saved}</strong>
+                </div>
+
+                <div className="dashboard-card">
+                  <span>Applied</span>
+                  <strong>{dashboard.applied}</strong>
+                </div>
+
+                <div className="dashboard-card">
+                  <span>Interview</span>
+                  <strong>{dashboard.interview}</strong>
+                </div>
+
+                <div className="dashboard-card">
+                  <span>Offer</span>
+                  <strong>{dashboard.offer}</strong>
+                </div>
+
+                <div className="dashboard-card">
+                  <span>Rejected</span>
+                  <strong>{dashboard.rejected}</strong>
+                </div>
+              </div>
+            )}
+        </section>
 
         <section
           className="connection-card"
