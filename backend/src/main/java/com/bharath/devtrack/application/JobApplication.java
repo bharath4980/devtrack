@@ -1,6 +1,8 @@
 package com.bharath.devtrack.application;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.bharath.devtrack.auth.UserAccount;
 
 import java.time.LocalDate;
 
@@ -11,6 +13,20 @@ public class JobApplication {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private UserAccount owner;
+
+    @JsonIgnore
+    public UserAccount getOwner() {
+        return owner;
+    }
+
+    public void setOwner(UserAccount owner) {
+        this.owner = owner;
+    }
 
     @Column(nullable = false)
     private String company;

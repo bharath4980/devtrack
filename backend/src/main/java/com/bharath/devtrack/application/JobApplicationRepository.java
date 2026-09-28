@@ -5,13 +5,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
+
+    Optional<JobApplication> findByIdAndOwner_Id(Long id, Long ownerId);
 
     @Query("""
             SELECT application
             FROM JobApplication application
-            WHERE (
+            WHERE application.owner.id = :ownerId AND (
                 :search IS NULL
                 OR LOWER(application.company) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(application.title) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -24,6 +27,7 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
             ORDER BY application.id DESC
             """)
     List<JobApplication> search(
+            @Param("ownerId") Long ownerId,
             @Param("search") String search,
             @Param("status") ApplicationStatus status
     );

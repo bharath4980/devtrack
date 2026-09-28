@@ -3,10 +3,13 @@ package com.bharath.devtrack.application;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
+import com.bharath.devtrack.auth.UserAccount;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class JobApplicationService {
 
     private final JobApplicationRepository repository;
@@ -15,8 +18,9 @@ public class JobApplicationService {
         this.repository = repository;
     }
 
-    public JobApplication create(CreateJobApplicationRequest request) {
+    public JobApplication create(UserAccount owner, CreateJobApplicationRequest request) {
         JobApplication application = new JobApplication();
+        application.setOwner(owner);
 
         application.setCompany(request.company());
         application.setTitle(request.title());
@@ -29,6 +33,7 @@ public class JobApplicationService {
     }
 
     public List<JobApplication> findAll(
+            Long ownerId,
             String search,
             ApplicationStatus status
     ) {
@@ -37,14 +42,15 @@ public class JobApplicationService {
                         ? null
                         : search.trim();
 
-        return repository.search(normalizedSearch, status);
+        return repository.search(ownerId, normalizedSearch, status);
     }
 
     public JobApplication updateStatus(
+            Long ownerId,
             Long id,
             UpdateApplicationStatusRequest request
     ) {
-        JobApplication application = findById(id);
+        JobApplication application = findById(id, ownerId);
 
         application.setStatus(request.status());
 
@@ -52,10 +58,11 @@ public class JobApplicationService {
     }
 
     public JobApplication update(
+            Long ownerId,
             Long id,
             UpdateJobApplicationRequest request
     ) {
-        JobApplication application = findById(id);
+        JobApplication application = findById(id, ownerId);
 
         application.setCompany(request.company());
         application.setTitle(request.title());
@@ -68,13 +75,13 @@ public class JobApplicationService {
         return repository.save(application);
     }
 
-    public void delete(Long id) {
-        JobApplication application = findById(id);
+    public void delete(Long ownerId, Long id) {
+        JobApplication application = findById(id, ownerId);
         repository.delete(application);
     }
 
-    private JobApplication findById(Long id) {
-        return repository.findById(id)
+    private JobApplication findById(Long id, Long ownerId) {
+        return repository.findByIdAndOwner_Id(id, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Application not found"
