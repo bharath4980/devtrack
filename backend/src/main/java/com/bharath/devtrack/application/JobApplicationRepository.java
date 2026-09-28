@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,11 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
     long countByOwner_IdAndStatus(
             Long ownerId,
             ApplicationStatus status
+    );
+
+    List<JobApplication> findTop5ByOwner_IdAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
+            Long ownerId,
+            LocalDate date
     );
 
     @Query("""

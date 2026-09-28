@@ -4,6 +4,9 @@ import com.bharath.devtrack.application.ApplicationStatus;
 import com.bharath.devtrack.application.JobApplicationRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @Service
 public class DashboardService {
 
@@ -37,5 +40,25 @@ public class DashboardService {
                         ApplicationStatus.REJECTED
                 )
         );
+    }
+
+    public List<UpcomingInterviewResponse> getUpcomingInterviews(
+            Long ownerId
+    ) {
+        return repository
+                .findTop5ByOwner_IdAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
+                        ownerId,
+                        LocalDate.now()
+                )
+                .stream()
+                .map(application ->
+                        new UpcomingInterviewResponse(
+                                application.getId(),
+                                application.getCompany(),
+                                application.getTitle(),
+                                application.getInterviewDate()
+                        )
+                )
+                .toList();
     }
 }

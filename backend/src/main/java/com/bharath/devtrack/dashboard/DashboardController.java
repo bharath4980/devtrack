@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -30,5 +31,15 @@ public class DashboardController {
                 accounts.currentUser(principal).getId();
 
         return dashboardService.getSummary(ownerId);
+    }
+
+    @GetMapping("/interviews")
+    public List<UpcomingInterviewResponse> getUpcomingInterviews(
+            Principal principal
+    ) {
+        Long ownerId =
+                accounts.currentUser(principal).getId();
+
+        return dashboardService.getUpcomingInterviews(ownerId);
     }
 }
