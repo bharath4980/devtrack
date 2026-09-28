@@ -12,10 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:healthcheck;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password="
+        "spring.datasource.url=${TEST_DATABASE_URL:jdbc:h2:mem:healthcheck;DB_CLOSE_DELAY=-1}",
+        "spring.datasource.driver-class-name=${TEST_DATABASE_DRIVER:org.h2.Driver}",
+        "spring.datasource.username=${TEST_DATABASE_USER:sa}",
+        "spring.datasource.password=${TEST_DATABASE_PASSWORD:}",
+        "devtrack.auth.account-limit=1000",
+        "devtrack.auth.registration-limit=1000",
+        "devtrack.auth.login-limit=1000"
 })
 @AutoConfigureMockMvc
 class HealthEndpointTest {

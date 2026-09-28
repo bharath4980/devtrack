@@ -1,6 +1,11 @@
 package com.bharath.devtrack.config;
 
 import jakarta.servlet.DispatcherType;
+import com.bharath.devtrack.auth.AuthRateLimitFilter;
+import com.bharath.devtrack.error.ApiErrorWriter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -20,11 +25,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http)
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ApiErrorWriter errors,
+            @Value("${devtrack.auth.account-limit:10}") int accountLimit,
+            @Value("${devtrack.auth.login-limit:100}") int loginLimit,
+            @Value("${devtrack.auth.registration-limit:20}") int registrationLimit)
             throws Exception {
 
         return http
                 .csrf(Customizer.withDefaults())
+                .addFilterAfter(new AuthRateLimitFilter(errors, accountLimit, loginLimit, registrationLimit), CsrfFilter.class)
+                .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(
+                        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                        + "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")))
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
@@ -62,7 +74,7 @@ public class SecurityConfig {
                         )
                         .failureHandler(
                                 (request, response, exception) ->
-                                        response.setStatus(401)
+                                        errors.write(request, response, HttpStatus.UNAUTHORIZED, "Email or password is incorrect.")
                         )
                         .permitAll()
                 )
@@ -76,14 +88,14 @@ public class SecurityConfig {
                                         response.setStatus(204)
                         )
                 )
-                .exceptionHandling(errors -> errors
+                .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(
                                 (request, response, exception) ->
-                                        response.setStatus(401)
+                                        errors.write(request, response, HttpStatus.UNAUTHORIZED, "Sign in to continue.")
                         )
                         .accessDeniedHandler(
                                 (request, response, exception) ->
-                                        response.setStatus(403)
+                                        errors.write(request, response, HttpStatus.FORBIDDEN, "Request could not be verified. Refresh the page and try again.")
                         )
                 )
                 .build();

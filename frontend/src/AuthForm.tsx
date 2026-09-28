@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { ApiError } from './apiError';
 import { login, register, type CurrentUser } from './authApi';
 
 export default function AuthForm({ onAuthenticated }: {
@@ -27,7 +28,9 @@ export default function AuthForm({ onAuthenticated }: {
         setPassword('');
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      setError(error instanceof ApiError && Object.keys(error.fieldErrors).length
+        ? Object.entries(error.fieldErrors).map(([field, message]) => `${field}: ${message}`).join('. ')
+        : error instanceof Error ? error.message : 'Something went wrong. Please try again.');
     } finally {
       setBusy(false);
     }

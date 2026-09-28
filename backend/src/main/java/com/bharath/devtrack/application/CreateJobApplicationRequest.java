@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import org.hibernate.validator.constraints.URL;
 
 public record CreateJobApplicationRequest(
         @NotBlank
@@ -19,6 +20,7 @@ public record CreateJobApplicationRequest(
         String location,
 
         @Size(max = 255)
+        @URL(regexp = "(?i)(|https?://.*)", message = "Use a complete http:// or https:// URL")
         String postingUrl,
 
         @Size(max = 2000)

@@ -18,7 +18,7 @@ export default function App() {
     getCurrentUser(controller.signal)
       .then((current) => { if (active) setUser(current); })
       .catch(() => {
-        if (active) setSessionError('Could not reach DevTrack. Check that the backend is running.');
+        if (active) setSessionError('Could not reach DevTrack. The service may be waking up. Wait a moment, then try again.');
       })
       .finally(() => window.clearTimeout(timeout));
     return () => {

@@ -49,7 +49,7 @@ public class DashboardService {
                 .findTop5ByOwner_IdAndStatusAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
                         ownerId,
                         ApplicationStatus.INTERVIEW,
-                        LocalDate.now()
+                        LocalDate.now(java.time.ZoneOffset.UTC)
                 )
                 .stream()
                 .map(application ->

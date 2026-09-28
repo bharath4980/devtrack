@@ -13,11 +13,15 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.ErrorResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationError(
@@ -145,6 +149,13 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+        if (exception instanceof ErrorResponse error) {
+            HttpStatus status = HttpStatus.valueOf(error.getStatusCode().value());
+            return ResponseEntity.status(status).headers(error.getHeaders()).body(new ApiErrorResponse(
+                    Instant.now(), status.value(), status.getReasonPhrase(), status.getReasonPhrase(),
+                    request.getRequestURI(), Map.of()));
+        }
+        log.error("Unexpected failure for {} {}", request.getMethod(), request.getRequestURI(), exception);
         ApiErrorResponse response =
                 new ApiErrorResponse(
                         Instant.now(),

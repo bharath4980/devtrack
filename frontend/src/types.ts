@@ -35,3 +35,20 @@ export type UpdateJobApplicationRequest = {
   applicationDate: string;
   interviewDate: string;
 };
+
+export type ApplicationSort = 'NEWEST' | 'OLDEST' | 'COMPANY' | 'APPLICATION_DATE';
+export type ApplicationQuery = {
+  search: string;
+  status: ApplicationStatus | '';
+  sort: ApplicationSort;
+  page: number;
+};
+export type ApplicationPage = {
+  items: JobApplication[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+export const statuses: ApplicationStatus[] = ['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED'];
+export const statusLabel = (status: ApplicationStatus) => status[0] + status.slice(1).toLowerCase();

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @Transactional
@@ -25,8 +25,8 @@ public class JobApplicationService {
         JobApplication application = new JobApplication();
 
         application.setOwner(owner);
-        application.setCompany(request.company());
-        application.setTitle(request.title());
+        application.setCompany(request.company().trim());
+        application.setTitle(request.title().trim());
         application.setLocation(request.location());
         application.setPostingUrl(request.postingUrl());
         application.setNotes(request.notes());
@@ -35,21 +35,20 @@ public class JobApplicationService {
         return repository.save(application);
     }
 
-    public List<JobApplication> findAll(
-            Long ownerId,
-            String search,
-            ApplicationStatus status
-    ) {
-        String normalizedSearch =
-                search == null || search.isBlank()
-                        ? ""
-                        : search.trim();
-
-        return repository.search(
-                ownerId,
-                normalizedSearch,
-                status
-        );
+    @Transactional(readOnly = true)
+    public ApplicationPage findAll(Long ownerId, String search, ApplicationStatus status,
+                                   int page, int size, ApplicationSort sort) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Use a non-negative page and a page size between 1 and 100");
+        }
+        String normalized = search == null ? "" : search.trim();
+        if (normalized.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Search must be 255 characters or fewer");
+        }
+        String escaped = normalized.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        return ApplicationPage.from(repository.search(ownerId, escaped, status,
+                PageRequest.of(page, size, sort.toSort())));
     }
 
     public JobApplication updateStatus(
@@ -73,8 +72,8 @@ public class JobApplicationService {
         JobApplication application =
                 findById(id, ownerId);
 
-        application.setCompany(request.company());
-        application.setTitle(request.title());
+        application.setCompany(request.company().trim());
+        application.setTitle(request.title().trim());
         application.setLocation(request.location());
         application.setPostingUrl(request.postingUrl());
         application.setNotes(request.notes());

@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.security.Principal;
 import com.bharath.devtrack.auth.AccountService;
 
@@ -30,12 +29,15 @@ public class JobApplicationController {
     }
 
     @GetMapping
-    public List<JobApplication> findAll(
+    public ApplicationPage findAll(
             Principal principal,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) ApplicationStatus status
+            @RequestParam(required = false) ApplicationStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "NEWEST") ApplicationSort sort
     ) {
-        return service.findAll(accounts.currentUser(principal).getId(), search, status);
+        return service.findAll(accounts.currentUser(principal).getId(), search, status, page, size, sort);
     }
 
     @PatchMapping("/{id}/status")

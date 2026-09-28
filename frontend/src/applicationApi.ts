@@ -1,41 +1,22 @@
 import { apiFetch } from './api';
-import { getApiErrorMessage } from './apiError';
+import { readApiError } from './apiError';
 import type {
   ApplicationStatus,
+  ApplicationQuery,
+  ApplicationPage,
   CreateJobApplicationRequest,
   JobApplication,
   UpdateJobApplicationRequest,
 } from './types';
 
-export async function getApplications(
-  search = '',
-  status: ApplicationStatus | '' = '',
-): Promise<JobApplication[]> {
-  const params = new URLSearchParams();
-
-  if (search.trim()) {
-    params.set('search', search.trim());
-  }
-
-  if (status) {
-    params.set('status', status);
-  }
-
-  const query = params.toString();
-
-  const response = await apiFetch(
-    `/api/applications${query ? `?${query}` : ''}`,
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
-        response,
-        'Failed to load applications',
-      ),
-    );
-  }
-
+export async function getApplications(query: ApplicationQuery, signal?: AbortSignal): Promise<ApplicationPage> {
+  const params = new URLSearchParams({
+    page: String(query.page), size: '10', sort: query.sort,
+  });
+  if (query.search.trim()) params.set('search', query.search.trim());
+  if (query.status) params.set('status', query.status);
+  const response = await apiFetch(`/api/applications?${params}`, { signal });
+  if (!response.ok) throw await readApiError(response, 'Could not load applications.');
   return response.json();
 }
 
@@ -51,12 +32,10 @@ export async function createApplication(
   });
 
   if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
+    throw await readApiError(
         response,
         'Failed to save application',
-      ),
-    );
+      );
   }
 
   return response.json();
@@ -75,12 +54,10 @@ export async function updateApplicationStatus(
   });
 
   if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
+    throw await readApiError(
         response,
         'Failed to update application status',
-      ),
-    );
+      );
   }
 
   return response.json();
@@ -99,12 +76,10 @@ export async function updateApplication(
   });
 
   if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
+    throw await readApiError(
         response,
         'Failed to update application',
-      ),
-    );
+      );
   }
 
   return response.json();
@@ -118,11 +93,9 @@ export async function deleteApplication(
   });
 
   if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
+    throw await readApiError(
         response,
         'Failed to delete application',
-      ),
-    );
+      );
   }
 }
