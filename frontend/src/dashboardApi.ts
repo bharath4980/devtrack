@@ -16,8 +16,8 @@ export type UpcomingInterview = {
   interviewDate: string;
 };
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await apiFetch('/api/dashboard');
+export async function getDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary> {
+  const response = await apiFetch('/api/dashboard', { signal });
 
   if (!response.ok) {
     throw new Error('Failed to load dashboard');
@@ -26,8 +26,8 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return response.json();
 }
 
-export async function getUpcomingInterviews(): Promise<UpcomingInterview[]> {
-  const response = await apiFetch('/api/dashboard/interviews');
+export async function getUpcomingInterviews(signal?: AbortSignal): Promise<UpcomingInterview[]> {
+  const response = await apiFetch('/api/dashboard/interviews', { signal });
 
   if (!response.ok) {
     throw new Error('Failed to load upcoming interviews');

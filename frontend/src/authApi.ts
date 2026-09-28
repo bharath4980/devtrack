@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { readApiError } from './apiError';
 
 export type CurrentUser = { id: number; email: string };
 
@@ -17,11 +18,7 @@ export async function register(email: string, password: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (response.status === 409) throw new Error('Unable to register this email. Try signing in instead.');
-  if (response.status === 400) {
-    throw new Error('Use a valid email and a password of 12–72 characters (at most 72 UTF-8 bytes).');
-  }
-  if (!response.ok) throw new Error('Could not create your account. Please try again.');
+  if (!response.ok) throw await readApiError(response, 'Could not create your account.');
 }
 
 export async function login(email: string, password: string): Promise<CurrentUser> {
@@ -31,7 +28,7 @@ export async function login(email: string, password: string): Promise<CurrentUse
     body: new URLSearchParams({ email: email.trim().toLowerCase(), password }),
   });
   if (response.status === 401) throw new Error('Email or password is incorrect.');
-  if (!response.ok) throw new Error('Could not sign in. Please try again.');
+  if (!response.ok) throw await readApiError(response, 'Could not sign in. Please try again.');
   const user = await getCurrentUser();
   if (!user) throw new Error('Could not start your session. Please sign in again.');
   return user;

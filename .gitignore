@@ -9,3 +9,6 @@ frontend/dist/
 *.iml
 
 .vscode/
+
+frontend/test-results/
+frontend/playwright-report/
