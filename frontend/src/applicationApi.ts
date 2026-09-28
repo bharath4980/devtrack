@@ -5,8 +5,25 @@ import type {
   UpdateJobApplicationRequest,
 } from './types';
 
-export async function getApplications(): Promise<JobApplication[]> {
-  const response = await fetch('/api/applications');
+export async function getApplications(
+  search = '',
+  status: ApplicationStatus | '' = '',
+): Promise<JobApplication[]> {
+  const params = new URLSearchParams();
+
+  if (search.trim()) {
+    params.set('search', search.trim());
+  }
+
+  if (status) {
+    params.set('status', status);
+  }
+
+  const query = params.toString();
+
+  const response = await fetch(
+    `/api/applications${query ? `?${query}` : ''}`,
+  );
 
   if (!response.ok) {
     throw new Error('Failed to load applications');

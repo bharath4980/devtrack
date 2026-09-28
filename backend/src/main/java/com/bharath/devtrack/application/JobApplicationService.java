@@ -28,8 +28,16 @@ public class JobApplicationService {
         return repository.save(application);
     }
 
-    public List<JobApplication> findAll() {
-        return repository.findAll();
+    public List<JobApplication> findAll(
+            String search,
+            ApplicationStatus status
+    ) {
+        String normalizedSearch =
+                search == null || search.isBlank()
+                        ? null
+                        : search.trim();
+
+        return repository.search(normalizedSearch, status);
     }
 
     public JobApplication updateStatus(

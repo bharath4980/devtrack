@@ -25,8 +25,11 @@ public class JobApplicationController {
     }
 
     @GetMapping
-    public List<JobApplication> findAll() {
-        return service.findAll();
+    public List<JobApplication> findAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ApplicationStatus status
+    ) {
+        return service.findAll(search, status);
     }
 
     @PatchMapping("/{id}/status")

@@ -62,6 +62,11 @@ export default function App() {
   const [applicationsError, setApplicationsError] =
     useState('');
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<
+    ApplicationStatus | ''
+  >('');
+
   const [form, setForm] =
     useState<CreateJobApplicationRequest>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -84,6 +89,29 @@ export default function App() {
     useState<number | null>(null);
   const [deleteError, setDeleteError] =
     useState('');
+
+  async function loadApplications(
+    searchValue = '',
+    statusValue: ApplicationStatus | '' = '',
+  ) {
+    setApplicationsLoading(true);
+    setApplicationsError('');
+
+    try {
+      const data = await getApplications(
+        searchValue,
+        statusValue,
+      );
+
+      setApplications(data);
+    } catch {
+      setApplicationsError(
+        'Could not load applications.',
+      );
+    } finally {
+      setApplicationsLoading(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,21 +166,6 @@ export default function App() {
   }, [attempt]);
 
   useEffect(() => {
-    async function loadApplications() {
-      try {
-        const data = await getApplications();
-
-        setApplications(data);
-        setApplicationsError('');
-      } catch {
-        setApplicationsError(
-          'Could not load applications.',
-        );
-      } finally {
-        setApplicationsLoading(false);
-      }
-    }
-
     void loadApplications();
   }, []);
 
@@ -170,15 +183,14 @@ export default function App() {
     setSaveError('');
 
     try {
-      const created =
-        await createApplication(form);
-
-      setApplications((current) => [
-        created,
-        ...current,
-      ]);
+      await createApplication(form);
 
       setForm(emptyForm);
+
+      await loadApplications(
+        search,
+        statusFilter,
+      );
     } catch {
       setSaveError(
         'Could not save the application. Please try again.',
@@ -186,6 +198,24 @@ export default function App() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleFilterSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    await loadApplications(
+      search,
+      statusFilter,
+    );
+  }
+
+  async function clearFilters() {
+    setSearch('');
+    setStatusFilter('');
+
+    await loadApplications();
   }
 
   async function handleStatusChange(
@@ -196,18 +226,14 @@ export default function App() {
     setStatusUpdateError('');
 
     try {
-      const updated =
-        await updateApplicationStatus(
-          id,
-          newStatus,
-        );
+      await updateApplicationStatus(
+        id,
+        newStatus,
+      );
 
-      setApplications((current) =>
-        current.map((application) =>
-          application.id === updated.id
-            ? updated
-            : application,
-        ),
+      await loadApplications(
+        search,
+        statusFilter,
       );
     } catch {
       setStatusUpdateError(
@@ -256,21 +282,18 @@ export default function App() {
     setEditError('');
 
     try {
-      const updated = await updateApplication(
+      await updateApplication(
         editingId,
         editForm,
       );
 
-      setApplications((current) =>
-        current.map((application) =>
-          application.id === updated.id
-            ? updated
-            : application,
-        ),
-      );
-
       setEditingId(null);
       setEditForm(null);
+
+      await loadApplications(
+        search,
+        statusFilter,
+      );
     } catch {
       setEditError(
         'Could not update the application. Please try again.',
@@ -297,10 +320,9 @@ export default function App() {
     try {
       await deleteApplication(application.id);
 
-      setApplications((current) =>
-        current.filter(
-          (item) => item.id !== application.id,
-        ),
+      await loadApplications(
+        search,
+        statusFilter,
       );
     } catch {
       setDeleteError(
@@ -546,6 +568,73 @@ export default function App() {
 
           <h2>Saved applications</h2>
 
+          <form onSubmit={handleFilterSubmit}>
+            <div>
+              <label htmlFor="search">
+                Search
+              </label>
+
+              <input
+                id="search"
+                type="search"
+                placeholder="Company, title, or location"
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <label htmlFor="status-filter">
+                Status
+              </label>
+
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(
+                    event.target
+                      .value as ApplicationStatus | '',
+                  )
+                }
+              >
+                <option value="">
+                  All statuses
+                </option>
+                <option value="SAVED">
+                  Saved
+                </option>
+                <option value="APPLIED">
+                  Applied
+                </option>
+                <option value="INTERVIEW">
+                  Interview
+                </option>
+                <option value="OFFER">
+                  Offer
+                </option>
+                <option value="REJECTED">
+                  Rejected
+                </option>
+              </select>
+            </div>
+
+            <button type="submit">
+              Apply filters
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                void clearFilters()
+              }
+            >
+              Clear filters
+            </button>
+          </form>
+
           {applicationsLoading && (
             <p>Loading applications…</p>
           )}
@@ -566,7 +655,7 @@ export default function App() {
             !applicationsError &&
             applications.length === 0 && (
               <p>
-                No applications saved yet.
+                No applications match your filters.
               </p>
             )}
 
@@ -710,6 +799,7 @@ export default function App() {
                                 .value,
                           })
                         }
+                        required
                       />
                     </div>
 
