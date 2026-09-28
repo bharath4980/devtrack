@@ -1,3 +1,4 @@
+import { apiFetch } from './api';
 import type {
   ApplicationStatus,
   CreateJobApplicationRequest,
@@ -21,7 +22,7 @@ export async function getApplications(
 
   const query = params.toString();
 
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/applications${query ? `?${query}` : ''}`,
   );
 
@@ -35,7 +36,7 @@ export async function getApplications(
 export async function createApplication(
   application: CreateJobApplicationRequest,
 ): Promise<JobApplication> {
-  const response = await fetch('/api/applications', {
+  const response = await apiFetch('/api/applications', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -54,7 +55,7 @@ export async function updateApplicationStatus(
   id: number,
   status: ApplicationStatus,
 ): Promise<JobApplication> {
-  const response = await fetch(`/api/applications/${id}/status`, {
+  const response = await apiFetch(`/api/applications/${id}/status`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -73,7 +74,7 @@ export async function updateApplication(
   id: number,
   application: UpdateJobApplicationRequest,
 ): Promise<JobApplication> {
-  const response = await fetch(`/api/applications/${id}`, {
+  const response = await apiFetch(`/api/applications/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ export async function updateApplication(
 export async function deleteApplication(
   id: number,
 ): Promise<void> {
-  const response = await fetch(`/api/applications/${id}`, {
+  const response = await apiFetch(`/api/applications/${id}`, {
     method: 'DELETE',
   });
 
@@ -99,3 +100,4 @@ export async function deleteApplication(
     throw new Error('Failed to delete application');
   }
 }
+
