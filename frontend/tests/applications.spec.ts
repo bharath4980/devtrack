@@ -53,9 +53,7 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.reload();
   await expect(edited).toContainText('Ask about the backend team.');
-  if (process.env.UPDATE_SCREENSHOT && test.info().project.name === 'chromium') {
-    await page.locator('main').screenshot({ path: '../docs/images/devtrack-dashboard.png' });
-  }
+  await page.locator('main').screenshot({ path: test.info().outputPath('dashboard.png') });
   page.once('dialog', dialog => dialog.dismiss());
   await edited.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(edited).toBeVisible();

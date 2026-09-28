@@ -94,8 +94,8 @@ jobs:
       - name: Show application logs on failure
         if: failure()
         run: docker logs devtrack-test || true
-      - name: Upload browser failure evidence
-        if: failure()
+      - name: Upload browser test evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: browser-test-results
