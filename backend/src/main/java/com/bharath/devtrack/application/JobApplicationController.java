@@ -18,12 +18,39 @@ public class JobApplicationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public JobApplication create(@Valid @RequestBody CreateJobApplicationRequest request) {
+    public JobApplication create(
+            @Valid @RequestBody CreateJobApplicationRequest request
+    ) {
         return service.create(request);
     }
 
     @GetMapping
-    public List<JobApplication> findAll() {
-        return service.findAll();
+    public List<JobApplication> findAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ApplicationStatus status
+    ) {
+        return service.findAll(search, status);
+    }
+
+    @PatchMapping("/{id}/status")
+    public JobApplication updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateApplicationStatusRequest request
+    ) {
+        return service.updateStatus(id, request);
+    }
+
+    @PutMapping("/{id}")
+    public JobApplication update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateJobApplicationRequest request
+    ) {
+        return service.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }

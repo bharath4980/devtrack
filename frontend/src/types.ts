@@ -25,3 +25,13 @@ export type CreateJobApplicationRequest = {
   notes: string;
   applicationDate: string;
 };
+
+export type UpdateJobApplicationRequest = {
+  company: string;
+  title: string;
+  location: string;
+  postingUrl: string;
+  notes: string;
+  applicationDate: string;
+  interviewDate: string;
+};

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-public record CreateJobApplicationRequest(
+public record UpdateJobApplicationRequest(
         @NotBlank
         @Size(max = 255)
         String company,
@@ -25,6 +25,8 @@ public record CreateJobApplicationRequest(
         String notes,
 
         @NotNull
-        LocalDate applicationDate
+        LocalDate applicationDate,
+
+        LocalDate interviewDate
 ) {
 }
