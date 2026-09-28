@@ -1,0 +1,11 @@
+.git
+.github
+.env
+
+frontend/node_modules
+frontend/dist
+
+backend/target
+
+.DS_Store
+.vscode
