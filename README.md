@@ -1,62 +1,105 @@
 # DevTrack
 
-DevTrack is a full-stack job application tracker I built to keep applications, statuses, interviews, and notes in one place.
+[![CI](https://github.com/bharath4980/devtrack/actions/workflows/ci.yml/badge.svg)](https://github.com/bharath4980/devtrack/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?logo=render&logoColor=white)](https://devtrack-3upd.onrender.com)
 
-**Live demo:** https://devtrack-3upd.onrender.com
+**DevTrack** is a production-deployed job application tracker built with Java 21, Spring Boot, React, TypeScript, and PostgreSQL.
 
-The app uses Java 21 and Spring Boot for the backend, PostgreSQL for persistence, and React + TypeScript for the frontend. Authentication is session-based, and every application is scoped to the signed-in user.
+It is designed around the parts of a job search that benefit from reliable software engineering: secure user accounts, owner-scoped data, fast search and filtering, interview tracking, structured validation, automated testing, and a repeatable production deployment.
 
-> The live demo runs on Render's free tier, so the first request after a period of inactivity can take longer while the service wakes up.
+**[Open the live demo](https://devtrack-3upd.onrender.com)** · **[Engineering notes](docs/engineering.md)** · **[Authentication design](docs/authentication.md)**
+
+> The public demo runs on Render's free tier, so the first request after a period of inactivity can take longer while the service wakes up.
 
 ## Preview
 
 ![DevTrack dashboard](docs/images/devtrack-dashboard.png)
 
-## Features
+## Engineering highlights
+
+- **Secure session authentication** with Spring Security, BCrypt password hashing, CSRF protection, authentication throttling, HttpOnly cookies, and a same-origin content security policy.
+- **Per-user data isolation** throughout the application layer and repository queries; users can only read or mutate their own applications.
+- **Real application workflows** with create/edit/delete, status tracking, search, filters, pagination, stable sorting, dashboard counts, and upcoming interviews.
+- **Reliable API behavior** with server-side validation, structured error responses, field-level frontend feedback, literal wildcard search handling, and stale-request cancellation.
+- **Database discipline** with PostgreSQL, Flyway-managed migrations, Hibernate schema validation, and preserved legacy rows during the authentication migration.
+- **Production-oriented verification** with H2 and PostgreSQL backend tests, frontend type/build checks, Docker image validation, and Playwright browser workflows on desktop and mobile Chromium.
+- **Single-image deployment** where the React production build is served by Spring Boot from a non-root Docker runtime and deployed to Render.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[Browser] -->|HTTPS| R[React + TypeScript]
+    R -->|same-origin /api| S[Spring Boot]
+    S --> SEC[Spring Security]
+    S --> APP[Application service]
+    APP --> JPA[Spring Data JPA / Hibernate]
+    JPA --> DB[(PostgreSQL)]
+
+    CI[GitHub Actions] --> TESTS[H2 + PostgreSQL tests]
+    CI --> IMG[Production Docker image]
+    IMG --> E2E[Playwright desktop/mobile]
+    IMG --> DEPLOY[Render]
+```
+
+The frontend and API share one origin in production, which keeps the session and CSRF model straightforward. The backend follows a controller/service/repository structure, and every application query is scoped to the authenticated owner.
+
+## Core features
 
 - Register, sign in, and sign out
 - Create, edit, and delete job applications
-- Track application status: Saved, Applied, Interview, Offer, or Rejected
-- Search by company, job title, or location
-- Filter applications by status; paginate results and sort by company or date
-- Dashboard summary with counts by status
+- Track Saved, Applied, Interview, Offer, and Rejected states
+- Search by company, title, or location
+- Filter by status
+- Paginate results and sort by newest, oldest, company, or application date
+- Dashboard totals by status
 - Upcoming interview tracking
 - Per-user application ownership
-- Server-side validation and consistent API error responses
-- CSRF protection, authentication throttling, and a same-origin content security policy
-- PostgreSQL migrations with Flyway
-- GitHub Actions CI for H2/PostgreSQL tests, frontend builds, and desktop/mobile browser workflows
-- Production Docker image that serves the React build from Spring Boot
+- Server-side validation and structured API errors
+- Authentication throttling and security headers
+- PostgreSQL schema management with Flyway
+- Responsive desktop/mobile UI
 
 ## Tech stack
 
-### Backend
+| Layer | Technologies |
+| --- | --- |
+| Backend | Java 21, Spring Boot 3, Spring Security, Spring Data JPA, Hibernate, Maven |
+| Frontend | React, TypeScript, Vite |
+| Database | PostgreSQL, Flyway |
+| Testing | JUnit, H2, PostgreSQL integration checks, Playwright |
+| DevOps | Docker, Docker Compose, GitHub Actions, Render |
 
-- Java 21
-- Spring Boot 3
-- Spring Security
-- Spring Data JPA / Hibernate
-- PostgreSQL
-- Flyway
-- Maven
+## API example
 
-### Frontend
+Applications are returned as an owner-scoped page:
 
-- React
-- TypeScript
-- Vite
+```http
+GET /api/applications?search=Acme&status=APPLIED&page=0&size=10&sort=NEWEST
+```
 
-### Infrastructure
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 10,
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
 
-- Docker / Docker Compose
-- GitHub Actions
-- Render
+Search is case-insensitive across company, title, and location. Page size is bounded, sort values are explicit, and wildcard characters such as `%` and `_` are treated as literal text.
 
 ## Local setup
 
-### 1. Start PostgreSQL
+### Prerequisites
 
-Docker Desktop needs to be running.
+- Java 21
+- Maven
+- Node.js 22.12+
+- Docker Desktop
+
+### 1. Start PostgreSQL
 
 From the repository root:
 
@@ -71,8 +114,6 @@ Check the database:
 docker compose ps
 ```
 
-The `db` service should be healthy and available at `localhost:5432`.
-
 To stop it:
 
 ```sh
@@ -81,11 +122,9 @@ docker compose down
 
 The PostgreSQL data is stored in a Docker volume. Avoid `docker compose down -v` unless you intentionally want to delete the local database.
 
-If you have data from the older version of DevTrack that did not have authentication, see [authentication and ownership](docs/authentication.md#existing-local-databases) before starting the application.
+If you have data from the older pre-authentication version of DevTrack, see [authentication and ownership](docs/authentication.md#existing-local-databases) before starting the application.
 
 ### 2. Run the backend
-
-Install Java 21 and Maven. The frontend requires Node.js 22.12 or newer; CI uses Node 22.
 
 On macOS, select Java 21 for the current terminal:
 
@@ -116,7 +155,7 @@ Expected response:
 
 ### 3. Run the frontend
 
-In a second terminal, from the repository root:
+In a second terminal:
 
 ```sh
 cd frontend
@@ -130,31 +169,32 @@ Open:
 http://127.0.0.1:5173
 ```
 
-During local development, Vite proxies `/api` requests to Spring Boot on port 8080.
+Vite proxies local `/api` requests to Spring Boot on port 8080.
 
-## Tests
+## Verification
 
-Backend:
+### Backend
 
 ```sh
 cd backend
 mvn clean test
 ```
 
-Frontend:
+### Frontend
 
 ```sh
 cd frontend
 npm run build
 ```
 
-The backend test suite covers authentication, CSRF protection, application ownership, validation/error responses, dashboard behavior, and database migration behavior.
+GitHub Actions verifies the project in two layers:
 
-GitHub Actions runs the backend suite with both H2 and a disposable PostgreSQL 16 database. It also builds the production Docker image and runs Playwright against that image on desktop and mobile Chromium.
+1. Runs the backend suite with H2.
+2. Re-runs backend tests against a disposable PostgreSQL database, builds the frontend and production Docker image, starts that image, then executes Playwright browser workflows on desktop and mobile Chromium.
 
-The browser tests cover registration/login, CRUD, interview tracking, filters, pagination, validation feedback, persistence after reload, and expired sessions. They only accept localhost URLs and create test accounts; never point them at the live demo or your normal database.
+The browser suite covers registration/login, CRUD, interview tracking, filters, pagination, validation feedback, persistence after reload, account isolation, and expired sessions.
 
-To run the production browser checks locally, from the repository root:
+To run the isolated production browser checks locally:
 
 ```sh
 docker compose -p devtrack-e2e -f compose.test.yaml up --build -d
@@ -166,9 +206,7 @@ cd ..
 docker compose -p devtrack-e2e -f compose.test.yaml down
 ```
 
-This uses port 8081 and an isolated PostgreSQL database in temporary memory. Stopping these test services removes their test data, not your normal development data. The test runner waits for the application to become healthy.
-
-For a PostgreSQL backend-only run, set `TEST_DATABASE_URL`, `TEST_DATABASE_DRIVER=org.postgresql.Driver`, `TEST_DATABASE_USER`, and `TEST_DATABASE_PASSWORD` before `mvn clean test`. **Use a disposable database: integration tests delete their fixtures.**
+The test environment uses port 8081 and a disposable PostgreSQL database. Do not point these tests at the live demo or your normal development database.
 
 ## Production deployment
 
@@ -176,12 +214,10 @@ The root `Dockerfile` uses a multi-stage build:
 
 1. Build the React frontend with Node.js.
 2. Build the Spring Boot application with Maven and Java 21.
-3. Copy the frontend production build into Spring Boot's static resources.
+3. Copy the frontend production bundle into Spring Boot's static resources.
 4. Run the final application as a non-root user from a Java 21 JRE image.
 
-The production app is deployed as one service, so the frontend and backend share the same origin.
-
-The deployed service uses these environment variables:
+The deployed service uses:
 
 - `DATABASE_URL`
 - `DATABASE_USER`
@@ -189,21 +225,19 @@ The deployed service uses these environment variables:
 - `SESSION_COOKIE_SECURE=true`
 - `PORT=8080`
 
-`DATABASE_URL` must be a JDBC URL (`jdbc:postgresql://HOST:5432/DATABASE`), not a `postgres://` URL. `PORT` controls the Spring Boot listener; the image defaults to port 8080 and listens on all interfaces. Render terminates HTTPS; keep `SESSION_COOKIE_SECURE=true` there. Use `/api/health` as the service health check.
+Secrets stay in the hosting environment and are not committed to the repository. The application supports graceful shutdown and exposes `/api/health` for health checks.
 
-Secrets are configured in the hosting environment and are not committed to the repository. CI and the local test Compose file contain only disposable test credentials. The application supports graceful shutdown and logs unexpected server errors without returning stack traces to clients.
+## Design tradeoffs
 
-Deploy the frontend and backend together: the applications endpoint now returns page metadata instead of a bare array. No schema migration or data reset is needed for this change. Never edit an already-applied Flyway migration.
+DevTrack deliberately stays a single-service application instead of adding distributed infrastructure that the current workload does not need.
 
-See [engineering notes](docs/engineering.md) for the API contract and design tradeoffs.
+Current tradeoffs:
 
-## Current limitations
+- Sessions and authentication throttle counters are in memory and reset on restart.
+- Password reset and email verification are not implemented.
+- Upcoming interviews use day-level dates and UTC; reminders and time-of-day scheduling are out of scope.
+- Search uses relational substring matching instead of a dedicated full-text search service.
+- Concurrent edits use last-write-wins.
+- Job application entry is currently manual; assisted capture from public job-posting URLs is a possible future product improvement.
 
-- Login sessions are stored in memory, so users need to sign in again after the backend restarts.
-- Authentication throttles are local to one process and reset on restart. Account limits and a global budget protect this low-traffic demo; shared sessions/rate limits would be needed before scaling to multiple instances.
-- Password reset is not implemented yet.
-- Email verification is not implemented yet.
-- Upcoming interviews are the next five applications in Interview status with a date today or later, using UTC. Dates have no time-of-day/reminder support.
-- The public demo uses free hosting and can have a cold start after inactivity.
-
-See [authentication and ownership](docs/authentication.md) for more details about the authentication flow and migration behavior.
+For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md).
