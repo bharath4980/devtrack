@@ -112,6 +112,7 @@ test('signing into another account never shows the previous account data', async
   await page.reload();
   await expect(page.getByRole('article')).toContainText('First account only');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   await registerAndLogin(page);
   await expect(page.getByText('Your list is empty.', { exact: false })).toBeVisible();
   const csrf = await (await page.request.get('/api/auth/csrf')).json();
