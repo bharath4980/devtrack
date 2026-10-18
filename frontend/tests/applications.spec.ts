@@ -122,6 +122,27 @@ test('job posting link fills editable details before saving', async ({ page }) =
     .toHaveAttribute('href', 'https://boards.greenhouse.io/example/jobs/123456');
 });
 
+test('dashboard metrics, distribution and navigation reflect saved applications', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Alpha Company');
+  await seed(page, 'Beta Company');
+  await page.reload();
+
+  const overview = page.getByRole('region', { name: 'Dashboard' });
+  await expect(overview.getByRole('heading', { name: 'Your search, at a glance' })).toBeVisible();
+  await expect(overview.locator('.kpi-card').filter({ hasText: 'Total applications' })).toContainText('2');
+  await expect(overview.getByRole('img', { name: /Pipeline: 2 saved/ })).toBeVisible();
+  await expect(overview.locator('.legend-item')).toHaveCount(5);
+  await page.setViewportSize({ width: 1200, height: 850 });
+  await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('link', { name: 'Applications' }).click();
+  await expect(page).toHaveURL(/#applications$/);
+  await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByRole('heading', { name: 'Make every application count.' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('pagination and sorting recover after deleting the last page', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 11; i++) await seed(page, `Company ${String(i).padStart(2, '0')}`);

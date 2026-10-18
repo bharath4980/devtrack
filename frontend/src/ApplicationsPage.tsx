@@ -117,24 +117,41 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   return <div className="page">
     <a className="skip-link" href="#applications">Skip to applications</a>
     <header className="header">
-      <a className="brand" href="/"><span className="brand-mark" aria-hidden="true">D</span>DevTrack</a>
-      <div className="account-menu"><span>{user.email}</span>
+      <div className="header-start">
+        <a className="brand" href="/"><span className="brand-mark" aria-hidden="true">D</span><span>DevTrack</span></a>
+        <nav className="top-nav" aria-label="Workspace navigation">
+          <a href="#overview">Overview</a>
+          <a href="#applications">Applications</a>
+        </nav>
+      </div>
+      <div className="account-menu">
+        <span className="account-avatar" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+        <span className="account-email">{user.email}</span>
         <button className="secondary-button" onClick={onLogout} disabled={blocked}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
       </div>
     </header>
     <main className="workspace">
       {logoutError && <p className="form-error" role="alert">{logoutError}</p>}
-      <div className="workspace-heading"><div><p className="eyebrow">Your job search</p><h1>Keep your next move in view.</h1>
-        <p className="intro">Applications, interviews, and the details worth remembering.</p></div>
-        <button ref={addButton} disabled={blocked || creating} onClick={() => { setCreating(true); setEditingId(null); }}>Add application</button>
+      <div className="workspace-heading">
+        <div className="hero-copy">
+          <p className="eyebrow">Your career workspace</p>
+          <h1>Make every application count.</h1>
+          <p className="intro">Stay on top of opportunities, upcoming interviews, and the next step in your search.</p>
+        </div>
+        <button className="add-button" ref={addButton} disabled={blocked || creating} onClick={() => { setCreating(true); setEditingId(null); }}>
+          <span aria-hidden="true" className="button-plus">+</span> Add application
+        </button>
       </div>
       <Dashboard summary={summary} interviews={interviews} followUps={followUps} loading={dashboardLoading} error={dashboardError} onRetry={refresh} />
       <p className="save-notice" role="status">{notice}</p>
-      {creating && <section aria-label="Add application"><h2>New application</h2>
+      {creating && <section className="editor-section" aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
       </section>}
       <section className="next-step" id="applications" tabIndex={-1} aria-labelledby="applications-heading">
-        <h2 id="applications-heading">Your applications</h2>
+        <div className="section-heading">
+          <div><p className="eyebrow">Application tracker</p><h2 id="applications-heading">Your applications</h2>
+            <p className="section-description">Search, filter, and manage each opportunity in one place.</p></div>
+        </div>
         <form className="filter-form" onSubmit={applyFilters}>
           <div className="form-field filter-search"><label htmlFor="search">Search</label>
             <input id="search" type="search" maxLength={255} placeholder="Company, title, or location" value={search} onChange={event => setSearch(event.target.value)} />
@@ -159,7 +176,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
         {!loading && !loadError && page && <>
           <p className="results-count" role="status">{page.totalElements} {page.totalElements === 1 ? 'application' : 'applications'}{query.search || query.status ? ' matching your filters' : ''}</p>
-          {page.items.length === 0 ? <div className="empty-state">{query.search || query.status ? 'No matches. Try another search or clear your filters.' : 'Your list is empty. Add your first application to get started.'}</div> :
+          {page.items.length === 0 ? <div className="empty-state"><span className="empty-symbol" aria-hidden="true">◇</span><p>{query.search || query.status ? 'No matches. Try another search or clear your filters.' : 'Your list is empty. Add your first application to get started.'}</p></div> :
             <div className="applications-list">{page.items.map(application => <ApplicationCard key={application.id} application={application}
               editing={editingId === application.id} busy={blocked} onEdit={() => { setEditingId(application.id); setCreating(false); }}
               onCancel={() => setEditingId(null)} onSave={values => edit(application.id, values)}

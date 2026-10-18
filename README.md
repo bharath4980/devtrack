@@ -19,7 +19,7 @@ It is designed around the parts of a job search that benefit from reliable softw
 
 - **Secure session authentication** with Spring Security, BCrypt password hashing, CSRF protection, authentication throttling, HttpOnly cookies, and a same-origin content security policy.
 - **Per-user data isolation** throughout the application layer and repository queries; users can only read or mutate their own applications.
-- **Real application workflows** with create/edit/delete, status tracking, search, filters, pagination, stable sorting, dashboard counts, and upcoming interviews.
+- **Real application workflows** with create/edit/delete, status tracking, search, filters, pagination, stable sorting, dashboard pipeline visualization, follow-up dates, and upcoming interviews.
 - **Reliable API behavior** with server-side validation, structured error responses, field-level frontend feedback, literal wildcard search handling, and stale-request cancellation.
 - **Database discipline** with PostgreSQL, Flyway-managed migrations, Hibernate schema validation, and preserved legacy rows during the authentication migration.
 - **Production-oriented verification** with H2 and PostgreSQL backend tests, frontend type/build checks, Docker image validation, and Playwright browser workflows on desktop and mobile Chromium.
@@ -60,7 +60,7 @@ The frontend and API share one origin in production, which keeps the session and
 - Server-side validation and structured API errors
 - Authentication throttling and security headers
 - PostgreSQL schema management with Flyway
-- Responsive desktop/mobile UI
+- Responsive desktop/mobile dashboard with pipeline breakdown, summary metrics, and follow-up/interview panels
 
 ## Tech stack
 
@@ -240,6 +240,6 @@ Current tradeoffs:
 - Upcoming interviews use day-level dates and UTC; reminders and time-of-day scheduling are out of scope.
 - Search uses relational substring matching instead of a dedicated full-text search service.
 - Concurrent edits use last-write-wins.
-- Job application entry is currently manual; assisted capture from public job-posting URLs is a possible future product improvement.
+- Job posting autofill supports public Greenhouse and Lever links; other job boards require manual entry.
 
 For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md).

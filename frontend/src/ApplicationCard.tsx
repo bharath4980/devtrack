@@ -25,7 +25,10 @@ export default function ApplicationCard({ application, editing, busy, onEdit, on
   return <article className="application-card" aria-label={`${application.company} — ${application.title}`}>
     {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel} /> : <>
       <div className="application-card-header">
-        <div><h3>{application.title}</h3><p className="application-company">{application.company}</p></div>
+        <div className="application-identity">
+          <div className="company-monogram" aria-hidden="true">{application.company.trim().charAt(0).toUpperCase()}</div>
+          <div><h3>{application.title}</h3><p className="application-company">{application.company}</p></div>
+        </div>
         <span className={`status-badge status-${application.status.toLowerCase()}`}>{statusLabel(application.status)}</span>
       </div>
       <div className="application-details">
@@ -35,7 +38,7 @@ export default function ApplicationCard({ application, editing, busy, onEdit, on
         {application.followUpDate && <p><span>Follow up</span><time dateTime={application.followUpDate}>{application.followUpDate}</time></p>}
       </div>
       {application.notes && <p className="application-notes">{application.notes}</p>}
-      {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting</a>}
+      {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting <span aria-hidden="true">↗</span></a>}
       <div className="application-controls">
         <div className="status-control">
           <label htmlFor={`status-${application.id}`}>Status</label>
