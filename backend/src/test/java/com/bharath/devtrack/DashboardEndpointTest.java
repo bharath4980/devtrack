@@ -79,6 +79,8 @@ class DashboardEndpointTest {
 
         mvc.perform(get("/api/dashboard/interviews"))
                 .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/dashboard/follow-ups"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -242,6 +244,37 @@ class DashboardEndpointTest {
                                 .value(
                                         today.plusDays(5)
                                                 .toString()));
+    }
+
+    @Test
+    void followUpsAreOwnerScopedDueSortedAndLimitedToFive() throws Exception {
+        LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        for (int i = 0; i < 7; i++) {
+            JobApplication due = seed(alice, "Due " + i, ApplicationStatus.APPLIED, null);
+            due.setFollowUpDate(today.minusDays(7 - i));
+            applications.save(due);
+        }
+        JobApplication future = seed(alice, "Future", ApplicationStatus.APPLIED, null);
+        future.setFollowUpDate(today.plusDays(1));
+        applications.save(future);
+        JobApplication done = seed(alice, "Rejected", ApplicationStatus.REJECTED, null);
+        done.setFollowUpDate(today.minusDays(9));
+        applications.save(done);
+        JobApplication other = seed(bob, "Other owner", ApplicationStatus.APPLIED, null);
+        other.setFollowUpDate(today.minusDays(10));
+        applications.save(other);
+        JobApplication legacy = seed(null, "Legacy", ApplicationStatus.APPLIED, null);
+        legacy.setFollowUpDate(today.minusDays(11));
+        applications.save(legacy);
+
+        MockHttpSession session = login(alice.getEmail());
+        mvc.perform(get("/api/dashboard/follow-ups").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].company").value("Due 0"))
+                .andExpect(jsonPath("$[4].company").value("Due 4"))
+                .andExpect(jsonPath("$[0].followUpDate")
+                        .value(today.minusDays(7).toString()));
     }
 
     private JobApplication seed(

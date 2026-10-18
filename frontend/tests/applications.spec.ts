@@ -71,6 +71,30 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('follow-up dates show due work and can be rescheduled', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Follow Up Corp');
+  await form.getByLabel('Job title').fill('Platform Engineer');
+  await form.getByLabel('Follow-up date').fill('2020-01-01');
+  await form.getByRole('button', { name: 'Save application' }).click();
+
+  await expect(page.locator('.due-follow-up')).toContainText('Follow Up Corp');
+  await expect(page.locator('.due-follow-up')).toContainText('Overdue');
+
+  const card = page.getByRole('article', { name: 'Follow Up Corp — Platform Engineer' });
+  await expect(card).toContainText('2020-01-01');
+  await card.getByRole('button', { name: 'Edit' }).click();
+  await card.getByLabel('Follow-up date').fill('2099-01-01');
+  await card.getByRole('button', { name: 'Save changes' }).click();
+
+  await expect(page.locator('.due-follow-up')).toHaveCount(0);
+  await page.reload();
+  await expect(card).toContainText('2099-01-01');
+  await expect(page.locator('.due-follow-up')).toHaveCount(0);
+});
+
 test('pagination and sorting recover after deleting the last page', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 11; i++) await seed(page, `Company ${String(i).padStart(2, '0')}`);

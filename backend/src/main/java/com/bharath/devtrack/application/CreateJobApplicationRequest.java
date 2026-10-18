@@ -27,6 +27,8 @@ public record CreateJobApplicationRequest(
         String notes,
 
         @NotNull
-        LocalDate applicationDate
+        LocalDate applicationDate,
+
+        LocalDate followUpDate
 ) {
 }

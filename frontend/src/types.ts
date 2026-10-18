@@ -15,6 +15,7 @@ export type JobApplication = {
   status: ApplicationStatus;
   applicationDate: string | null;
   interviewDate: string | null;
+  followUpDate: string | null;
 };
 
 export type CreateJobApplicationRequest = {
@@ -24,6 +25,7 @@ export type CreateJobApplicationRequest = {
   postingUrl: string;
   notes: string;
   applicationDate: string;
+  followUpDate: string;
 };
 
 export type UpdateJobApplicationRequest = {
@@ -34,6 +36,7 @@ export type UpdateJobApplicationRequest = {
   notes: string;
   applicationDate: string;
   interviewDate: string;
+  followUpDate: string;
 };
 
 export type ApplicationSort = 'NEWEST' | 'OLDEST' | 'COMPANY' | 'APPLICATION_DATE';

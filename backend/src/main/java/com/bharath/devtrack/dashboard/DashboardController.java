@@ -33,6 +33,12 @@ public class DashboardController {
         return dashboardService.getSummary(ownerId);
     }
 
+    @GetMapping("/follow-ups")
+    public List<DueFollowUpResponse> getDueFollowUps(Principal principal) {
+        Long ownerId = accounts.currentUser(principal).getId();
+        return dashboardService.getDueFollowUps(ownerId);
+    }
+
     @GetMapping("/interviews")
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
             Principal principal

@@ -32,6 +32,7 @@ export default function ApplicationCard({ application, editing, busy, onEdit, on
         {application.location && <p><span>Location</span>{application.location}</p>}
         {application.applicationDate && <p><span>Application date</span>{application.applicationDate}</p>}
         {application.interviewDate && <p><span>Interview</span>{application.interviewDate}</p>}
+        {application.followUpDate && <p><span>Follow up</span><time dateTime={application.followUpDate}>{application.followUpDate}</time></p>}
       </div>
       {application.notes && <p className="application-notes">{application.notes}</p>}
       {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting</a>}

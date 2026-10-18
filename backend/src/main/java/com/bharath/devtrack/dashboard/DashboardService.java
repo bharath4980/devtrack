@@ -42,6 +42,23 @@ public class DashboardService {
         );
     }
 
+    public List<DueFollowUpResponse> getDueFollowUps(Long ownerId) {
+        return repository
+                .findTop5ByOwner_IdAndStatusInAndFollowUpDateLessThanEqualOrderByFollowUpDateAscIdAsc(
+                        ownerId,
+                        List.of(ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW),
+                        LocalDate.now(java.time.ZoneOffset.UTC)
+                )
+                .stream()
+                .map(application -> new DueFollowUpResponse(
+                        application.getId(),
+                        application.getCompany(),
+                        application.getTitle(),
+                        application.getFollowUpDate()
+                ))
+                .toList();
+    }
+
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
             Long ownerId
     ) {

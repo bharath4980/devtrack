@@ -49,6 +49,8 @@ public class JobApplication {
 
     private LocalDate interviewDate;
 
+    private LocalDate followUpDate;
+
     public JobApplication() {
     }
 
@@ -110,6 +112,14 @@ public class JobApplication {
 
     public void setApplicationDate(LocalDate applicationDate) {
         this.applicationDate = applicationDate;
+    }
+
+    public LocalDate getFollowUpDate() {
+        return followUpDate;
+    }
+
+    public void setFollowUpDate(LocalDate followUpDate) {
+        this.followUpDate = followUpDate;
     }
 
     public LocalDate getInterviewDate() {

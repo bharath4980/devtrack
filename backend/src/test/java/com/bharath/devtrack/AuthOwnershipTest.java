@@ -240,6 +240,31 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void followUpDatesAreSavedUpdatedAndReturnedToTheOwner() throws Exception {
+        MockHttpSession session = login(alice.getEmail());
+        Csrf csrf = csrf(session);
+        String body = json.writeValueAsString(Map.of(
+                "company", "Acme", "title", "Engineer",
+                "applicationDate", "2026-09-27", "followUpDate", "2026-10-01"));
+        MvcResult created = mvc.perform(post("/api/applications").session(session)
+                        .header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.followUpDate").value("2026-10-01"))
+                .andReturn();
+        long id = json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(put("/api/applications/" + id).session(session)
+                        .header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.replace("2026-10-01", "2026-10-08")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.followUpDate").value("2026-10-08"));
+        mvc.perform(get("/api/applications").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].followUpDate").value("2026-10-08"));
+    }
+
+    @Test
     void logoutInvalidatesSession() throws Exception {
         MockHttpSession session = login(alice.getEmail());
         Csrf csrf = csrf(session);
