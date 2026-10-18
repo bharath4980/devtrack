@@ -157,6 +157,8 @@ test('application history and analytics reflect status transitions', async ({ pa
   await expect(card.getByLabel('Application activity')).toContainText('Application saved');
 
   await card.getByLabel('Status', { exact: true }).selectOption('INTERVIEW');
+  // The application list refreshes after a mutation, remounting the collapsed history panel.
+  await card.getByRole('button', { name: 'View history' }).click();
   await expect(card.getByLabel('Application activity')).toContainText('Status changed: Saved → Interview');
   await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
   await expect(page.locator('.recent-list')).toContainText('Metrics Company');
