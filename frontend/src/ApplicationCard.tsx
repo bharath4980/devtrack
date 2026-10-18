@@ -38,7 +38,7 @@ export default function ApplicationCard({ application, editing, busy, onEdit, on
         {application.followUpDate && <p><span>Follow up</span><time dateTime={application.followUpDate}>{application.followUpDate}</time></p>}
       </div>
       {application.notes && <p className="application-notes">{application.notes}</p>}
-      {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting <span aria-hidden="true">↗</span></a>
+      {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting <span aria-hidden="true">↗</span></a>}
       <div className="application-controls">
         <div className="status-control">
           <label htmlFor={`status-${application.id}`}>Status</label>
