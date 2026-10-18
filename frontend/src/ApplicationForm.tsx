@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { previewJobPosting } from './applicationApi';
 import { ApiError, errorMessage } from './apiError';
 import type { JobApplication, UpdateJobApplicationRequest } from './types';
 
@@ -24,6 +25,40 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState('');
+  const [lookupError, setLookupError] = useState('');
+  const lookupController = useRef<AbortController | null>(null);
+
+  useEffect(() => () => lookupController.current?.abort(), []);
+
+  async function importDetails() {
+    const url = values.postingUrl.trim();
+    if (!url || lookupBusy) return;
+
+    lookupController.current?.abort();
+    const controller = new AbortController();
+    lookupController.current = controller;
+    setLookupBusy(true);
+    setLookupMessage('');
+    setLookupError('');
+    try {
+      const preview = await previewJobPosting(url, controller.signal);
+      if (controller.signal.aborted) return;
+      setValues(current => current.postingUrl.trim() === url
+        ? { ...current, company: preview.company, title: preview.title, location: preview.location || current.location }
+        : current);
+      setLookupMessage('Details filled in. Review the company, title, and location before saving.');
+    } catch (failure) {
+      if (!controller.signal.aborted) setLookupError(
+        errorMessage(failure, 'Could not read this job link. Enter the details manually.'));
+    } finally {
+      if (lookupController.current === controller) {
+        lookupController.current = null;
+        setLookupBusy(false);
+      }
+    }
+  }
   const prefix = application ? `edit-${application.id}` : 'create';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -39,10 +74,10 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   }
 
   const fields = [
+    { name: 'postingUrl', label: 'Job posting URL', type: 'url' },
     { name: 'company', label: 'Company', type: 'text', required: true },
     { name: 'title', label: 'Job title', type: 'text', required: true },
     { name: 'location', label: 'Location', type: 'text' },
-    { name: 'postingUrl', label: 'Job posting URL', type: 'url' },
     { name: 'applicationDate', label: 'Application date', type: 'date', required: true },
     { name: 'followUpDate', label: 'Follow-up date', type: 'date' },
     ...(application ? [{ name: 'interviewDate', label: 'Interview date', type: 'date' }] : []),
@@ -50,13 +85,31 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
 
   return <form className="application-form" onSubmit={submit} aria-label={application ? 'Edit application' : 'New application'}>
     <fieldset disabled={busy}>
-      {fields.map(({ name, label, type, required }) => <div className="form-field" key={name}>
+      {fields.map(({ name, label, type, required }) => <div className={`form-field${name === 'postingUrl' ? ' form-field-full' : ''}`} key={name}>
         <label htmlFor={`${prefix}-${name}`}>{label}</label>
         <input id={`${prefix}-${name}`} type={type} autoFocus={name === 'company'} required={required} maxLength={type === 'date' ? undefined : 255}
           pattern={name === 'postingUrl' ? '[hH][tT][tT][pP][sS]?://.*' : undefined}
           value={values[name as keyof UpdateJobApplicationRequest]}
           aria-invalid={!!fieldErrors[name]} aria-describedby={fieldErrors[name] ? `${prefix}-${name}-error` : undefined}
-          onChange={event => setValues({ ...values, [name]: event.target.value })} />
+          onChange={event => {
+            const value = event.currentTarget.value;
+            if (name === 'postingUrl') {
+              lookupController.current?.abort();
+              setLookupBusy(false);
+              setLookupMessage('');
+              setLookupError('');
+            }
+            setValues(current => ({ ...current, [name]: value }));
+          }} />
+        {name === 'postingUrl' && <>
+          <div className="posting-import-actions">
+            <button type="button" className="secondary-button" disabled={busy || lookupBusy || !values.postingUrl.trim()}
+              onClick={() => void importDetails()}>{lookupBusy ? 'Looking up…' : 'Fill from job link'}</button>
+            <span className="form-help">Supports public Greenhouse and Lever links. Other sites can be entered manually.</span>
+          </div>
+          {lookupMessage && <p className="form-help lookup-success" role="status">{lookupMessage}</p>}
+          {lookupError && <p className="form-error" role="alert">{lookupError}</p>}
+        </>}
         {fieldErrors[name] && <span className="form-error" id={`${prefix}-${name}-error`}>{fieldErrors[name]}</span>}
       </div>)}
       {application && <p className="form-help form-field-full">Upcoming interviews includes applications with Interview status and a date today or later.</p>}

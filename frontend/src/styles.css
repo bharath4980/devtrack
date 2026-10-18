@@ -270,6 +270,10 @@ button:disabled {
   background: white;
 }
 
+.posting-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.posting-import-actions button { flex-shrink: 0; }
+.posting-import-actions .form-help { flex: 1; min-width: 190px; }
+.lookup-success { color: #276346; }
 .form-field textarea {
   min-height: 100px;
   resize: vertical;

@@ -48,6 +48,7 @@ The frontend and API share one origin in production, which keeps the session and
 
 - Register, sign in, and sign out
 - Create, edit, and delete job applications
+- Prefill application details from public Greenhouse and Lever job links, with review before saving and manual fallback for other sites
 - Track Saved, Applied, Interview, Offer, and Rejected states
 - Schedule optional follow-up dates and see overdue or due-today applications in an owner-scoped dashboard queue
 - Search by company, title, or location
