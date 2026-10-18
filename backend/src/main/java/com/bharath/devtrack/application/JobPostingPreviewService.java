@@ -27,6 +27,7 @@ public class JobPostingPreviewService {
     private final ObjectMapper mapper;
     private final HttpClient client;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public JobPostingPreviewService(ObjectMapper mapper) {
         this(mapper, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(3))
