@@ -13,13 +13,16 @@ import java.util.List;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final com.bharath.devtrack.application.ApplicationActivityService activity;
     private final AccountService accounts;
 
     public DashboardController(
             DashboardService dashboardService,
+            com.bharath.devtrack.application.ApplicationActivityService activity,
             AccountService accounts
     ) {
         this.dashboardService = dashboardService;
+        this.activity = activity;
         this.accounts = accounts;
     }
 
@@ -31,6 +34,17 @@ public class DashboardController {
                 accounts.currentUser(principal).getId();
 
         return dashboardService.getSummary(ownerId);
+    }
+
+    @GetMapping("/activity")
+    public List<com.bharath.devtrack.application.ApplicationActivityResponse> getRecentActivity(
+            Principal principal) {
+        return activity.recent(accounts.currentUser(principal).getId());
+    }
+
+    @GetMapping("/analytics")
+    public DashboardAnalyticsResponse getAnalytics(Principal principal) {
+        return dashboardService.getAnalytics(accounts.currentUser(principal).getId());
     }
 
     @GetMapping("/follow-ups")
