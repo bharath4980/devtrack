@@ -162,7 +162,12 @@ class ApplicationActivityEndpointTest {
         mvc.perform(post("/api/auth/login").session(session).header(header, token)
                         .param("email", email).param("password", PASSWORD))
                 .andExpect(status().isNoContent());
-        return new SessionCredentials(session, header, token);
+        // The token rotates when authentication succeeds.
+        var rotated = mvc.perform(get("/api/auth/csrf").session(session))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode refreshed = json.readTree(rotated.getResponse().getContentAsString());
+        return new SessionCredentials(session, refreshed.get("headerName").asText(),
+                refreshed.get("token").asText());
     }
 
     private record SessionCredentials(MockHttpSession session, String header, String token) {}
