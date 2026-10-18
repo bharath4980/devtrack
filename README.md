@@ -1,97 +1,62 @@
 # DevTrack
 
 [![CI](https://github.com/bharath4980/devtrack/actions/workflows/ci.yml/badge.svg)](https://github.com/bharath4980/devtrack/actions/workflows/ci.yml)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?logo=render&logoColor=white)](https://devtrack-3upd.onrender.com)
+[![Live application](https://img.shields.io/badge/Live%20application-Render-244e46)](https://devtrack-3upd.onrender.com)
 
-**DevTrack** is a production-deployed job application tracker built with Java 21, Spring Boot, React, TypeScript, and PostgreSQL.
+**DevTrack is a full-stack job-application workspace** built with **Java 21, Spring Boot, React, TypeScript, and PostgreSQL**. It helps users organize applications, track interviews and follow-ups, review recorded status changes, and understand job-search progress.
 
-It is designed around the parts of a job search that benefit from reliable software engineering: secure user accounts, owner-scoped data, fast search and filtering, interview tracking, structured validation, automated testing, and a repeatable production deployment.
+The engineering focus is secure multi-user data, honest analytics, practical third-party integration boundaries, automated browser testing, and a reproducible Docker deployment—not unnecessary infrastructure.
 
-**[Open the live demo](https://devtrack-3upd.onrender.com)** · **[Engineering notes](docs/engineering.md)** · **[Authentication design](docs/authentication.md)**
+**[Live application](https://devtrack-3upd.onrender.com)** · **[Demo walkthrough](docs/demo.md)** · **[Architecture and decisions](docs/engineering.md)** · **[Production incident case study](docs/deployment-case-study.md)**
 
-> The public demo runs on Render's free tier, so the first request after a period of inactivity can take longer while the service wakes up.
+> Hosted on a Render Free web service. It can spin down when idle; waking the service may delay the first request. Use a unique password and sample application information if exploring the public site.
 
-## Preview
+## Product overview
 
-Explore the [live DevTrack workspace](https://devtrack-3upd.onrender.com) to see the current dashboard, application timeline, and analytics. The previous dashboard screenshot has been omitted because it no longer reflects the current interface.
+![Illustrative DevTrack workflow with entirely fictional application data](docs/images/product-overview.svg)
 
-## Engineering highlights
+*Illustrative product overview—not a screenshot or production account data. The names and counts above are fictional. [See the safe demo walkthrough](docs/demo.md) for the current UI and an example exploration path.*
 
-- **Secure session authentication** with Spring Security, BCrypt password hashing, CSRF protection, authentication throttling, HttpOnly cookies, and a same-origin content security policy.
-- **Per-user data isolation** throughout the application layer and repository queries; users can only read or mutate their own applications.
-- **Real application workflows** with create/edit/delete, status history, analytics trends, search, filters, pagination, stable sorting, dashboard pipeline visualization, follow-up dates, and upcoming interviews.
-- **Reliable API behavior** with server-side validation, structured error responses, field-level frontend feedback, literal wildcard search handling, and stale-request cancellation.
-- **Database discipline** with PostgreSQL, Flyway-managed migrations, Hibernate schema validation, and preserved legacy rows during the authentication migration.
-- **Production-oriented verification** with H2 and PostgreSQL backend tests, frontend type/build checks, Docker image validation, and Playwright browser workflows on desktop and mobile Chromium.
-- **Single-image deployment** where the React production build is served by Spring Boot from a non-root Docker runtime and deployed to Render.
+- **Track the pipeline:** save opportunities; move them through Saved, Applied, Interview, Offer, and Rejected; search, sort, and filter an owner-scoped list.
+- **Act on next steps:** record interview dates, optional follow-up dates, and view the upcoming-interview and follow-up panels.
+- **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
+- **Import carefully:** prefill editable company, title, and location from supported public Greenhouse or Lever links. Unsupported providers fall back to manual entry.
+- **Learn from actual data:** view the six-month application trend, current pipeline distribution, and stage metrics; earlier unrecorded transitions can make some rates incomplete.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    U[Browser] -->|HTTPS| R[React + TypeScript]
-    R -->|same-origin /api| S[Spring Boot]
-    S --> SEC[Spring Security]
-    S --> APP[Application service]
-    APP --> JPA[Spring Data JPA / Hibernate]
-    JPA --> DB[(PostgreSQL)]
+![DevTrack production architecture and verification flow](docs/images/architecture.svg)
 
-    CI[GitHub Actions] --> TESTS[H2 + PostgreSQL tests]
-    CI --> IMG[Production Docker image]
-    IMG --> E2E[Playwright desktop/mobile]
-    IMG --> DEPLOY[Render]
-```
+In production, the React app and Spring Boot API share one origin. Spring Security enforces sessions and CSRF checks; controller/service/repository operations scope application access to the authenticated account. Flyway manages PostgreSQL schema changes, and Hibernate validates the schema.
 
-The frontend and API share one origin in production, which keeps the session and CSRF model straightforward. The backend follows a controller/service/repository structure, and every application query is scoped to the authenticated owner.
+[Detailed request flow, migrations, and tradeoffs](docs/engineering.md) · [Authentication and ownership model](docs/authentication.md)
 
-## Core features
+## Engineering decisions worth exploring
 
-- Register, sign in, and sign out
-- Create, edit, and delete job applications
-- Prefill application details from public Greenhouse and Lever job links, with review before saving and manual fallback for other sites
-- Track Saved, Applied, Interview, Offer, and Rejected states
-- Schedule optional follow-up dates and see overdue or due-today applications in an owner-scoped dashboard queue
-- Search by company, title, or location
-- Filter by status
-- Paginate results and sort by newest, oldest, company, or application date
-- Dashboard totals by status, monthly application trends, and stage progress analytics
-- Timestamped per-application status history and recent activity feed
-- Upcoming interview tracking
-- Per-user application ownership
-- Server-side validation and structured API errors
-- Authentication throttling and security headers
-- PostgreSQL schema management with Flyway, including indexed owner-scoped activity history
-- Responsive desktop/mobile dashboard with pipeline breakdown, summary metrics, and follow-up/interview panels
+| Concern | Implementation | Why it matters |
+| --- | --- | --- |
+| Isolation | Session-authenticated ownership checks in repository and mutation paths | One account cannot access another account's applications |
+| Validation | Backend validation, structured errors, frontend field feedback | Invalid input fails predictably |
+| History | Transactional creation/status events; explicit legacy snapshots | No invented events or timestamps |
+| External imports | Constrained Greenhouse/Lever handling and editable results | Avoids arbitrary URL fetching and unsafe scraping |
+| Consistency | Flyway migrations, Hibernate validation, PostgreSQL tests | Keeps schema changes deliberate and testable |
+| Delivery | Multi-stage non-root Docker runtime; GitHub Actions with H2, PostgreSQL and Playwright | Checks the built artifact and browser workflows before release |
 
-## Tech stack
+## Verification at a glance
+
+CI runs backend tests with H2 and PostgreSQL, builds the frontend and production Docker image, verifies the container through a published port, and runs desktop/mobile Playwright workflows on a **disposable test database**. Those browser tests cover account isolation, application workflows, analytics, and the legacy status-snapshot view.
+
+The Render Free instance experienced startup/port-detection failures before PR #19. A measured JVM startup optimization and an improved container networking test were deployed successfully on October 18, 2026; the limits of that evidence are documented in the [deployment case study](docs/deployment-case-study.md).
+
+## Stack
 
 | Layer | Technologies |
 | --- | --- |
 | Backend | Java 21, Spring Boot 3, Spring Security, Spring Data JPA, Hibernate, Maven |
-| Frontend | React, TypeScript, Vite |
-| Database | PostgreSQL, Flyway |
-| Testing | JUnit, H2, PostgreSQL integration checks, Playwright |
-| DevOps | Docker, Docker Compose, GitHub Actions, Render |
-
-## API example
-
-Applications are returned as an owner-scoped page:
-
-```http
-GET /api/applications?search=Acme&status=APPLIED&page=0&size=10&sort=NEWEST
-```
-
-```json
-{
-  "items": [],
-  "page": 0,
-  "size": 10,
-  "totalElements": 0,
-  "totalPages": 0
-}
-```
-
-Search is case-insensitive across company, title, and location. Page size is bounded, sort values are explicit, and wildcard characters such as `%` and `_` are treated as literal text.
+| Frontend | React, TypeScript, Vite, responsive CSS |
+| Data | PostgreSQL, Flyway |
+| Tests | JUnit, H2, PostgreSQL integration checks, Playwright desktop/mobile |
+| Delivery | Docker multi-stage build, GitHub Actions, Render |
 
 ## Local setup
 
@@ -195,7 +160,7 @@ GitHub Actions verifies the project in two layers:
 1. Runs the backend suite with H2.
 2. Re-runs backend tests against a disposable PostgreSQL database, builds the frontend and production Docker image, starts that image, then executes Playwright browser workflows on desktop and mobile Chromium.
 
-The browser suite covers registration/login, CRUD, interview tracking, filters, pagination, validation feedback, persistence after reload, account isolation, and expired sessions.
+The browser suite covers registration/login, CRUD, interview tracking, filters, pagination, validation feedback, persistence after reload, account isolation, expired sessions, and legacy history snapshots. A passing test run is not a substitute for inspecting existing authenticated production records.
 
 To run the isolated production browser checks locally:
 
@@ -243,4 +208,4 @@ Current tradeoffs:
 - Concurrent edits use last-write-wins.
 - Job posting autofill supports public Greenhouse and Lever links; other job boards require manual entry.
 
-For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md).
+For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md). The [safe demo walkthrough](docs/demo.md) uses only illustrative or disposable data, and the [deployment case study](docs/deployment-case-study.md) distinguishes confirmed evidence from outstanding checks.
