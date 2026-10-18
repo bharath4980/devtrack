@@ -1,4 +1,5 @@
 import ApplicationForm from './ApplicationForm';
+import ApplicationTimeline from './ApplicationTimeline';
 import { statuses, statusLabel, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
 
 function safeLink(value: string | null) {
@@ -52,6 +53,7 @@ export default function ApplicationCard({ application, editing, busy, onEdit, on
           <button className="danger-button" disabled={busy} onClick={onDelete}>Delete</button>
         </div>
       </div>
+      <ApplicationTimeline applicationId={application.id} status={application.status} />
     </>}
   </article>;
 }

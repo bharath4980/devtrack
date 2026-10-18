@@ -1,16 +1,19 @@
-import type { DashboardSummary, DueFollowUp, UpcomingInterview } from './dashboardApi';
+import type { DashboardSummary, DueFollowUp, UpcomingInterview, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
+import { activityText, activityTime } from './ApplicationTimeline';
 import { statuses, statusLabel } from './types';
 
 type Props = {
   summary: DashboardSummary | null;
   interviews: UpcomingInterview[];
   followUps: DueFollowUp[];
+  analytics: DashboardAnalytics | null;
+  recentActivity: ApplicationActivity[];
   loading: boolean;
   error: string;
   onRetry: () => void;
 };
 
-export default function Dashboard({ summary, interviews, followUps, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, followUps, analytics, recentActivity, loading, error, onRetry }: Props) {
   const pipeline = statuses.map(status => ({
     status,
     count: summary?.[status.toLowerCase() as keyof DashboardSummary] ?? 0,
@@ -57,6 +60,46 @@ export default function Dashboard({ summary, interviews, followUps, loading, err
           </div>)}
         </div>
       </div>
+      {analytics && <div className="insights-grid">
+        <section className="insight-panel" aria-labelledby="trends-heading">
+          <div className="pipeline-heading"><div><h3 id="trends-heading">Applications by month</h3>
+            <p>Based on application dates entered for the last six months (UTC).</p></div></div>
+          <div className="monthly-chart" role="img" aria-label={'Applications by month: ' +
+            analytics.monthlyApplications.map(point => point.month + ' ' + point.applications).join(', ')}>
+            {analytics.monthlyApplications.map(point => {
+              const max = Math.max(1, ...analytics.monthlyApplications.map(item => item.applications));
+              return <div key={point.month} className="monthly-column">
+                <strong>{point.applications}</strong>
+                <div className="monthly-bar-track"><div className="monthly-bar"
+                  style={{ height: (point.applications / max * 100) + '%' }} /></div>
+                <span>{point.month.slice(5)}</span>
+              </div>;
+            })}
+          </div>
+        </section>
+        <section className="insight-panel" aria-labelledby="progress-heading">
+          <div className="pipeline-heading"><div><h3 id="progress-heading">Application outcomes</h3>
+            <p>Stages reached, using recorded history and current statuses.</p></div></div>
+          <div className="outcome-row"><div><strong>{analytics.interviewOrOfferRate}%</strong>
+            <span>Reached interview or offer</span></div><small>{analytics.interviewOrOfferReached} of {analytics.trackedApplications}</small></div>
+          <div className="outcome-meter"><span style={{ width: analytics.interviewOrOfferRate + '%' }} /></div>
+          <div className="outcome-row"><div><strong>{analytics.offerRate}%</strong><span>Reached offer</span></div>
+            <small>{analytics.offersReached} of {analytics.trackedApplications}</small></div>
+          <div className="outcome-meter outcome-offer"><span style={{ width: analytics.offerRate + '%' }} /></div>
+          <p className="form-help outcome-note">Earlier stage changes cannot be reconstructed. Rates reflect available history and the latest recorded state.</p>
+        </section>
+      </div>}
+      <section className="recent-panel" aria-labelledby="recent-heading">
+        <div className="pipeline-heading"><div><h3 id="recent-heading">Recent activity</h3>
+          <p>Latest saved applications and stage changes.</p></div><span>Latest 12</span></div>
+        {recentActivity.length === 0
+          ? <p className="form-help">No activity recorded yet. New applications and status changes will appear here.</p>
+          : <ol className="recent-list">{recentActivity.map(item =>
+              <li key={item.id}><span className="timeline-marker" aria-hidden="true" />
+                <div><strong>{activityText(item)}</strong><p>{item.company} · {item.title}</p></div>
+                <time dateTime={item.occurredAt}>{activityTime(item.occurredAt)}</time>
+              </li>)}</ol>}
+      </section>
       <div className="schedule-grid">
         <section className="schedule-panel" aria-labelledby="follow-ups-heading">
           <div className="schedule-heading">

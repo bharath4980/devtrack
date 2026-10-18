@@ -944,3 +944,43 @@ footer { border-color: var(--line); color: #94a0b3; }
   .application-actions button { flex: 1; }
   .auth-panel { padding-top: 58px; }
 }
+
+/* Activity history and application insights */
+.insights-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.insight-panel, .recent-panel { background: #fff; border: 1px solid var(--line); border-radius: 17px; padding: 24px 26px; min-width: 0; }
+.insight-panel .pipeline-heading { margin-bottom: 19px; }
+.monthly-chart { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: end; padding: 12px 2px 4px; }
+.monthly-column { display: flex; flex-direction: column; align-items: center; min-width: 0; gap: 9px; color: #728099; font-size: 11px; }
+.monthly-column strong { color: #2f4163; font-size: 12px; }
+.monthly-bar-track { height: 118px; width: min(100%, 40px); display: flex; align-items: flex-end; background: #f2f4fa; border-radius: 7px; overflow: hidden; }
+.monthly-bar { width: 100%; background: #6479e1; border-radius: 7px 7px 0 0; min-height: 0; }
+.outcome-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin: 15px 0 9px; }
+.outcome-row > div { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.outcome-row strong { font-size: 27px; font-weight: 750; color: #2b3e78; }
+.outcome-row span { font-size: 12px; color: #68758c; }
+.outcome-row small { color: #8590a5; white-space: nowrap; }
+.outcome-meter { width: 100%; height: 8px; background: #eef1fa; border-radius: 8px; overflow: hidden; }
+.outcome-meter span { display: block; height: 100%; background: #6479e1; border-radius: inherit; }
+.outcome-offer span { background: #34b492; }
+.outcome-note { margin-top: 17px; line-height: 1.55; }
+.recent-panel { margin-top: 18px; }
+.recent-list, .timeline-list { list-style: none; margin: 15px 0 0; padding: 0; }
+.recent-list li, .timeline-list li { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid #edf0f5; }
+.recent-list li:last-child, .timeline-list li:last-child { border: 0; }
+.timeline-marker { flex: none; display: block; width: 9px; height: 9px; margin-top: 6px; border: 2px solid #6479e1; background: #edf0ff; border-radius: 50%; }
+.recent-list li > div, .timeline-list li > div { min-width: 0; flex: 1; }
+.recent-list strong, .timeline-list strong { font-size: 12px; font-weight: 700; color: #2d3f61; }
+.recent-list p { margin: 4px 0 0; font-size: 12px; color: #728097; overflow-wrap: anywhere; }
+.recent-list time, .timeline-list time { color: #8a95a9; font-size: 11px; white-space: nowrap; }
+.activity-timeline { margin-top: 12px; }
+.timeline-toggle { padding: 7px 12px; min-height: 32px; font-size: 12px; }
+.timeline-content { border-top: 1px solid #edf0f5; margin-top: 12px; padding-top: 8px; }
+.timeline-list time { display: block; margin-top: 6px; white-space: normal; }
+@media (max-width: 800px) { .insights-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .insight-panel, .recent-panel { padding: 19px 17px; }
+  .recent-list li { flex-wrap: wrap; }
+  .recent-list time { margin-left: 21px; white-space: normal; }
+  .monthly-chart { gap: 6px; }
+  .outcome-row > div { gap: 7px; }
+}

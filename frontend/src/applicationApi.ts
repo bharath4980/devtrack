@@ -22,6 +22,12 @@ export async function previewJobPosting(url: string, signal?: AbortSignal): Prom
   return response.json();
 }
 
+export async function getApplicationActivity(id: number, signal?: AbortSignal): Promise<import('./dashboardApi').ApplicationActivity[]> {
+  const response = await apiFetch(`/api/applications/${id}/activity`, { signal });
+  if (!response.ok) throw await readApiError(response, 'Could not load application history.');
+  return response.json();
+}
+
 export async function getApplications(query: ApplicationQuery, signal?: AbortSignal): Promise<ApplicationPage> {
   const params = new URLSearchParams({
     page: String(query.page), size: '10', sort: query.sort,

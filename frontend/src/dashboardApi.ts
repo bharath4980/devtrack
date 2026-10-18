@@ -48,3 +48,35 @@ export async function getUpcomingInterviews(signal?: AbortSignal): Promise<Upcom
 
   return response.json();
 }
+
+export type ApplicationActivity = {
+  id: number;
+  applicationId: number;
+  company: string;
+  title: string;
+  type: 'CREATED' | 'STATUS_CHANGED';
+  fromStatus: import('./types').ApplicationStatus | null;
+  toStatus: import('./types').ApplicationStatus;
+  occurredAt: string;
+};
+
+export type DashboardAnalytics = {
+  trackedApplications: number;
+  interviewOrOfferReached: number;
+  offersReached: number;
+  interviewOrOfferRate: number;
+  offerRate: number;
+  monthlyApplications: { month: string; applications: number }[];
+};
+
+export async function getRecentActivity(signal?: AbortSignal): Promise<ApplicationActivity[]> {
+  const response = await apiFetch('/api/dashboard/activity', { signal });
+  if (!response.ok) throw new Error('Failed to load recent activity');
+  return response.json();
+}
+
+export async function getDashboardAnalytics(signal?: AbortSignal): Promise<DashboardAnalytics> {
+  const response = await apiFetch('/api/dashboard/analytics', { signal });
+  if (!response.ok) throw new Error('Failed to load analytics');
+  return response.json();
+}
