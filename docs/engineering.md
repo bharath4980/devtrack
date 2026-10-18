@@ -42,3 +42,12 @@ H2 gives quick local integration feedback. CI repeats endpoint tests on PostgreS
 Sessions and throttle counters live in memory. Restarting the app signs users out. Fixed windows are easy to explain but allow bursts around window boundaries, and shared budgets can temporarily affect legitimate users. These limits suit a small demo, not a high-traffic public identity service.
 
 Search uses substring matching; no full-text index is warranted for this workload. Concurrent edits use last-write-wins; there is no collaborative editing or revision history. Interview dates have day precision and use UTC for the upcoming list. Email delivery, reminders, password reset, and verified email would require a separate, justified feature phase.
+
+
+## Application activity and analytics
+
+Flyway V4 introduces an `application_activity` table with indexed owner/application relationships. Creation and meaningful status transitions write timestamped events in the same database transaction as the application change. Repeating an unchanged status does not add history. Deleting an application cascades its events. Both `GET /api/applications/{id}/activity` and `GET /api/dashboard/activity` require authentication and are strictly owner-scoped, with the newest 20/12 events returned respectively.
+
+Earlier changes were not recorded, so historical events are intentionally not fabricated during migration. `GET /api/dashboard/analytics` calculates six monthly buckets using user-entered application dates, and stage rates from current status plus recorded status history. Consequently those rates can undercount stages reached prior to rollout; they are directional signals rather than complete lifetime conversion metrics.
+
+The activity table is not a replacement for application records or an event-sourced system. The current application row remains authoritative.

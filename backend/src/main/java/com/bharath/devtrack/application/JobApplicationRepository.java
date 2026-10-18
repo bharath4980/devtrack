@@ -21,6 +21,16 @@ public interface JobApplicationRepository
 
     long countByOwner_Id(Long ownerId);
 
+    @Query("""
+            select application.applicationDate from JobApplication application
+            where application.owner.id = :ownerId
+              and application.applicationDate between :startDate and :endDate
+            """)
+    List<LocalDate> findApplicationDatesForAnalytics(
+            @Param("ownerId") Long ownerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     long countByOwner_IdAndStatus(
             Long ownerId,
             ApplicationStatus status

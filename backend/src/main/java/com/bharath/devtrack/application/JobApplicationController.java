@@ -12,10 +12,13 @@ import com.bharath.devtrack.auth.AccountService;
 public class JobApplicationController {
 
     private final JobApplicationService service;
+    private final ApplicationActivityService activity;
     private final AccountService accounts;
 
-    public JobApplicationController(JobApplicationService service, AccountService accounts) {
+    public JobApplicationController(JobApplicationService service, ApplicationActivityService activity,
+                                    AccountService accounts) {
         this.service = service;
+        this.activity = activity;
         this.accounts = accounts;
     }
 
@@ -56,6 +59,11 @@ public class JobApplicationController {
             @Valid @RequestBody UpdateJobApplicationRequest request
     ) {
         return service.update(accounts.currentUser(principal).getId(), id, request);
+    }
+
+    @GetMapping("/{id}/activity")
+    public java.util.List<ApplicationActivityResponse> getActivity(Principal principal, @PathVariable Long id) {
+        return activity.getForApplication(accounts.currentUser(principal).getId(), id);
     }
 
     @DeleteMapping("/{id}")

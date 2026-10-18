@@ -13,13 +13,13 @@ It is designed around the parts of a job search that benefit from reliable softw
 
 ## Preview
 
-![DevTrack dashboard](docs/images/devtrack-dashboard.png)
+Explore the [live DevTrack workspace](https://devtrack-3upd.onrender.com) to see the current dashboard, application timeline, and analytics. The previous dashboard screenshot has been omitted because it no longer reflects the current interface.
 
 ## Engineering highlights
 
 - **Secure session authentication** with Spring Security, BCrypt password hashing, CSRF protection, authentication throttling, HttpOnly cookies, and a same-origin content security policy.
 - **Per-user data isolation** throughout the application layer and repository queries; users can only read or mutate their own applications.
-- **Real application workflows** with create/edit/delete, status tracking, search, filters, pagination, stable sorting, dashboard pipeline visualization, follow-up dates, and upcoming interviews.
+- **Real application workflows** with create/edit/delete, status history, analytics trends, search, filters, pagination, stable sorting, dashboard pipeline visualization, follow-up dates, and upcoming interviews.
 - **Reliable API behavior** with server-side validation, structured error responses, field-level frontend feedback, literal wildcard search handling, and stale-request cancellation.
 - **Database discipline** with PostgreSQL, Flyway-managed migrations, Hibernate schema validation, and preserved legacy rows during the authentication migration.
 - **Production-oriented verification** with H2 and PostgreSQL backend tests, frontend type/build checks, Docker image validation, and Playwright browser workflows on desktop and mobile Chromium.
@@ -54,12 +54,13 @@ The frontend and API share one origin in production, which keeps the session and
 - Search by company, title, or location
 - Filter by status
 - Paginate results and sort by newest, oldest, company, or application date
-- Dashboard totals by status
+- Dashboard totals by status, monthly application trends, and stage progress analytics
+- Timestamped per-application status history and recent activity feed
 - Upcoming interview tracking
 - Per-user application ownership
 - Server-side validation and structured API errors
 - Authentication throttling and security headers
-- PostgreSQL schema management with Flyway
+- PostgreSQL schema management with Flyway, including indexed owner-scoped activity history
 - Responsive desktop/mobile dashboard with pipeline breakdown, summary metrics, and follow-up/interview panels
 
 ## Tech stack

@@ -143,6 +143,33 @@ test('dashboard metrics, distribution and navigation reflect saved applications'
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('application history and analytics reflect status transitions', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Metrics Company');
+  await form.getByLabel('Job title').fill('Site Reliability Engineer');
+  await form.getByRole('button', { name: 'Save application' }).click();
+
+  const card = page.getByRole('article', { name: 'Metrics Company — Site Reliability Engineer' });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'View history' }).click();
+  await expect(card.getByLabel('Application activity')).toContainText('Application saved');
+
+  await card.getByLabel('Status', { exact: true }).selectOption('INTERVIEW');
+  // The application list refreshes after a mutation, remounting the collapsed history panel.
+  await card.getByRole('button', { name: 'View history' }).click();
+  await expect(card.getByLabel('Application activity')).toContainText('Status changed: Saved → Interview');
+  await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
+  await expect(page.locator('.recent-list')).toContainText('Metrics Company');
+  await expect(page.getByRole('heading', { name: 'Application outcomes' })).toBeVisible();
+  await expect(page.locator('.insights-grid')).toContainText('100%');
+  await expect(page.getByRole('img', { name: /Applications by month:/ })).toBeVisible();
+  await page.reload();
+  await card.getByRole('button', { name: 'View history' }).click();
+  await expect(card.getByLabel('Application activity')).toContainText('Status changed: Saved → Interview');
+});
+
 test('pagination and sorting recover after deleting the last page', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 11; i++) await seed(page, `Company ${String(i).padStart(2, '0')}`);

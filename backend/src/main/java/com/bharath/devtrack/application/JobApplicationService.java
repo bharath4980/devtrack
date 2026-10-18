@@ -13,9 +13,11 @@ import org.springframework.data.domain.PageRequest;
 public class JobApplicationService {
 
     private final JobApplicationRepository repository;
+    private final ApplicationActivityService activity;
 
-    public JobApplicationService(JobApplicationRepository repository) {
+    public JobApplicationService(JobApplicationRepository repository, ApplicationActivityService activity) {
         this.repository = repository;
+        this.activity = activity;
     }
 
     public JobApplication create(
@@ -33,7 +35,9 @@ public class JobApplicationService {
         application.setApplicationDate(request.applicationDate());
         application.setFollowUpDate(request.followUpDate());
 
-        return repository.save(application);
+        JobApplication saved = repository.save(application);
+        activity.recordCreated(saved, owner);
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -60,9 +64,14 @@ public class JobApplicationService {
         JobApplication application =
                 findById(id, ownerId);
 
+        if (application.getStatus() == request.status()) {
+            return application;
+        }
+        ApplicationStatus previous = application.getStatus();
         application.setStatus(request.status());
-
-        return repository.save(application);
+        JobApplication saved = repository.save(application);
+        activity.recordStatusChange(saved, application.getOwner(), previous);
+        return saved;
     }
 
     public JobApplication update(
