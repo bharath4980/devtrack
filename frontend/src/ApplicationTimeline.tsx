@@ -33,12 +33,20 @@ export default function ApplicationTimeline({ applicationId, status }: Props) {
     return () => controller.abort();
   }, [applicationId, status, expanded]);
 
+  const lastRecorded = items[0];
+  const daysInStage = !loading && lastRecorded?.toStatus === status
+    ? Math.max(0, Math.floor((Date.now() - new Date(lastRecorded.occurredAt).getTime()) / 86400000))
+    : null;
+
   return <div className="activity-timeline">
     <button type="button" className="timeline-toggle secondary-button" aria-expanded={expanded}
       onClick={() => setExpanded(value => !value)}>{expanded ? 'Hide history' : 'View history'}</button>
     {expanded && <div className="timeline-content" aria-label="Application activity">
       {loading && <p role="status" className="form-help">Loading history…</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
+      {!loading && !error && daysInStage !== null && <p className="form-help stage-age">
+        Current {statusLabel(status)} stage · {daysInStage} {daysInStage === 1 ? 'day' : 'days'} since the latest recorded change
+      </p>}
       {!loading && !error && (items.length === 0
         ? <p className="form-help">No recorded activity yet. History starts when tracking was enabled.</p>
         : <ol className="timeline-list">{items.map(item => <li key={item.id}>
