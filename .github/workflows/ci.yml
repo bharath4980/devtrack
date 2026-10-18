@@ -78,6 +78,7 @@ jobs:
             -e DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/devtrack_test \
             -e DATABASE_USER=devtrack -e POSTGRES_PASSWORD=test-only-password \
             -e SERVER_ADDRESS=127.0.0.1 -e PORT=8081 -e SESSION_COOKIE_SECURE=false \
+            -e JAVA_TOOL_OPTIONS=-Ddevtrack.auth.registration-limit=1000 \
             devtrack:test
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:8081/api/health; then exit 0; fi

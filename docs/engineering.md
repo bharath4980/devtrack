@@ -51,3 +51,5 @@ Flyway V4 introduces an `application_activity` table with indexed owner/applicat
 Earlier changes were not recorded, so historical events are intentionally not fabricated during migration. `GET /api/dashboard/analytics` calculates six monthly buckets using user-entered application dates, and stage rates from current status plus recorded status history. Consequently those rates can undercount stages reached prior to rollout; they are directional signals rather than complete lifetime conversion metrics.
 
 The activity table is not a replacement for application records or an event-sourced system. The current application row remains authoritative.
+
+When an existing application has no recorded events, the frontend shows its current status as a **snapshot only**, explicitly not as an activity event. No timestamps, baseline rows, or historical transitions are invented or written to the database.
