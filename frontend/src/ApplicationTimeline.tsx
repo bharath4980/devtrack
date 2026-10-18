@@ -48,7 +48,11 @@ export default function ApplicationTimeline({ applicationId, status }: Props) {
         Current {statusLabel(status)} stage · {daysInStage} {daysInStage === 1 ? 'day' : 'days'} since the latest recorded change
       </p>}
       {!loading && !error && (items.length === 0
-        ? <p className="form-help">No recorded activity yet. History starts when tracking was enabled.</p>
+        ? <div className="history-snapshot" aria-label="Current status snapshot">
+            <p className="snapshot-status"><strong>Current status: {statusLabel(status)}</strong>
+              <span>Snapshot only · not a recorded event</span></p>
+            <p className="form-help">Earlier changes were not recorded. New status changes will appear here automatically.</p>
+          </div>
         : <ol className="timeline-list">{items.map(item => <li key={item.id}>
             <span className="timeline-marker" aria-hidden="true" />
             <div><strong>{activityText(item)}</strong><time dateTime={item.occurredAt}>{activityTime(item.occurredAt)}</time></div>

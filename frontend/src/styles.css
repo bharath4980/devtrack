@@ -984,3 +984,22 @@ footer { border-color: var(--line); color: #94a0b3; }
   .monthly-chart { gap: 6px; }
   .outcome-row > div { gap: 7px; }
 }
+
+/* Explain current status when activity tracking has no historical events. */
+.history-snapshot {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: #f7f9fe;
+  border: 1px solid #e5eaf5;
+  border-radius: 10px;
+}
+.history-snapshot .snapshot-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 0 0 7px;
+}
+.history-snapshot .snapshot-status strong { color: #304362; font-size: 12px; }
+.history-snapshot .snapshot-status span { color: #74829b; font-size: 11px; }
+.history-snapshot .form-help { margin: 0; line-height: 1.55; }

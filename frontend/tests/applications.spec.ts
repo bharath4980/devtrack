@@ -143,6 +143,29 @@ test('dashboard metrics, distribution and navigation reflect saved applications'
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('existing applications without history show a truthful status snapshot', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Legacy Company');
+  await page.reload();
+
+  // Existing records from before history tracking have no recorded events.
+  await page.route('**/api/applications/*/activity', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: '[]',
+  }));
+
+  const card = page.getByRole('article', { name: 'Legacy Company — Software Engineer' });
+  await card.getByRole('button', { name: 'View history' }).click();
+
+  const snapshot = card.getByLabel('Current status snapshot');
+  await expect(snapshot).toContainText('Current status: Saved');
+  await expect(snapshot).toContainText('Snapshot only · not a recorded event');
+  await expect(snapshot).toContainText('Earlier changes were not recorded.');
+  await expect(card.locator('.timeline-list li')).toHaveCount(0);
+  await expect(snapshot.locator('time')).toHaveCount(0);
+});
+
 test('application history and analytics reflect status transitions', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
