@@ -72,12 +72,16 @@ jobs:
         run: npm run build
       - name: Build production image
         run: docker build -t devtrack:test .
-      - name: Start production image against disposable database
+      - name: Start production image through published container port
         run: |
-          docker run -d --name devtrack-test --network host \
-            -e DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/devtrack_test \
+          # Exercise the image's own public bind address, not a localhost override.
+          # Host gateway provides access to the disposable PostgreSQL service.
+          docker run -d --name devtrack-test \
+            --add-host=host.docker.internal:host-gateway \
+            -p 127.0.0.1:8081:8081 \
+            -e DATABASE_URL=jdbc:postgresql://host.docker.internal:5432/devtrack_test \
             -e DATABASE_USER=devtrack -e POSTGRES_PASSWORD=test-only-password \
-            -e SERVER_ADDRESS=127.0.0.1 -e PORT=8081 -e SESSION_COOKIE_SECURE=false \
+            -e PORT=8081 -e SESSION_COOKIE_SECURE=false \
             -e JAVA_TOOL_OPTIONS=-Ddevtrack.auth.registration-limit=1000 \
             devtrack:test
           for attempt in $(seq 1 60); do

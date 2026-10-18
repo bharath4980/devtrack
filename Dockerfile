@@ -39,4 +39,6 @@ USER devtrack
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Keep Spring Boot startup lightweight on CPU-constrained instances.
+# Level 1 prioritizes faster warm-up over peak long-running JIT optimization.
+ENTRYPOINT ["java", "-XX:TieredStopAtLevel=1", "-jar", "app.jar"]
