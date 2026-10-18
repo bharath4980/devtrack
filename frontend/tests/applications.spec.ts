@@ -133,6 +133,7 @@ test('dashboard metrics, distribution and navigation reflect saved applications'
   await expect(overview.locator('.kpi-card').filter({ hasText: 'Total applications' })).toContainText('2');
   await expect(overview.getByRole('img', { name: /Pipeline: 2 saved/ })).toBeVisible();
   await expect(overview.locator('.legend-item')).toHaveCount(5);
+  await page.setViewportSize({ width: 1200, height: 850 });
   await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('link', { name: 'Applications' }).click();
   await expect(page).toHaveURL(/#applications$/);
   await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
