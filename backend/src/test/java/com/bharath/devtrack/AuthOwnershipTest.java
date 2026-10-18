@@ -314,6 +314,18 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void jobPostingPreviewRequiresAuthenticationAndRejectsUnsafeLinks() throws Exception {
+        mvc.perform(get("/api/job-postings/preview")
+                        .param("url", "https://boards.greenhouse.io/acme/jobs/123"))
+                .andExpect(status().isUnauthorized());
+
+        MockHttpSession session = login(alice.getEmail());
+        mvc.perform(get("/api/job-postings/preview").session(session)
+                        .param("url", "http://localhost/private"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void postingLinksMustUseHttpOrHttps() throws Exception {
         MockHttpSession session = login(alice.getEmail());
         Csrf csrf = csrf(session);

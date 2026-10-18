@@ -95,6 +95,33 @@ test('follow-up dates show due work and can be rescheduled', async ({ page }) =>
   await expect(page.locator('.due-follow-up')).toHaveCount(0);
 });
 
+test('job posting link fills editable details before saving', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.route('**/api/job-postings/preview?**', async route => {
+    const request = new URL(route.request().url());
+    expect(request.searchParams.get('url')).toBe('https://boards.greenhouse.io/example/jobs/123456');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ company: 'Example', title: 'Backend Engineer', location: 'Remote' }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill('https://boards.greenhouse.io/example/jobs/123456');
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Example');
+  await expect(form.getByLabel('Job title')).toHaveValue('Backend Engineer');
+  await expect(form.getByLabel('Location')).toHaveValue('Remote');
+  await form.getByLabel('Company', { exact: true }).fill('Example Labs');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  const card = page.getByRole('article', { name: 'Example Labs — Backend Engineer' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Remote');
+  await expect(card.getByRole('link', { name: 'View job posting' }))
+    .toHaveAttribute('href', 'https://boards.greenhouse.io/example/jobs/123456');
+});
+
 test('pagination and sorting recover after deleting the last page', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 11; i++) await seed(page, `Company ${String(i).padStart(2, '0')}`);

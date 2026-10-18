@@ -9,6 +9,19 @@ import type {
   UpdateJobApplicationRequest,
 } from './types';
 
+export type JobPostingPreview = {
+  company: string;
+  title: string;
+  location: string;
+};
+
+export async function previewJobPosting(url: string, signal?: AbortSignal): Promise<JobPostingPreview> {
+  const params = new URLSearchParams({ url });
+  const response = await apiFetch(`/api/job-postings/preview?${params}`, { signal });
+  if (!response.ok) throw await readApiError(response, 'Could not load job details.');
+  return response.json();
+}
+
 export async function getApplications(query: ApplicationQuery, signal?: AbortSignal): Promise<ApplicationPage> {
   const params = new URLSearchParams({
     page: String(query.page), size: '10', sort: query.sort,
