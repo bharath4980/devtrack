@@ -31,6 +31,7 @@ public class JobApplicationService {
         application.setPostingUrl(request.postingUrl());
         application.setNotes(request.notes());
         application.setApplicationDate(request.applicationDate());
+        application.setFollowUpDate(request.followUpDate());
 
         return repository.save(application);
     }
@@ -79,6 +80,7 @@ public class JobApplicationService {
         application.setNotes(request.notes());
         application.setApplicationDate(request.applicationDate());
         application.setInterviewDate(request.interviewDate());
+        application.setFollowUpDate(request.followUpDate());
 
         return repository.save(application);
     }

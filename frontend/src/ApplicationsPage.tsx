@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
 import { createApplication, deleteApplication, getApplications, updateApplication, updateApplicationStatus } from './applicationApi';
-import { getDashboardSummary, getUpcomingInterviews, type DashboardSummary, type UpcomingInterview } from './dashboardApi';
+import { getDashboardSummary, getDueFollowUps, getUpcomingInterviews, type DashboardSummary, type DueFollowUp, type UpcomingInterview } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
 import ApplicationForm from './ApplicationForm';
@@ -23,6 +23,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [revision, setRevision] = useState(0);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [interviews, setInterviews] = useState<UpcomingInterview[]>([]);
+  const [followUps, setFollowUps] = useState<DueFollowUp[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -54,9 +55,9 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     const controller = new AbortController();
     setDashboardLoading(true);
     setDashboardError('');
-    Promise.all([getDashboardSummary(controller.signal), getUpcomingInterviews(controller.signal)])
-      .then(([counts, upcoming]) => {
-        if (!controller.signal.aborted) { setSummary(counts); setInterviews(upcoming); }
+    Promise.all([getDashboardSummary(controller.signal), getUpcomingInterviews(controller.signal), getDueFollowUps(controller.signal)])
+      .then(([counts, upcoming, due]) => {
+        if (!controller.signal.aborted) { setSummary(counts); setInterviews(upcoming); setFollowUps(due); }
       }).catch(error => {
         if (!controller.signal.aborted) setDashboardError(errorMessage(error, 'Could not load dashboard.'));
       }).finally(() => { if (!controller.signal.aborted) setDashboardLoading(false); });
@@ -127,7 +128,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <p className="intro">Applications, interviews, and the details worth remembering.</p></div>
         <button ref={addButton} disabled={blocked || creating} onClick={() => { setCreating(true); setEditingId(null); }}>Add application</button>
       </div>
-      <Dashboard summary={summary} interviews={interviews} loading={dashboardLoading} error={dashboardError} onRetry={refresh} />
+      <Dashboard summary={summary} interviews={interviews} followUps={followUps} loading={dashboardLoading} error={dashboardError} onRetry={refresh} />
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section aria-label="Add application"><h2>New application</h2>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />

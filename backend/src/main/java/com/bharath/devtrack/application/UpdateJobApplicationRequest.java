@@ -29,6 +29,8 @@ public record UpdateJobApplicationRequest(
         @NotNull
         LocalDate applicationDate,
 
-        LocalDate interviewDate
+        LocalDate interviewDate,
+
+        LocalDate followUpDate
 ) {
 }

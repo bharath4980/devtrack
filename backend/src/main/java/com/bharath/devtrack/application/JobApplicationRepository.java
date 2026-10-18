@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface JobApplicationRepository
@@ -31,6 +32,9 @@ public interface JobApplicationRepository
             ApplicationStatus status,
             LocalDate date
     );
+
+    List<JobApplication> findTop5ByOwner_IdAndStatusInAndFollowUpDateLessThanEqualOrderByFollowUpDateAscIdAsc(
+            Long ownerId, Collection<ApplicationStatus> statuses, LocalDate date);
 
     @Query("""
             SELECT application

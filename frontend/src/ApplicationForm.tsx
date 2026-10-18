@@ -19,6 +19,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     company: application?.company ?? '', title: application?.title ?? '',
     location: application?.location ?? '', postingUrl: application?.postingUrl ?? '',
     notes: application?.notes ?? '', applicationDate: application?.applicationDate ?? today(),
+    followUpDate: application?.followUpDate ?? '',
     interviewDate: application?.interviewDate ?? '',
   });
   const [error, setError] = useState('');
@@ -43,6 +44,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     { name: 'location', label: 'Location', type: 'text' },
     { name: 'postingUrl', label: 'Job posting URL', type: 'url' },
     { name: 'applicationDate', label: 'Application date', type: 'date', required: true },
+    { name: 'followUpDate', label: 'Follow-up date', type: 'date' },
     ...(application ? [{ name: 'interviewDate', label: 'Interview date', type: 'date' }] : []),
   ];
 
