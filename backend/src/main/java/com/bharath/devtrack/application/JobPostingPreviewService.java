@@ -25,7 +25,7 @@ public class JobPostingPreviewService {
     private static final Pattern LEVER_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/([a-zA-Z0-9-]{8,80})/?$");
     private static final Pattern ASHBY_PATH = Pattern.compile(
-            "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
+            "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
     private static final Pattern SMARTRECRUITERS_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/([0-9]{6,20})(?:-[a-zA-Z0-9_-]{1,120})?/?$");
 
