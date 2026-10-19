@@ -53,3 +53,9 @@ Earlier changes were not recorded, so historical events are intentionally not fa
 The activity table is not a replacement for application records or an event-sourced system. The current application row remains authoritative.
 
 When an existing application has no recorded events, the frontend shows its current status as a **snapshot only**, explicitly not as an activity event. No timestamps, baseline rows, or historical transitions are invented or written to the database.
+
+## Public job-board preview integrations
+
+The authenticated preview endpoint accepts recognized HTTPS posting links for Greenhouse, Lever, and Ashby. The service validates hostnames and path segments, builds requests against fixed provider API hosts, and never fetches arbitrary user-provided URLs or follows redirects. Responses have strict byte caps and timeouts. A provider error or missing posting returns a manual-entry fallback; imported fields remain editable before saving.
+
+Ashby's public board endpoint returns an array of postings rather than one job. The importer matches the requested posting by its ID or canonical job URL and never substitutes the first job on a board. It permits up to 2 MiB of public-board JSON; unusually large boards can require manual entry. This is an application preview only, not general-purpose crawling or scraping.

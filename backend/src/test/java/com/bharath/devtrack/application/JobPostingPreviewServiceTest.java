@@ -53,6 +53,61 @@ class JobPostingPreviewServiceTest {
     }
 
     @Test
+    void importsMatchingAshbyPostingFromPublicBoard() throws Exception {
+        respond(200, """
+                {
+                  "apiVersion": "1",
+                  "jobs": [
+                    {"id":"11111111-1111-1111-1111-111111111111","title":"Unrelated Role","location":"London"},
+                    {"id":"22222222-2222-2222-2222-222222222222",
+                     "title":"Backend Engineer","location":"Remote - US",
+                     "jobUrl":"https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222"}
+                  ]
+                }
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222?utm_campaign=careers");
+        assertThat(preview).isEqualTo(new JobPostingPreview("Acme", "Backend Engineer", "Remote - US"));
+        assertRequest("https://api.ashbyhq.com/posting-api/job-board/acme");
+    }
+
+    @Test
+    void importsAshbyApplicationLinkUsingCanonicalJobUrl() throws Exception {
+        respond(200, """
+                {"jobs":[{"title":"Infrastructure Engineer","location":"Austin",
+                "jobUrl":"https://jobs.ashbyhq.com/example-company/33333333-3333-3333-3333-333333333333"}]}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://jobs.ashbyhq.com/example-company/33333333-3333-3333-3333-333333333333/application");
+        assertThat(preview).isEqualTo(
+                new JobPostingPreview("Example Company", "Infrastructure Engineer", "Austin"));
+        assertRequest("https://api.ashbyhq.com/posting-api/job-board/example-company");
+    }
+
+    @Test
+    void rejectsAshbyJobNotFoundOnThePublicBoard() throws Exception {
+        respond(200, """
+                {"jobs":[{"id":"11111111-1111-1111-1111-111111111111",
+                "title":"Unrelated role","jobUrl":"https://jobs.ashbyhq.com/acme/11111111-1111-1111-1111-111111111111"}]}
+                """);
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Test
+    void refusesOversizedAshbyBoardResponses() throws Exception {
+        respond(200, "A".repeat(2 * 1024 * 1024 + 1));
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    @Test
     void rejectsUnsafeAndUnsupportedUrlsWithoutMakingNetworkRequests() {
         for (String url : new String[]{
                 "http://boards.greenhouse.io/acme/jobs/123",
@@ -63,6 +118,13 @@ class JobPostingPreviewServiceTest {
                 "https://boards.greenhouse.io:443/acme/jobs/123",
                 "https://boards.greenhouse.io/acme/jobs/%31%32%33",
                 "https://jobs.lever.co/acme/../../admin",
+                "http://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222",
+                "https://jobs.ashbyhq.com.evil.test/acme/22222222-2222-2222-2222-222222222222",
+                "https://jobs.ashbyhq.com@127.0.0.1/acme/22222222-2222-2222-2222-222222222222",
+                "https://jobs.ashbyhq.com:443/acme/22222222-2222-2222-2222-222222222222",
+                "https://jobs.ashbyhq.com/acme/../../admin",
+                "https://jobs.ashbyhq.com/acme/not-a-job-id",
+                "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222%2Fapplication",
                 "https://example.com/jobs/123",
                 "file:///etc/passwd"
         }) {
