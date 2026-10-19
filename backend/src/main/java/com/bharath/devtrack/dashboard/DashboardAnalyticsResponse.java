@@ -8,7 +8,9 @@ public record DashboardAnalyticsResponse(
         long offersReached,
         double interviewOrOfferRate,
         double offerRate,
-        List<MonthlyApplications> monthlyApplications
+        List<MonthlyApplications> monthlyApplications,
+        List<WeeklyActivity> weeklyActivity
 ) {
     public record MonthlyApplications(String month, long applications) {}
+    public record WeeklyActivity(String weekStart, long created, long statusChanges) {}
 }

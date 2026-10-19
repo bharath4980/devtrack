@@ -1,5 +1,7 @@
 package com.bharath.devtrack;
 
+import com.bharath.devtrack.application.ApplicationActivity;
+import com.bharath.devtrack.application.ApplicationActivityRepository;
 import com.bharath.devtrack.application.ApplicationStatus;
 import com.bharath.devtrack.application.JobApplication;
 import com.bharath.devtrack.application.JobApplicationRepository;
@@ -17,7 +19,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -49,6 +55,9 @@ class DashboardEndpointTest {
 
     @Autowired
     JobApplicationRepository applications;
+
+    @Autowired
+    ApplicationActivityRepository activity;
 
     @Autowired
     PasswordEncoder encoder;
@@ -275,6 +284,58 @@ class DashboardEndpointTest {
                 .andExpect(jsonPath("$[4].company").value("Due 4"))
                 .andExpect(jsonPath("$[0].followUpDate")
                         .value(today.minusDays(7).toString()));
+    }
+
+    @Test
+    void weeklyAnalyticsCountOnlyRecordedOwnerEventsWithUtcBoundaries() throws Exception {
+        LocalDate firstMonday = LocalDate.now(ZoneOffset.UTC)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(5);
+        Instant firstStart = firstMonday.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant secondStart = firstMonday.plusWeeks(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+        JobApplication mine = seed(alice, "My event", ApplicationStatus.INTERVIEW, null);
+        JobApplication other = seed(bob, "Other account", ApplicationStatus.INTERVIEW, null);
+        seed(alice, "Old record without history", ApplicationStatus.OFFER, null);
+        activity.save(new ApplicationActivity(mine, alice, ApplicationActivity.Type.CREATED,
+                null, ApplicationStatus.SAVED, firstStart));
+        activity.save(new ApplicationActivity(mine, alice, ApplicationActivity.Type.STATUS_CHANGED,
+                ApplicationStatus.SAVED, ApplicationStatus.INTERVIEW, secondStart));
+        activity.save(new ApplicationActivity(mine, alice, ApplicationActivity.Type.CREATED,
+                null, ApplicationStatus.SAVED, firstStart.minusSeconds(1)));
+        activity.save(new ApplicationActivity(other, bob, ApplicationActivity.Type.CREATED,
+                null, ApplicationStatus.SAVED, secondStart));
+        activity.save(new ApplicationActivity(mine, alice, ApplicationActivity.Type.STATUS_CHANGED,
+                ApplicationStatus.INTERVIEW, ApplicationStatus.OFFER, Instant.now().plusSeconds(86400)));
+
+        mvc.perform(get("/api/dashboard/analytics").session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weeklyActivity.length()").value(6))
+                .andExpect(jsonPath("$.weeklyActivity[0].weekStart").value(firstMonday.toString()))
+                .andExpect(jsonPath("$.weeklyActivity[0].created").value(1))
+                .andExpect(jsonPath("$.weeklyActivity[0].statusChanges").value(0))
+                .andExpect(jsonPath("$.weeklyActivity[1].weekStart").value(firstMonday.plusWeeks(1).toString()))
+                .andExpect(jsonPath("$.weeklyActivity[1].created").value(0))
+                .andExpect(jsonPath("$.weeklyActivity[1].statusChanges").value(1))
+                .andExpect(jsonPath("$.weeklyActivity[5].created").value(0))
+                .andExpect(jsonPath("$.weeklyActivity[5].statusChanges").value(0));
+
+        mvc.perform(get("/api/dashboard/analytics").session(login(bob.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weeklyActivity[1].created").value(1))
+                .andExpect(jsonPath("$.weeklyActivity[1].statusChanges").value(0))
+                .andExpect(jsonPath("$.weeklyActivity[0].created").value(0));
+    }
+
+    @Test
+    void weeklyAnalyticsStayEmptyWhenOnlyLegacyStatesExist() throws Exception {
+        seed(alice, "Pre-history offer", ApplicationStatus.OFFER, null);
+        mvc.perform(get("/api/dashboard/analytics").session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trackedApplications").value(1))
+                .andExpect(jsonPath("$.offersReached").value(1))
+                .andExpect(jsonPath("$.weeklyActivity.length()").value(6))
+                .andExpect(jsonPath("$.weeklyActivity[0].created").value(0))
+                .andExpect(jsonPath("$.weeklyActivity[5].statusChanges").value(0));
     }
 
     private JobApplication seed(

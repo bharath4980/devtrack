@@ -188,6 +188,8 @@ test('dashboard metrics, distribution and navigation reflect saved applications'
   await expect(overview.locator('.kpi-card').filter({ hasText: 'Total applications' })).toContainText('2');
   await expect(overview.getByRole('img', { name: /Pipeline: 2 saved/ })).toBeVisible();
   await expect(overview.locator('.legend-item')).toHaveCount(5);
+  await expect(overview.getByRole('region', { name: 'Recorded activity by week' })
+    .getByRole('img')).toHaveAttribute('aria-label', /2 created, 0 status changes/);
   await page.setViewportSize({ width: 1200, height: 850 });
   await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('link', { name: 'Applications' }).click();
   await expect(page).toHaveURL(/#applications$/);
@@ -243,6 +245,10 @@ test('application history and analytics reflect status transitions', async ({ pa
   await expect(page.getByRole('heading', { name: 'Application outcomes' })).toBeVisible();
   await expect(page.locator('.insights-grid')).toContainText('100%');
   await expect(page.getByRole('img', { name: /Applications by month:/ })).toBeVisible();
+  const weekly = page.getByRole('region', { name: 'Recorded activity by week' });
+  await expect(weekly).toBeVisible();
+  await expect(weekly.getByRole('img')).toHaveAttribute('aria-label', /1 created, 1 status changes/);
+  await expect(weekly).toContainText('Changes made before activity tracking began were not backfilled.');
   await page.reload();
   await card.getByRole('button', { name: 'View history' }).click();
   await expect(card.getByLabel('Application activity')).toContainText('Status changed: Saved → Interview');
