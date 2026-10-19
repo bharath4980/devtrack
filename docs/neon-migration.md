@@ -54,8 +54,17 @@ DevTrack expects separate Render environment variables: `DATABASE_URL` must be a
 4. Preserve the original Render database without weakening its access restrictions. **After users write to Neon, simply switching back to Render loses newer writes.** A rollback needs its own write freeze and reverse synchronization plan.
 5. If Neon Free proves unsuitable, the fallback is to upgrade the existing Render database before its October 28 expiration.
 
-## Evidence not yet available
+## Verified isolated preflight (October 19, 2026)
 
-Neon account connection, disposable compatibility tests, realistic quota measurement, source backup, restoration, count reconciliation, and final production cutover **have not occurred**.
+- Created a **Neon Free** project, `devtrack-neon-preflight`, using **PostgreSQL 17.11**, AWS Ohio, a fixed 0.25 CU compute, and a separate `devtrack-compatibility-test` branch. The production Render configuration and data were not touched.
+- The branch started empty. The **10 schema statements from DevTrack's four Flyway SQL migration files** executed successfully in a single transaction through Neon's SQL tool. Inspection confirmed all three expected tables, the owner and activity foreign keys, status/type check constraints, and the expected indexes.
+- Inserted **two entirely fictional accounts**, **two applications**, and **two activity events**. Owner-scoped SQL counts returned one application for each account; the first account showed two events and one status change, and foreign-key integrity checks found zero broken references. These are **database-level compatibility tests**, not Spring Security or HTTP API tests.
+- The SQL was applied **directly**, **not by the Flyway runtime**. The branch intentionally has **no `flyway_schema_history`**; do not call these results a completed Flyway migration or application startup test. For a genuine Flyway/JDBC run, use a **new empty disposable branch** and run the Java application with Neon credentials supplied securely, not this already-initialized branch.
+- Neon's API reports `suspend_timeout_seconds=0`, meaning **the default five-minute inactivity timeout** (not suspension disabled). The project's unused main compute reached the `idle` state. The account uses `free_v3` with a **1 GB** storage cap; compute usage values were still zero in the API response and are **not enough for a monthly projection**.
+- The documentation-only PR's H2 and PostgreSQL/Docker/browser CI checks passed separately, using disposable local databases rather than Neon.
+
+## Evidence and actions still outstanding
+
+A real **Spring Boot startup/Flyway run against an empty Neon branch**, authenticated application workflows, connection pool and health-check wake/suspend behavior under realistic production traffic, reliable CU-hour usage over time, source backup, restoration, count reconciliation, and final cutover **have not occurred**. The repository's tests cannot yet be called a Neon integration test. The next stage requires a secure JDBC connection from a runner or the owner's Mac; do not put secrets into chat or GitHub workflow inputs. Retain Render's October 28 fallback deadline.
 
 References: [Neon Free plan update](https://neon.com/blog/neon-free-plan-1-gb-per-project), [Neon compute](https://neon.com/docs/manage/endpoints/), [Render Free limits](https://render.com/docs/free), [Render backup guide](https://render.com/docs/postgresql-backups).
