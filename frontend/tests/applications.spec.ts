@@ -81,7 +81,7 @@ test('follow-up dates show due work and can be rescheduled', async ({ page }) =>
   await form.getByRole('button', { name: 'Save application' }).click();
 
   await expect(page.locator('.due-follow-up')).toContainText('Follow Up Corp');
-  await expect(page.locator('.due-follow-up .due-label')).toContainText(/\\d+ days overdue/);
+  await expect(page.locator('.due-follow-up .due-label')).toContainText(/\d+ days overdue/);
   const priority = page.getByRole('group', { name: 'Follow-up priorities' });
   await expect(priority).toContainText('1 overdue');
   await expect(priority).toContainText('0 due today');
