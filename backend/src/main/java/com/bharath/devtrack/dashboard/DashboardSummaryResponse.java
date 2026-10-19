@@ -6,6 +6,8 @@ public record DashboardSummaryResponse(
         long applied,
         long interview,
         long offer,
-        long rejected
+        long rejected,
+        long overdueFollowUps,
+        long dueTodayFollowUps
 ) {
 }

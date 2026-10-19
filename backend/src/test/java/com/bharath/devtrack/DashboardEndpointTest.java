@@ -287,6 +287,65 @@ class DashboardEndpointTest {
     }
 
     @Test
+    void followUpPriorityCountsIncludeAllDueItemsAndExcludeOtherOwnersOrTerminalStages() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        for (int i = 0; i < 7; i++) {
+            JobApplication overdue = seed(alice, "Overdue " + i, ApplicationStatus.APPLIED, null);
+            overdue.setFollowUpDate(today.minusDays(i + 1));
+            applications.save(overdue);
+        }
+        JobApplication dueToday = seed(alice, "Due today", ApplicationStatus.INTERVIEW, null);
+        dueToday.setFollowUpDate(today);
+        applications.save(dueToday);
+        JobApplication savedToday = seed(alice, "Saved today", ApplicationStatus.SAVED, null);
+        savedToday.setFollowUpDate(today);
+        applications.save(savedToday);
+
+        JobApplication future = seed(alice, "Future", ApplicationStatus.APPLIED, null);
+        future.setFollowUpDate(today.plusDays(1));
+        applications.save(future);
+        seed(alice, "No follow-up date", ApplicationStatus.APPLIED, null);
+        JobApplication offered = seed(alice, "Already offered", ApplicationStatus.OFFER, null);
+        offered.setFollowUpDate(today.minusDays(2));
+        applications.save(offered);
+        JobApplication rejected = seed(alice, "Rejected", ApplicationStatus.REJECTED, null);
+        rejected.setFollowUpDate(today);
+        applications.save(rejected);
+        JobApplication bobOverdue = seed(bob, "Someone else's", ApplicationStatus.APPLIED, null);
+        bobOverdue.setFollowUpDate(today.minusDays(4));
+        applications.save(bobOverdue);
+        JobApplication unowned = seed(null, "Pre-account record", ApplicationStatus.APPLIED, null);
+        unowned.setFollowUpDate(today.minusDays(3));
+        applications.save(unowned);
+
+        MockHttpSession ownerSession = login(alice.getEmail());
+        mvc.perform(get("/api/dashboard").session(ownerSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueFollowUps").value(7))
+                .andExpect(jsonPath("$.dueTodayFollowUps").value(2));
+        mvc.perform(get("/api/dashboard/follow-ups").session(ownerSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].company").value("Overdue 6"));
+
+        mvc.perform(get("/api/dashboard").session(login(bob.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueFollowUps").value(1))
+                .andExpect(jsonPath("$.dueTodayFollowUps").value(0));
+    }
+
+    @Test
+    void followUpPriorityCountsAreZeroWhenNoDatesAreDue() throws Exception {
+        JobApplication future = seed(alice, "Future", ApplicationStatus.INTERVIEW, null);
+        future.setFollowUpDate(LocalDate.now(ZoneOffset.UTC).plusDays(5));
+        applications.save(future);
+        mvc.perform(get("/api/dashboard").session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueFollowUps").value(0))
+                .andExpect(jsonPath("$.dueTodayFollowUps").value(0));
+    }
+
+    @Test
     void weeklyAnalyticsCountOnlyRecordedOwnerEventsWithUtcBoundaries() throws Exception {
         LocalDate firstMonday = LocalDate.now(ZoneOffset.UTC)
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(5);
