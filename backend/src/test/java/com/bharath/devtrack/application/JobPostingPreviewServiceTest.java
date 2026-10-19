@@ -108,6 +108,79 @@ class JobPostingPreviewServiceTest {
     }
 
     @Test
+    void importsSmartRecruitersFieldsFromPublicPostingApi() throws Exception {
+        respond(200, """
+                {"id":"744000133907678","name":"Backend Engineer",
+                 "company":{"identifier":"Visa","name":"Visa Inc."},
+                 "location":{"city":"Austin","region":"TX","country":"us","remote":false}}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://jobs.smartrecruiters.com/Visa/744000133907678-backend-engineer?utm_source=careers");
+        assertThat(preview).isEqualTo(
+                new JobPostingPreview("Visa Inc.", "Backend Engineer", "Austin, TX"));
+        assertRequest("https://api.smartrecruiters.com/v1/companies/Visa/postings/744000133907678");
+    }
+
+    @Test
+    void acceptsSmartRecruitersLegacyHostAndRemoteOnlyLocation() throws Exception {
+        respond(200, """
+                {"id":"884352026","name":"Site Reliability Engineer",
+                 "company":{"identifier":"ExampleCo"},
+                 "location":{"remote":true}}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://www.smartrecruiters.com/ExampleCo/884352026-site-reliability-engineer");
+        assertThat(preview).isEqualTo(
+                new JobPostingPreview("ExampleCo", "Site Reliability Engineer", "Remote"));
+        assertRequest("https://api.smartrecruiters.com/v1/companies/ExampleCo/postings/884352026");
+    }
+
+    @Test
+    void rejectsMismatchedSmartRecruitersResponses() throws Exception {
+        respond(200, """
+                {"id":"999999999","name":"Wrong posting",
+                 "company":{"identifier":"ExampleCo","name":"ExampleCo"}}
+                """);
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026-site-reliability-engineer"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        clearInvocations(client);
+        respond(200, """
+                {"id":"884352026","name":"Correct ID, wrong company",
+                 "company":{"identifier":"OtherCo","name":"OtherCo"}}
+                """);
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026-site-reliability-engineer"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Test
+    void requiresSmartRecruitersJobTitleAndFallsBackToManualEntry() throws Exception {
+        respond(200, """
+                {"id":"884352026","company":{"identifier":"ExampleCo"}}
+                """);
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Test
+    void smartRecruitersProviderFailureDoesNotLeakResponseDetails() throws Exception {
+        respond(404, "{\\"internalSecret\\":\\"should not be displayed\\"}");
+        assertThatThrownBy(() -> service.preview(
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageNotContaining("internalSecret");
+    }
+
+    @Test
     void rejectsUnsafeAndUnsupportedUrlsWithoutMakingNetworkRequests() {
         for (String url : new String[]{
                 "http://boards.greenhouse.io/acme/jobs/123",
@@ -125,6 +198,15 @@ class JobPostingPreviewServiceTest {
                 "https://jobs.ashbyhq.com/acme/../../admin",
                 "https://jobs.ashbyhq.com/acme/not-a-job-id",
                 "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222%2Fapplication",
+                "http://jobs.smartrecruiters.com/ExampleCo/884352026-sre",
+                "https://jobs.smartrecruiters.com.evil.test/ExampleCo/884352026-sre",
+                "https://jobs.smartrecruiters.com@127.0.0.1/ExampleCo/884352026-sre",
+                "https://jobs.smartrecruiters.com:443/ExampleCo/884352026-sre",
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026%2Fadmin",
+                "https://jobs.smartrecruiters.com/ExampleCo/../../admin",
+                "https://jobs.smartrecruiters.com/ExampleCo/not-a-posting",
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026-sre/extra",
+                "https://jobs.smartrecruiters.com/ExampleCo/884352026-sre#fragment",
                 "https://example.com/jobs/123",
                 "file:///etc/passwd"
         }) {

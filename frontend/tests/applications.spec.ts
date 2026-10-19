@@ -149,6 +149,34 @@ test('Ashby job posting link fills editable details before saving', async ({ pag
   })).toContainText('Remote');
 });
 
+test('SmartRecruiters job posting link fills editable details before saving', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.route('**/api/job-postings/preview?**', async route => {
+    const request = new URL(route.request().url());
+    expect(request.searchParams.get('url')).toBe(
+      'https://jobs.smartrecruiters.com/SampleCo/884352026-platform-engineer');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ company: 'Sample Company', title: 'Platform Engineer', location: 'Remote - US' }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill(
+    'https://jobs.smartrecruiters.com/SampleCo/884352026-platform-engineer');
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Sample Company');
+  await expect(form.getByLabel('Job title')).toHaveValue('Platform Engineer');
+  await expect(form.getByLabel('Location')).toHaveValue('Remote - US');
+  await form.getByLabel('Company', { exact: true }).fill('Example Systems');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  const card = page.getByRole('article', { name: 'Example Systems — Platform Engineer' });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('link', { name: 'View job posting' }))
+    .toHaveAttribute('href', 'https://jobs.smartrecruiters.com/SampleCo/884352026-platform-engineer');
+});
+
 test('dashboard metrics, distribution and navigation reflect saved applications', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Alpha Company');

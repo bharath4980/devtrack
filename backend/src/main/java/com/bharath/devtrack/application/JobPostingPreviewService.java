@@ -25,7 +25,9 @@ public class JobPostingPreviewService {
     private static final Pattern LEVER_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/([a-zA-Z0-9-]{8,80})/?$");
     private static final Pattern ASHBY_PATH = Pattern.compile(
-            "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
+            "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
+    private static final Pattern SMARTRECRUITERS_PATH = Pattern.compile(
+            "^/([a-zA-Z0-9_-]{1,80})/([0-9]{6,20})(?:-[a-zA-Z0-9_-]{1,120})?/?$");
 
     private final ObjectMapper mapper;
     private final HttpClient client;
@@ -66,27 +68,31 @@ public class JobPostingPreviewService {
         Matcher greenhouse = GREENHOUSE_PATH.matcher(path == null ? "" : path);
         Matcher lever = LEVER_PATH.matcher(path == null ? "" : path);
         Matcher ashby = ASHBY_PATH.matcher(path == null ? "" : path);
+        Matcher smartRecruiters = SMARTRECRUITERS_PATH.matcher(path == null ? "" : path);
 
         boolean isGreenhouse = (host.equals("boards.greenhouse.io")
                 || host.equals("job-boards.greenhouse.io")) && greenhouse.matches();
         boolean isLever = host.equals("jobs.lever.co") && lever.matches();
         boolean isAshby = host.equals("jobs.ashbyhq.com") && ashby.matches();
-        if (!isGreenhouse && !isLever && !isAshby) {
+        boolean isSmartRecruiters = (host.equals("jobs.smartrecruiters.com")
+                || host.equals("www.smartrecruiters.com")) && smartRecruiters.matches();
+        if (!isGreenhouse && !isLever && !isAshby && !isSmartRecruiters) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Automatic import supports Greenhouse, Lever, and Ashby job links. Enter details manually for other sites.");
+                    "Automatic import supports Greenhouse, Lever, Ashby, and SmartRecruiters job links. Enter details manually for other sites.");
         }
 
         String companySlug = isGreenhouse ? greenhouse.group(1)
-                : isLever ? lever.group(1) : ashby.group(1);
+                : isLever ? lever.group(1) : isAshby ? ashby.group(1) : smartRecruiters.group(1);
         String jobId = isGreenhouse ? greenhouse.group(2)
-                : isLever ? lever.group(2) : ashby.group(2);
+                : isLever ? lever.group(2) : isAshby ? ashby.group(2) : smartRecruiters.group(2);
 
         // Only contact fixed public ATS API hosts using validated board and job identifiers.
         // Never fetch the user-supplied URL or follow provider redirects.
         URI endpoint = URI.create(isGreenhouse
                 ? "https://boards-api.greenhouse.io/v1/boards/" + companySlug + "/jobs/" + jobId
                 : isLever ? "https://api.lever.co/v0/postings/" + companySlug + "/" + jobId
-                : "https://api.ashbyhq.com/posting-api/job-board/" + companySlug);
+                : isAshby ? "https://api.ashbyhq.com/posting-api/job-board/" + companySlug
+                : "https://api.smartrecruiters.com/v1/companies/" + companySlug + "/postings/" + jobId);
 
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(Duration.ofSeconds(5))
@@ -110,9 +116,23 @@ public class JobPostingPreviewService {
 
                 JsonNode data = mapper.readTree(bytes);
                 JsonNode posting = isAshby ? findAshbyPosting(data, companySlug, jobId) : data;
-                String title = text(isAshby ? posting.path("title")
+                if (isSmartRecruiters) {
+                    // The public detail endpoint must return the requested company and posting.
+                    String returnedId = text(posting.path("id"));
+                    String returnedCompany = text(posting.path("company").path("identifier"));
+                    if (!jobId.equals(returnedId)
+                            || (!returnedCompany.isEmpty()
+                                    && !companySlug.equalsIgnoreCase(returnedCompany))) {
+                        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                                "The requested job is not available. Enter details manually.");
+                    }
+                }
+                String title = text(isSmartRecruiters ? posting.path("name")
+                        : isAshby ? posting.path("title")
                         : isGreenhouse ? posting.path("title") : posting.path("text"));
-                String location = text(isAshby ? posting.path("location")
+                String location = isSmartRecruiters
+                        ? smartRecruitersLocation(posting.path("location"))
+                        : text(isAshby ? posting.path("location")
                         : isGreenhouse ? posting.path("location").path("name")
                         : posting.path("categories").path("location"));
                 if (title.isEmpty()) {
@@ -120,7 +140,9 @@ public class JobPostingPreviewService {
                             "Job details could not be read. Enter them manually.");
                 }
 
-                return new JobPostingPreview(displayName(companySlug), title, location);
+                String company = isSmartRecruiters ? text(posting.path("company").path("name")) : "";
+                return new JobPostingPreview(company.isEmpty() ? displayName(companySlug) : company,
+                        title, location);
             }
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -130,6 +152,19 @@ public class JobPostingPreviewService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Job lookup was interrupted. Try again or enter details manually.");
         }
+    }
+
+    private static String smartRecruitersLocation(JsonNode location) {
+        String city = text(location.path("city"));
+        String region = text(location.path("region"));
+        String country = text(location.path("country"));
+        String place = !city.isEmpty()
+                ? city + (region.isEmpty() ? "" : ", " + region)
+                : !region.isEmpty() ? region : country;
+        String value = location.path("remote").asBoolean(false)
+                ? place.isEmpty() ? "Remote" : "Remote - " + place
+                : place;
+        return value.length() > 255 ? value.substring(0, 255) : value;
     }
 
     private static JsonNode findAshbyPosting(JsonNode data, String board, String jobId) {

@@ -20,7 +20,7 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 - **Track the pipeline:** save opportunities; move them through Saved, Applied, Interview, Offer, and Rejected; search, sort, and filter an owner-scoped list.
 - **Act on next steps:** record interview dates, optional follow-up dates, and view the upcoming-interview and follow-up panels.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
-- **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, or Ashby links. Unsupported providers fall back to manual entry.
+- **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, or SmartRecruiters links. Unsupported providers fall back to manual entry.
 - **Learn from actual data:** view the six-month application trend, current pipeline distribution, and stage metrics; earlier unrecorded transitions can make some rates incomplete.
 
 ## Architecture
@@ -38,7 +38,7 @@ In production, the React app and Spring Boot API share one origin. Spring Securi
 | Isolation | Session-authenticated ownership checks in repository and mutation paths | One account cannot access another account's applications |
 | Validation | Backend validation, structured errors, frontend field feedback | Invalid input fails predictably |
 | History | Transactional creation/status events; explicit legacy snapshots | No invented events or timestamps |
-| External imports | Constrained Greenhouse/Lever/Ashby handling and editable results | Avoids arbitrary URL fetching and unsafe scraping |
+| External imports | Constrained Greenhouse/Lever/Ashby/SmartRecruiters handling and editable results | Avoids arbitrary URL fetching and unsafe scraping |
 | Consistency | Flyway migrations, Hibernate validation, PostgreSQL tests | Keeps schema changes deliberate and testable |
 | Delivery | Multi-stage non-root Docker runtime; GitHub Actions with H2, PostgreSQL and Playwright | Checks the built artifact and browser workflows before release |
 
@@ -206,6 +206,6 @@ Current tradeoffs:
 - Upcoming interviews use day-level dates and UTC; reminders and time-of-day scheduling are out of scope.
 - Search uses relational substring matching instead of a dedicated full-text search service.
 - Concurrent edits use last-write-wins.
-- Job posting autofill supports public Greenhouse and Lever links; other job boards require manual entry.
+- Job posting autofill supports public Greenhouse, Lever, Ashby, and SmartRecruiters links; other job boards require manual entry.
 
 For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md). The [safe demo walkthrough](docs/demo.md) uses only illustrative or disposable data, and the [deployment case study](docs/deployment-case-study.md) distinguishes confirmed evidence from outstanding checks.
