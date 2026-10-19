@@ -3,6 +3,7 @@ package com.bharath.devtrack.application;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -11,6 +12,10 @@ public interface ApplicationActivityRepository extends JpaRepository<Application
             Long applicationId, Long ownerId);
 
     List<ApplicationActivity> findTop12ByOwner_IdOrderByOccurredAtDescIdDesc(Long ownerId);
+
+    // Uses the owner/time index and includes only actual persisted activity events.
+    List<ApplicationActivity> findByOwner_IdAndOccurredAtGreaterThanEqualAndOccurredAtBefore(
+            Long ownerId, Instant startInclusive, Instant endExclusive);
 
     @Query("""
             select count(a) from JobApplication a

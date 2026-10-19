@@ -1,12 +1,17 @@
 package com.bharath.devtrack.dashboard;
 
+import com.bharath.devtrack.application.ApplicationActivity;
 import com.bharath.devtrack.application.ApplicationStatus;
 import com.bharath.devtrack.application.JobApplicationRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,7 +44,35 @@ public class DashboardService {
             months.add(new DashboardAnalyticsResponse.MonthlyApplications(month.toString(), count));
         }
         return new DashboardAnalyticsResponse(total, interviewOrOffer, offers,
-                percentage(interviewOrOffer, total), percentage(offers, total), months);
+                percentage(interviewOrOffer, total), percentage(offers, total), months,
+                recordedWeeklyActivity(ownerId));
+    }
+
+    private List<DashboardAnalyticsResponse.WeeklyActivity> recordedWeeklyActivity(Long ownerId) {
+        Instant now = Instant.now();
+        LocalDate firstMonday = now.atZone(ZoneOffset.UTC).toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(5);
+        Instant start = firstMonday.atStartOfDay(ZoneOffset.UTC).toInstant();
+        long[][] counts = new long[6][2];
+
+        // Pre-history rows have no activity and cannot contribute to these totals.
+        for (ApplicationActivity event : activity
+                .findByOwner_IdAndOccurredAtGreaterThanEqualAndOccurredAtBefore(ownerId, start, now)) {
+            LocalDate monday = event.getOccurredAt().atZone(ZoneOffset.UTC).toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            int index = (int) ChronoUnit.WEEKS.between(firstMonday, monday);
+            if (index >= 0 && index < counts.length) {
+                if (event.getType() == ApplicationActivity.Type.CREATED) counts[index][0]++;
+                else if (event.getType() == ApplicationActivity.Type.STATUS_CHANGED) counts[index][1]++;
+            }
+        }
+
+        List<DashboardAnalyticsResponse.WeeklyActivity> weeks = new ArrayList<>();
+        for (int i = 0; i < counts.length; i++) {
+            weeks.add(new DashboardAnalyticsResponse.WeeklyActivity(
+                    firstMonday.plusWeeks(i).toString(), counts[i][0], counts[i][1]));
+        }
+        return weeks;
     }
 
     private double percentage(long numerator, long denominator) {

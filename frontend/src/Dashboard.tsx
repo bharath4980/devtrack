@@ -89,6 +89,36 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
           <p className="form-help outcome-note">Earlier stage changes cannot be reconstructed. Rates reflect available history and the latest recorded state.</p>
         </section>
       </div>}
+      {analytics && <section className="insight-panel weekly-panel" aria-labelledby="weekly-heading">
+        <div className="pipeline-heading">
+          <div><h3 id="weekly-heading">Recorded activity by week</h3>
+            <p>New applications and status changes captured during the last six UTC calendar weeks.</p></div>
+        </div>
+        <div className="weekly-legend" aria-hidden="true">
+          <span><i className="weekly-key weekly-key-created" /> Applications created</span>
+          <span><i className="weekly-key weekly-key-changed" /> Status changes</span>
+        </div>
+        <div className="weekly-chart" role="img" aria-label={'Recorded activity by week: ' +
+          analytics.weeklyActivity.map(week => week.weekStart + ': ' + week.created +
+            ' created, ' + week.statusChanges + ' status changes').join('; ')}>
+          {analytics.weeklyActivity.map(week => {
+            const max = Math.max(1, ...analytics.weeklyActivity.flatMap(item =>
+              [item.created, item.statusChanges]));
+            return <div className="weekly-column" key={week.weekStart}>
+              <strong>{week.created + week.statusChanges}</strong>
+              <div className="weekly-bars">
+                <div className="weekly-bar weekly-bar-created"
+                  style={{ height: (week.created / max * 100) + '%' }} />
+                <div className="weekly-bar weekly-bar-changed"
+                  style={{ height: (week.statusChanges / max * 100) + '%' }} />
+              </div>
+              <span>{new Date(week.weekStart + 'T00:00:00Z').toLocaleDateString(
+                undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+            </div>;
+          })}
+        </div>
+        <p className="form-help weekly-note">Only recorded events are shown. Changes made before activity tracking began were not backfilled.</p>
+      </section>}
       <section className="recent-panel" aria-labelledby="recent-heading">
         <div className="pipeline-heading"><div><h3 id="recent-heading">Recent activity</h3>
           <p>Latest saved applications and stage changes.</p></div><span>Latest 12</span></div>

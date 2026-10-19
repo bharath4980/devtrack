@@ -67,6 +67,7 @@ export type DashboardAnalytics = {
   interviewOrOfferRate: number;
   offerRate: number;
   monthlyApplications: { month: string; applications: number }[];
+  weeklyActivity: { weekStart: string; created: number; statusChanges: number }[];
 };
 
 export async function getRecentActivity(signal?: AbortSignal): Promise<ApplicationActivity[]> {
