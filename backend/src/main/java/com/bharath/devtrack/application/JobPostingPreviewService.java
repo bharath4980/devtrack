@@ -19,10 +19,13 @@ import java.util.regex.Pattern;
 @Service
 public class JobPostingPreviewService {
     private static final int MAX_BODY_BYTES = 256 * 1024;
+    private static final int MAX_ASHBY_BODY_BYTES = 2 * 1024 * 1024;
     private static final Pattern GREENHOUSE_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/jobs/([0-9]{1,20})/?$");
     private static final Pattern LEVER_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/([a-zA-Z0-9-]{8,80})/?$");
+    private static final Pattern ASHBY_PATH = Pattern.compile(
+            "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
 
     private final ObjectMapper mapper;
     private final HttpClient client;
@@ -62,23 +65,28 @@ public class JobPostingPreviewService {
         String path = source.getRawPath();
         Matcher greenhouse = GREENHOUSE_PATH.matcher(path == null ? "" : path);
         Matcher lever = LEVER_PATH.matcher(path == null ? "" : path);
+        Matcher ashby = ASHBY_PATH.matcher(path == null ? "" : path);
 
         boolean isGreenhouse = (host.equals("boards.greenhouse.io")
                 || host.equals("job-boards.greenhouse.io")) && greenhouse.matches();
         boolean isLever = host.equals("jobs.lever.co") && lever.matches();
-        if (!isGreenhouse && !isLever) {
+        boolean isAshby = host.equals("jobs.ashbyhq.com") && ashby.matches();
+        if (!isGreenhouse && !isLever && !isAshby) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Automatic import supports Greenhouse and Lever job links. Enter details manually for other sites.");
+                    "Automatic import supports Greenhouse, Lever, and Ashby job links. Enter details manually for other sites.");
         }
 
-        String companySlug = isGreenhouse ? greenhouse.group(1) : lever.group(1);
-        String jobId = isGreenhouse ? greenhouse.group(2) : lever.group(2);
+        String companySlug = isGreenhouse ? greenhouse.group(1)
+                : isLever ? lever.group(1) : ashby.group(1);
+        String jobId = isGreenhouse ? greenhouse.group(2)
+                : isLever ? lever.group(2) : ashby.group(2);
 
-        // Build outbound requests from fixed provider hosts and validated path segments.
-        // Never fetch the supplied URL itself or follow provider redirects.
+        // Only contact fixed public ATS API hosts using validated board and job identifiers.
+        // Never fetch the user-supplied URL or follow provider redirects.
         URI endpoint = URI.create(isGreenhouse
                 ? "https://boards-api.greenhouse.io/v1/boards/" + companySlug + "/jobs/" + jobId
-                : "https://api.lever.co/v0/postings/" + companySlug + "/" + jobId);
+                : isLever ? "https://api.lever.co/v0/postings/" + companySlug + "/" + jobId
+                : "https://api.ashbyhq.com/posting-api/job-board/" + companySlug);
 
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(Duration.ofSeconds(5))
@@ -93,17 +101,20 @@ public class JobPostingPreviewService {
                     throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                             "Job details are unavailable. Check the link or enter the details manually.");
                 }
-                byte[] bytes = stream.readNBytes(MAX_BODY_BYTES + 1);
-                if (bytes.length > MAX_BODY_BYTES) {
+                int limit = isAshby ? MAX_ASHBY_BODY_BYTES : MAX_BODY_BYTES;
+                byte[] bytes = stream.readNBytes(limit + 1);
+                if (bytes.length > limit) {
                     throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                             "Job posting response was too large. Enter details manually.");
                 }
 
                 JsonNode data = mapper.readTree(bytes);
-                String title = text(isGreenhouse ? data.path("title") : data.path("text"));
-                String location = text(isGreenhouse
-                        ? data.path("location").path("name")
-                        : data.path("categories").path("location"));
+                JsonNode posting = isAshby ? findAshbyPosting(data, companySlug, jobId) : data;
+                String title = text(isAshby ? posting.path("title")
+                        : isGreenhouse ? posting.path("title") : posting.path("text"));
+                String location = text(isAshby ? posting.path("location")
+                        : isGreenhouse ? posting.path("location").path("name")
+                        : posting.path("categories").path("location"));
                 if (title.isEmpty()) {
                     throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                             "Job details could not be read. Enter them manually.");
@@ -119,6 +130,33 @@ public class JobPostingPreviewService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Job lookup was interrupted. Try again or enter details manually.");
         }
+    }
+
+    private static JsonNode findAshbyPosting(JsonNode data, String board, String jobId) {
+        JsonNode jobs = data.path("jobs");
+        if (jobs.isArray()) {
+            for (JsonNode posting : jobs) {
+                if (jobId.equalsIgnoreCase(text(posting.path("id")))) {
+                    return posting;
+                }
+                String jobUrl = text(posting.path("jobUrl"));
+                try {
+                    URI uri = URI.create(jobUrl);
+                    Matcher match = ASHBY_PATH.matcher(uri.getRawPath() == null ? "" : uri.getRawPath());
+                    if ("https".equalsIgnoreCase(uri.getScheme())
+                            && "jobs.ashbyhq.com".equalsIgnoreCase(uri.getHost())
+                            && match.matches()
+                            && board.equalsIgnoreCase(match.group(1))
+                            && jobId.equalsIgnoreCase(match.group(2))) {
+                        return posting;
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore malformed provider records; no URLs from this response are fetched.
+                }
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "This Ashby job is not available on its public board. Enter details manually.");
     }
 
     private static String text(JsonNode node) {

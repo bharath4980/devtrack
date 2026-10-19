@@ -6,7 +6,7 @@ This guide is for reviewers who want to explore DevTrack without using anyone's 
 
 1. Open [the deployed application](https://devtrack-3upd.onrender.com). The Render Free instance may need time to wake up.
 2. Create **your own** account with a unique password; never ask for or reuse someone else's credentials. Use fictional job-application data only.
-3. Choose **Add application**. Enter a fictional employer and role (examples below). Use manual entry; job URL autofill is optional and currently supports Greenhouse and Lever.
+3. Choose **Add application**. Enter a fictional employer and role (examples below). Use manual entry; job URL autofill is optional and currently supports Greenhouse, Lever, and Ashby.
 4. In **Your applications**, change a status, search or filter, and select **View history** to see recorded events created after the action.
 5. Return to **Your search, at a glance** for pipeline, recent-activity, application-trend, follow-up, and interview sections. Counts reflect the data in **your own account**.
 6. Sign out. These examples do not require exposing personal emails, production database records, or privileged access.

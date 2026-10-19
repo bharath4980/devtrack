@@ -122,6 +122,33 @@ test('job posting link fills editable details before saving', async ({ page }) =
     .toHaveAttribute('href', 'https://boards.greenhouse.io/example/jobs/123456');
 });
 
+test('Ashby job posting link fills editable details before saving', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.route('**/api/job-postings/preview?**', async route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('url')).toBe(
+      'https://jobs.ashbyhq.com/sampleco/22222222-2222-2222-2222-222222222222');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ company: 'Sampleco', title: 'Platform Engineer', location: 'Remote' }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill(
+    'https://jobs.ashbyhq.com/sampleco/22222222-2222-2222-2222-222222222222');
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Sampleco');
+  await expect(form.getByLabel('Job title')).toHaveValue('Platform Engineer');
+  await expect(form.getByLabel('Location')).toHaveValue('Remote');
+  await form.getByLabel('Company', { exact: true }).fill('Sample Company');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  await expect(page.getByRole('article', {
+    name: 'Sample Company — Platform Engineer',
+  })).toContainText('Remote');
+});
+
 test('dashboard metrics, distribution and navigation reflect saved applications', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Alpha Company');
