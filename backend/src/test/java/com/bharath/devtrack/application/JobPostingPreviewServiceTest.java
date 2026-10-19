@@ -173,7 +173,9 @@ class JobPostingPreviewServiceTest {
 
     @Test
     void smartRecruitersProviderFailureDoesNotLeakResponseDetails() throws Exception {
-        respond(404, "{\\"internalSecret\\":\\"should not be displayed\\"}");
+        respond(404, """
+                {"internalSecret":"should not be displayed"}
+                """);
         assertThatThrownBy(() -> service.preview(
                 "https://jobs.smartrecruiters.com/ExampleCo/884352026"))
                 .isInstanceOf(ResponseStatusException.class)
