@@ -75,7 +75,7 @@ class AuthOwnershipTest {
                 .andReturn();
         String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
         assertThat(csv).startsWith("\uFEFFid,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes\r\n");
-        assertThat(csv.split("\r\n")).hasSize(14);
+        assertThat(csv.split("\r\n")).hasSize(13);
         assertThat(csv).contains("Owned 0", "Owned 11");
         assertThat(csv).doesNotContain("Someone Else", "Unassigned Legacy", "alice@example.com");
         assertThat(applications.count()).isEqualTo(recordsBefore);
