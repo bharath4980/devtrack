@@ -36,6 +36,12 @@ public interface JobApplicationRepository
             ApplicationStatus status
     );
 
+    long countByOwner_IdAndStatusInAndFollowUpDateBefore(
+            Long ownerId, Collection<ApplicationStatus> statuses, LocalDate date);
+
+    long countByOwner_IdAndStatusInAndFollowUpDate(
+            Long ownerId, Collection<ApplicationStatus> statuses, LocalDate date);
+
     List<JobApplication>
     findTop5ByOwner_IdAndStatusAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
             Long ownerId,

@@ -811,6 +811,15 @@ button:hover:not(:disabled) { background: #263895; border-color: #263895; }
 .follow-up-date { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
 .due-label { font-size: 11px; color: #ad7d27; font-weight: 750; }
 .due-label.overdue { color: #b14752; }
+.follow-up-priorities { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 0 2px; }
+.priority-count { display: inline-flex; align-items: baseline; gap: 5px; border-radius: 9px;
+  background: #f2f5fa; padding: 7px 10px; color: #62718b; font-size: 12px; }
+.priority-count strong { font-size: 15px; color: #334563; }
+.priority-overdue { background: #fff0f1; color: #aa4651; }
+.priority-overdue strong { color: #aa4651; }
+.priority-today { background: #fff7e6; color: #977025; }
+.priority-today strong { color: #977025; }
+.follow-up-count-note { margin: 4px 0 12px; line-height: 1.5; font-size: 11px; }
 .schedule-empty { padding: 24px 12px 20px; text-align: center; }
 .empty-symbol { display: inline-grid; place-items: center; width: 35px; height: 35px; border-radius: 50%; background: #f0f3ff; color: #6072cf; font-size: 20px; }
 .schedule-empty p { margin: 12px 0 5px; color: #3b4964; font-size: 13px; font-weight: 750; }

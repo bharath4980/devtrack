@@ -81,7 +81,10 @@ test('follow-up dates show due work and can be rescheduled', async ({ page }) =>
   await form.getByRole('button', { name: 'Save application' }).click();
 
   await expect(page.locator('.due-follow-up')).toContainText('Follow Up Corp');
-  await expect(page.locator('.due-follow-up')).toContainText('Overdue');
+  await expect(page.locator('.due-follow-up .due-label')).toContainText(/\\d+ days overdue/);
+  const priority = page.getByRole('group', { name: 'Follow-up priorities' });
+  await expect(priority).toContainText('1 overdue');
+  await expect(priority).toContainText('0 due today');
 
   const card = page.getByRole('article', { name: 'Follow Up Corp — Platform Engineer' });
   await expect(card).toContainText('2020-01-01');
@@ -90,9 +93,19 @@ test('follow-up dates show due work and can be rescheduled', async ({ page }) =>
   await card.getByRole('button', { name: 'Save changes' }).click();
 
   await expect(page.locator('.due-follow-up')).toHaveCount(0);
+  await expect(priority).toContainText('0 overdue');
   await page.reload();
   await expect(card).toContainText('2099-01-01');
-  await expect(page.locator('.due-follow-up')).toHaveCount(0);
+  await expect(priority).toContainText('0 overdue');
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const dueForm = page.getByRole('form', { name: 'New application' });
+  await dueForm.getByLabel('Company', { exact: true }).fill('Today Priority');
+  await dueForm.getByLabel('Job title').fill('Engineer');
+  await dueForm.getByLabel('Follow-up date').fill(new Date().toISOString().slice(0, 10));
+  await dueForm.getByRole('button', { name: 'Save application' }).click();
+  await expect(priority).toContainText('1 due today');
+  await expect(page.locator('.due-follow-up').filter({ hasText: 'Today Priority' }))
+    .toContainText('Due today');
 });
 
 test('job posting link fills editable details before saving', async ({ page }) => {

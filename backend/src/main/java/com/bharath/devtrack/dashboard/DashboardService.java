@@ -80,6 +80,9 @@ public class DashboardService {
     }
 
     public DashboardSummaryResponse getSummary(Long ownerId) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        List<ApplicationStatus> active = List.of(
+                ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW);
         return new DashboardSummaryResponse(
                 repository.countByOwner_Id(ownerId),
                 repository.countByOwner_IdAndStatus(
@@ -101,7 +104,10 @@ public class DashboardService {
                 repository.countByOwner_IdAndStatus(
                         ownerId,
                         ApplicationStatus.REJECTED
-                )
+                ),
+                // Count every actionable follow-up, not only the five displayed below.
+                repository.countByOwner_IdAndStatusInAndFollowUpDateBefore(ownerId, active, today),
+                repository.countByOwner_IdAndStatusInAndFollowUpDate(ownerId, active, today)
         );
     }
 

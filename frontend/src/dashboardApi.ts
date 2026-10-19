@@ -7,6 +7,8 @@ export type DashboardSummary = {
   interview: number;
   offer: number;
   rejected: number;
+  overdueFollowUps: number;
+  dueTodayFollowUps: number;
 };
 
 export type UpcomingInterview = {

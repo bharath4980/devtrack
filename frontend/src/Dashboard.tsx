@@ -13,6 +13,12 @@ type Props = {
   onRetry: () => void;
 };
 
+function overdueLabel(date: string, todayUtc: string) {
+  const days = Math.round((Date.parse(todayUtc + 'T00:00:00Z') -
+    Date.parse(date + 'T00:00:00Z')) / (24 * 60 * 60 * 1000));
+  return days + (days === 1 ? ' day overdue' : ' days overdue');
+}
+
 export default function Dashboard({ summary, interviews, followUps, analytics, recentActivity, loading, error, onRetry }: Props) {
   const pipeline = statuses.map(status => ({
     status,
@@ -134,7 +140,15 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
         <section className="schedule-panel" aria-labelledby="follow-ups-heading">
           <div className="schedule-heading">
             <div className="schedule-icon followup-icon" aria-hidden="true">↗</div>
-            <div><h3 id="follow-ups-heading">Follow-ups due</h3><p>Next five · dates in UTC</p></div>
+            <div><h3 id="follow-ups-heading">Follow-ups due</h3><p>Earliest five · dates in UTC</p></div>
+          </div>
+          <div className="follow-up-priorities" role="group" aria-label="Follow-up priorities">
+            <span className={summary.overdueFollowUps ? 'priority-count priority-overdue' : 'priority-count'}>
+              <strong>{summary.overdueFollowUps}</strong> overdue
+            </span>
+            <span className="priority-count priority-today">
+              <strong>{summary.dueTodayFollowUps}</strong> due today
+            </span>
           </div>
           <div className="schedule-items">
             {followUps.length === 0
@@ -144,11 +158,12 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
               : followUps.map(item => <div className="upcoming-interview due-follow-up" key={item.id}>
                   <div><h4>{item.title}</h4><p>{item.company}</p></div>
                   <div className="follow-up-date">
-                    <span className={item.followUpDate < todayUtc ? 'due-label overdue' : 'due-label'}>{item.followUpDate < todayUtc ? 'Overdue' : 'Due today'}</span>
+                    <span className={item.followUpDate < todayUtc ? 'due-label overdue' : 'due-label'}>{item.followUpDate < todayUtc ? overdueLabel(item.followUpDate, todayUtc) : 'Due today'}</span>
                     <time dateTime={item.followUpDate}>{item.followUpDate}</time>
                   </div>
                 </div>)}
           </div>
+          <p className="form-help follow-up-count-note">Counts include all due applications, including those outside this five-item list.</p>
         </section>
         <section className="schedule-panel" aria-labelledby="interviews-heading">
           <div className="schedule-heading">

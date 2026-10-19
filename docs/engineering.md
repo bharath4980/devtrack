@@ -67,3 +67,9 @@ SmartRecruiters posting links use a company identifier and a numeric posting ID.
 The dashboard's six-week activity chart counts only saved `CREATED` and `STATUS_CHANGED` rows from `application_activity`, filtered by authenticated owner and the event timestamp. Weeks start on Monday at 00:00 UTC, include the current partial week, and exclude events before the window or after the request snapshot time. Each week reports created events and status-change events separately. Zero means **no events recorded for that bucket**; it does not prove no job-search activity occurred before tracking was introduced.
 
 Unlike the monthly application chart, which uses user-entered application dates, this chart uses persisted event timestamps. No backfill, schema migration, or updates to existing records are performed. Events for deleted applications are no longer counted because their activity rows are deleted with the application.
+
+## Follow-up priorities
+
+The dashboard's summary response includes `overdueFollowUps` and `dueTodayFollowUps`, computed from all owner-scoped applications whose status is **Saved, Applied, or Interview** and whose explicit follow-up date is earlier than or equal to the current UTC date. Overdue uses dates strictly before today; due today uses equality. Future dates, missing dates, terminal Offer/Rejected statuses, and other accounts never contribute.
+
+The existing `GET /api/dashboard/follow-ups` endpoint still returns the **earliest five** due applications. Counts deliberately come from the full eligible set, not this limited list. Each visible overdue card shows days since its follow-up date in UTC; a date is a user-entered reminder, not evidence that a follow-up was sent or completed. Changing a date or status refreshes the dashboard counts. No notification, reminder automation, new table, or migration is introduced.
