@@ -88,7 +88,7 @@ test('CSV export downloads every owned application independent of list paginatio
   const content = await response.text();
   expect(content).toContain('Export Company 0');
   expect(content).toContain('Export Company 11');
-  expect(content.split('\r\n')).toHaveLength(13);
+  expect(content.trimEnd().split('\r\n')).toHaveLength(13);
   await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
 });
 
