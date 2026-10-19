@@ -21,6 +21,9 @@ public interface JobApplicationRepository
 
     long countByOwner_Id(Long ownerId);
 
+    // Fetch one bounded, stable ID-ordered set for the owner's CSV export.
+    List<JobApplication> findByOwner_IdOrderByIdAsc(Long ownerId, Pageable pageable);
+
     @Query("""
             select application.applicationDate from JobApplication application
             where application.owner.id = :ownerId

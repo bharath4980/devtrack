@@ -39,6 +39,24 @@ export async function getApplications(query: ApplicationQuery, signal?: AbortSig
   return response.json();
 }
 
+export async function downloadApplicationsCsv(): Promise<void> {
+  const response = await apiFetch('/api/applications/export.csv', { cache: 'no-store' });
+  if (!response.ok) throw await readApiError(response, 'Could not export applications.');
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = 'devtrack-applications-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
 export async function createApplication(
   application: CreateJobApplicationRequest,
 ): Promise<JobApplication> {
