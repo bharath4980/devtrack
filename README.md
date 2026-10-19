@@ -18,6 +18,7 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 *Illustrative product overview—not a screenshot or production account data. The names and counts above are fictional. [See the safe demo walkthrough](docs/demo.md) for the current UI and an example exploration path.*
 
 - **Track the pipeline:** save opportunities; move them through Saved, Applied, Interview, Offer, and Rejected; search, sort, and filter an owner-scoped list.
+- **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
 - **Act on next steps:** record interview dates, optional follow-up dates, and view the upcoming-interview and follow-up panels.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
 - **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, or SmartRecruiters links. Unsupported providers fall back to manual entry.

@@ -829,6 +829,8 @@ button:hover:not(:disabled) { background: #263895; border-color: #263895; }
 .next-step { margin-top: 24px; padding-top: 16px; scroll-margin-top: 26px; }
 .next-step .section-heading { margin-bottom: 20px; }
 .next-step .section-heading h2 { margin: 0; }
+.export-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.export-button { white-space: nowrap; }
 .filter-form {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr) minmax(170px, 1fr);
   gap: 15px; align-items: end; padding: 21px;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
-import { createApplication, deleteApplication, getApplications, updateApplication, updateApplicationStatus } from './applicationApi';
+import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, updateApplication, updateApplicationStatus } from './applicationApi';
 import { getDashboardSummary, getDueFollowUps, getUpcomingInterviews, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
@@ -33,6 +33,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [busy, setBusy] = useState(false);
   const mutationPending = useRef(false);
   const [actionError, setActionError] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [notice, setNotice] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
   const refresh = () => setRevision(value => value + 1);
@@ -110,6 +112,19 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     } catch (error) { setActionError(errorMessage(error, 'Could not delete application.')); }
   }
 
+  async function exportCsv() {
+    if (exporting || signingOut) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      await downloadApplicationsCsv();
+    } catch (error) {
+      setExportError(errorMessage(error, 'Could not download the CSV file.'));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setEditingId(null);
@@ -156,10 +171,15 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
       </section>}
       <section className="next-step" id="applications" tabIndex={-1} aria-labelledby="applications-heading">
-        <div className="section-heading">
+        <div className="section-heading export-heading">
           <div><p className="eyebrow">Application tracker</p><h2 id="applications-heading">Your applications</h2>
             <p className="section-description">Search, filter, and manage each opportunity in one place.</p></div>
+          <button type="button" className="secondary-button export-button"
+            disabled={blocked || exporting} onClick={() => void exportCsv()}>
+            {exporting ? 'Preparing CSV…' : 'Export all CSV'}
+          </button>
         </div>
+        {exportError && <p className="form-error" role="alert">{exportError}</p>}
         <form className="filter-form" onSubmit={applyFilters}>
           <div className="form-field filter-search"><label htmlFor="search">Search</label>
             <input id="search" type="search" maxLength={255} placeholder="Company, title, or location" value={search} onChange={event => setSearch(event.target.value)} />

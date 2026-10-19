@@ -71,6 +71,27 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('CSV export downloads every owned application independent of list pagination', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 12; i++) await seed(page, 'Export Company ' + i);
+  await page.reload();
+
+  await expect(page.getByRole('status').filter({ hasText: '12 applications' })).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export all CSV' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^devtrack-applications-\d{4}-\d{2}-\d{2}\.csv$/);
+
+  const response = await page.request.get('/api/applications/export.csv');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('text/csv');
+  const content = await response.text();
+  expect(content).toContain('Export Company 0');
+  expect(content).toContain('Export Company 11');
+  expect(content.trimEnd().split('\r\n')).toHaveLength(13);
+  await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
+});
+
 test('follow-up dates show due work and can be rescheduled', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();

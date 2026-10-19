@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +52,69 @@ class AuthOwnershipTest {
         users.deleteAll();
         alice = users.save(new UserAccount("alice@example.com", encoder.encode(PASSWORD)));
         bob = users.save(new UserAccount("bob@example.com", encoder.encode(PASSWORD)));
+    }
+
+    @Test
+    void csvExportRequiresAuthenticationAndOnlyReturnsAllOwnedRows() throws Exception {
+        mvc.perform(get("/api/applications/export.csv")).andExpect(status().isUnauthorized());
+
+        for (int i = 0; i < 12; i++) {
+            seed(alice, "Owned " + i);
+        }
+        seed(bob, "Someone Else");
+        seed(null, "Unassigned Legacy");
+        long recordsBefore = applications.count();
+
+        MvcResult result = mvc.perform(get("/api/applications/export.csv")
+                        .session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"devtrack-applications.csv\""))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        assertThat(csv).startsWith("\uFEFFid,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes\r\n");
+        assertThat(csv.split("\r\n")).hasSize(13);
+        assertThat(csv).contains("Owned 0", "Owned 11");
+        assertThat(csv).doesNotContain("Someone Else", "Unassigned Legacy", "alice@example.com");
+        assertThat(applications.count()).isEqualTo(recordsBefore);
+    }
+
+    @Test
+    void csvExportPreservesQuotesCommasUnicodeAndNewlinesAndNeutralizesFormulas() throws Exception {
+        JobApplication unsafe = seed(alice, "=1+1");
+        unsafe.setTitle("=SUM(2,2)");
+        unsafe.setLocation("Austin, \"TX\"");
+        unsafe.setNotes("Line 1\nLine 2, \"quoted\"");
+        unsafe.setPostingUrl("https://example.com/jobs/123?tag=a,b");
+        unsafe.setApplicationDate(java.time.LocalDate.of(2026, 10, 19));
+        unsafe.setFollowUpDate(java.time.LocalDate.of(2026, 10, 24));
+        applications.save(unsafe);
+        JobApplication second = seed(alice, "Café ☕");
+        second.setNotes("  +IMPORT(1)");
+        applications.save(second);
+        long before = applications.count();
+
+        MvcResult result = mvc.perform(get("/api/applications/export.csv")
+                        .session(login(alice.getEmail())))
+                .andExpect(status().isOk()).andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        assertThat(csv).contains("\"'=1+1\"", "\"'=SUM(2,2)\"",
+                "\"Austin, \"\"TX\"\"\"", "\"Line 1\nLine 2, \"\"quoted\"\"\"",
+                "\"https://example.com/jobs/123?tag=a,b\"", "\"2026-10-19\"",
+                "\"2026-10-24\"", "\"'  +IMPORT(1)\"", "Café ☕");
+        assertThat(applications.count()).isEqualTo(before);
+    }
+
+    @Test
+    void emptyAccountExportsHeaderOnly() throws Exception {
+        MvcResult result = mvc.perform(get("/api/applications/export.csv")
+                        .session(login(alice.getEmail())))
+                .andExpect(status().isOk()).andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        assertThat(csv.split("\r\n")).hasSize(1);
+        assertThat(csv).startsWith("\uFEFFid,company,title,location");
     }
 
     @Test

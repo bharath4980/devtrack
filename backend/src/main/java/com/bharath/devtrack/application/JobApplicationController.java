@@ -2,6 +2,10 @@ package com.bharath.devtrack.application;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -41,6 +45,18 @@ public class JobApplicationController {
             @RequestParam(defaultValue = "NEWEST") ApplicationSort sort
     ) {
         return service.findAll(accounts.currentUser(principal).getId(), search, status, page, size, sort);
+    }
+
+    @GetMapping("/export.csv")
+    public ResponseEntity<byte[]> exportCsv(Principal principal) {
+        byte[] content = service.exportCsv(accounts.currentUser(principal).getId());
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"devtrack-applications.csv\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.noStore())
+                .body(content);
     }
 
     @PatchMapping("/{id}/status")
