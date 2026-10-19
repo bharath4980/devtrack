@@ -2,6 +2,7 @@ package com.bharath.devtrack;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.health.HealthContributorRegistry;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -10,6 +11,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=${TEST_DATABASE_URL:jdbc:h2:mem:healthcheck;DB_CLOSE_DELAY=-1}",
@@ -26,12 +28,22 @@ class HealthEndpointTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private HealthContributorRegistry contributors;
+
     @Test
     void healthReportsUpWithoutExposingDetails() throws Exception {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.components").doesNotExist());
+                .andExpect(jsonPath("$.components").doesNotExist())
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
+
+    @Test
+    void databaseIsPartOfHealthReadiness() {
+        // /api/health must reflect critical database connectivity, not only an open port.
+        assertThat(contributors.getContributor("db")).isNotNull();
     }
 
     @Test

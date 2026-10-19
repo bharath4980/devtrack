@@ -72,6 +72,8 @@ jobs:
         run: npm run build
       - name: Build production image
         run: docker build -t devtrack:test .
+      - name: Check health probe shell syntax
+        run: bash -n scripts/check-health.sh
       - name: Start production image through published container port
         run: |
           # Exercise the image's own public bind address, not a localhost override.
@@ -84,10 +86,10 @@ jobs:
             -e PORT=8081 -e SESSION_COOKIE_SECURE=false \
             -e JAVA_TOOL_OPTIONS=-Ddevtrack.auth.registration-limit=1000 \
             devtrack:test
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8081/api/health; then exit 0; fi
-            sleep 2
-          done
+          if HEALTH_ATTEMPTS=60 HEALTH_DELAY_SECONDS=2 \
+              bash scripts/check-health.sh http://127.0.0.1:8081/api/health; then
+            exit 0
+          fi
           docker logs devtrack-test
           exit 1
       - name: Install Chromium

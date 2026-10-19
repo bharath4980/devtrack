@@ -7,7 +7,7 @@
 
 The engineering focus is secure multi-user data, honest analytics, practical third-party integration boundaries, automated browser testing, and a reproducible Docker deployment—not unnecessary infrastructure.
 
-**[Live application](https://devtrack-3upd.onrender.com)** · **[Demo walkthrough](docs/demo.md)** · **[Architecture and decisions](docs/engineering.md)** · **[Production incident case study](docs/deployment-case-study.md)**
+**[Live application](https://devtrack-3upd.onrender.com)** · **[Demo walkthrough](docs/demo.md)** · **[Architecture and decisions](docs/engineering.md)** · **[Operations and recovery](docs/operations.md)** · **[Production incident case study](docs/deployment-case-study.md)**
 
 > Hosted on a Render Free web service. It can spin down when idle; waking the service may delay the first request. Use a unique password and sample application information if exploring the public site.
 
@@ -194,7 +194,7 @@ The deployed service uses:
 - `SESSION_COOKIE_SECURE=true`
 - `PORT=8080`
 
-Secrets stay in the hosting environment and are not committed to the repository. The application supports graceful shutdown and exposes `/api/health` for health checks.
+Secrets stay in the hosting environment and are not committed to the repository. The application supports graceful shutdown and exposes anonymous, non-detailed `/api/health` readiness checks (including database health). Render currently uses default port checks because its **HTTP health-check path is not configured**; see the [operations and recovery runbook](docs/operations.md) for validation and a separately approved path change.
 
 ## Design tradeoffs
 
