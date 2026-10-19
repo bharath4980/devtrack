@@ -10,7 +10,7 @@ This runbook describes DevTrack's **existing** Render web service and Spring Boo
 - The service listens on `0.0.0.0` and the `PORT` environment variable (currently `8080`); the Java 21 runtime uses `-XX:TieredStopAtLevel=1` to reduce warm-up work on limited CPU.
 - Public `GET /api/health` is provided by Spring Boot Actuator and permitted without an account. On a healthy instance it returns HTTP 200 with `{"status":"UP"}`. Health details are deliberately hidden.
 - The standard Spring Boot database health contributor checks PostgreSQL, so an open TCP port is not sufficient for application readiness.
-- **At the time of this runbook, Render's `healthCheckPath` is blank.** Render therefore uses its default TCP port probe, which cannot independently confirm `/api/health`. A Render deployment marked **live** is meaningful, but does not by itself prove the authenticated application workflow or record preservation.
+- **As of October 19, 2026, Render's `healthCheckPath` is `/api/health`.** This change triggered an automatic deployment that reached live after Render's HTTP health check. It does not independently verify the authenticated user workflow or individual user records.
 
 ## Safe checks before changing Render
 
@@ -30,18 +30,15 @@ HEALTH_ATTEMPTS=60 HEALTH_DELAY_SECONDS=5 bash scripts/check-health.sh https://d
 
 A failed probe can mean DNS or network restrictions, a sleeping or starting service, an application health failure, or a database connectivity issue. If the checker cannot reach the host, **report HTTP health as unverified**, even when Render says live. Do not treat client-side DNS failures as evidence of a broken deployment.
 
-## Proposed Render HTTP health check (separate approval required)
+## Render HTTP health check (enabled October 19, 2026)
 
-The desired setting is **`/api/health`**, not `/` and not an authenticated application route. After reviewing this runbook and confirming the endpoint responds with `UP` in a suitable environment:
+The configured path is **`/api/health`**, and the configuration-triggered deployment successfully reached live. No further change is needed for the existing Render PostgreSQL setup.
 
-1. Open the existing Render web service in the Render dashboard.
-2. Go to **Settings → Health Checks → Edit** and enter `/api/health`.
-3. Save only after explicit approval for a production service-configuration change.
-4. Watch the service events and logs after the change, check that the health status remains healthy, and confirm at least one authorized user flow. Record the change and any observed restart/deploy effects.
+**Neon Free caution:** This health endpoint checks PostgreSQL on every request. Frequent calls and existing Hikari connections may keep a serverless database active, consuming its compute quota. Do not move production to Neon before a disposable compatibility and cost test and separately approved production readiness strategy. Do not disable DB health checks just to make a failing application look healthy.
 
-**This repository is not linked to a Render Blueprint for this service.** Adding a `render.yaml` file alone would not update its existing service setting. Do not create a duplicate Render service or change database IP allowlists just to test readiness.
+**This repository is not connected to a Render Blueprint for this service.** Adding a `render.yaml` file alone would not edit the live service. Avoid changing the database IP allowlist until source backup is explicitly approved.
 
-Render requires a 2xx or 3xx response within five seconds for each HTTP health check. The database-aware health endpoint gives a stronger readiness signal than TCP, but a transient database outage or overloaded Free instance can cause health-check failures and instance restarts; weigh that behavior before enabling it. Reference: [Render health checks](https://render.com/docs/health-checks).
+Render expects prompt healthy HTTP responses and may restart an instance after repeated failures. See [Render health checks](https://render.com/docs/health-checks) and the [Neon preflight runbook](neon-migration.md).
 
 ## Deployment verification
 
