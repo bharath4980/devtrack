@@ -54,7 +54,8 @@ class HealthEndpointTest {
 
         // Liveness is intentionally process-only; /api/health retains database readiness.
         assertThat(endpointGroups.get("liveness")).isNotNull();
-        assertThat(endpointGroups.get("liveness").getIncludes()).containsExactly("livenessState");
+        assertThat(endpointGroups.get("liveness").isMember("livenessState")).isTrue();
+        assertThat(endpointGroups.get("liveness").isMember("db")).isFalse();
     }
 
     @Test
