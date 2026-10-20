@@ -3,6 +3,7 @@ package com.bharath.devtrack;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.health.HealthContributorRegistry;
+import org.springframework.boot.actuate.health.HealthEndpointGroups;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +32,9 @@ class HealthEndpointTest {
     @Autowired
     private HealthContributorRegistry contributors;
 
+    @Autowired
+    private HealthEndpointGroups endpointGroups;
+
     @Test
     void healthReportsUpWithoutExposingDetails() throws Exception {
         mockMvc.perform(get("/api/health"))
@@ -38,6 +42,19 @@ class HealthEndpointTest {
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.components").doesNotExist())
                 .andExpect(jsonPath("$.details").doesNotExist());
+    }
+
+    @Test
+    void processLivenessIsAnonymousWithoutDatabaseHealthChecks() throws Exception {
+        mockMvc.perform(get("/api/health/liveness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist())
+                .andExpect(jsonPath("$.details").doesNotExist());
+
+        // Liveness is intentionally process-only; /api/health retains database readiness.
+        assertThat(endpointGroups.get("liveness")).isNotNull();
+        assertThat(endpointGroups.get("liveness").getIncludes()).containsExactly("livenessState");
     }
 
     @Test
