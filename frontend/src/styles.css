@@ -1130,3 +1130,80 @@ footer { border-color: var(--line); color: #94a0b3; }
   .application-view-switch { width: 100%; display: flex; }
   .application-view-switch button { flex: 1; }
 }
+
+/* Pipeline management: server-side search, focusable detail editor and date cues. */
+.board-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(145px, 1fr) minmax(145px, 1fr) auto;
+  align-items: end; gap: 12px; margin-bottom: 14px; padding: 16px;
+  background: #fff; border: 1px solid #e4e9f2; border-radius: 14px;
+}
+.board-filters .form-field { min-width: 0; }
+.board-filters .form-field input, .board-filters .form-field select {
+  min-height: 39px; width: 100%; padding: 8px 10px; border: 1px solid #cbd5e5;
+  background: white; color: #2b3a58; border-radius: 8px;
+}
+.board-filter-actions { display: flex; align-items: center; gap: 7px; }
+.board-filter-actions button { min-height: 39px; padding: 8px 12px; font-size: 12px; }
+.board-detail-panel {
+  padding: 22px; margin-bottom: 18px; background: #fff;
+  border: 1px solid #d8e1f3; border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(26, 42, 85, .055);
+}
+.board-detail-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.board-detail-heading .eyebrow { margin: 0 0 8px; }
+.board-detail-heading h3 {
+  color: #263755; font-size: 19px; font-weight: 750;
+  letter-spacing: -.4px; margin: 0 0 10px; line-height: 1.35;
+}
+.board-detail-heading > button { flex-shrink: 0; }
+.board-detail-fields {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px; margin: 20px 0 0;
+}
+.board-detail-fields > div { padding: 12px; background: #f6f8fd; border-radius: 10px; min-width: 0; }
+.board-detail-fields dt { font-size: 11px; color: #77849c; font-weight: 700; margin-bottom: 6px; }
+.board-detail-fields dd { font-size: 13px; font-weight: 650; color: #2d3c58; margin: 0; overflow-wrap: anywhere; }
+.board-detail-notes { margin-top: 18px; font-size: 13px; color: #52627c; }
+.board-detail-notes strong { color: #2a3956; }
+.board-detail-notes p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.board-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 18px; }
+.board-detail-actions a { font-size: 13px; font-weight: 750; color: #435ac0; }
+.board-detail-panel .application-form { margin: 18px 0 0; }
+.board-detail-panel .application-form fieldset { min-width: 0; }
+.board-title-button {
+  padding: 0; border: 0; min-height: 0; text-align: left; background: transparent;
+  color: #263755; font-size: 12px; font-weight: 750; line-height: 1.45;
+  border-radius: 3px; overflow-wrap: anywhere; cursor: pointer;
+}
+.board-title-button:hover:not(:disabled) { background: transparent; color: #425bc5; text-decoration: underline; }
+.board-view-details { min-height: 32px; padding: 6px 8px; font-size: 11px; }
+.board-attention { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.board-attention-chip {
+  display: inline-flex; align-items: center; max-width: 100%; padding: 5px 7px;
+  border-radius: 7px; font-size: 10px; font-weight: 750; line-height: 1.35;
+}
+.attention-overdue { background: #fff0f1; color: #ae414d; }
+.attention-today { background: #fff3de; color: #90631b; }
+.attention-upcoming { background: #edf1ff; color: #4359bc; }
+.attention-interview { background: #e9f7f1; color: #25775d; }
+.pipeline-board-single { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.pipeline-board-single .board-cards { grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); }
+@media (max-width: 950px) {
+  .board-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .board-filter-actions { grid-column: 1 / -1; }
+  .board-detail-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .board-filters { grid-template-columns: 1fr; padding: 14px; }
+  .board-filter-actions { grid-column: auto; }
+  .board-filter-actions button { flex: 1; }
+  .pipeline-board-scroll { overflow-x: visible; padding-bottom: 0; }
+  .pipeline-board, .pipeline-board-single { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .board-column { min-height: 125px; }
+  .board-cards, .pipeline-board-single .board-cards { grid-template-columns: minmax(0, 1fr); }
+  .board-detail-panel { padding: 15px; }
+  .board-detail-heading { flex-wrap: wrap; }
+  .board-detail-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .board-detail-panel .application-form fieldset { grid-template-columns: minmax(0, 1fr); }
+}
