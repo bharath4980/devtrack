@@ -128,6 +128,20 @@ public class DashboardService {
                 .toList();
     }
 
+    public List<DueFollowUpResponse> getUpcomingFollowUps(Long ownerId) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        return repository
+                .findTop5ByOwner_IdAndStatusInAndFollowUpDateBetweenOrderByFollowUpDateAscIdAsc(
+                        ownerId,
+                        List.of(ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW),
+                        today.plusDays(1), today.plusDays(7))
+                .stream()
+                .map(application -> new DueFollowUpResponse(
+                        application.getId(), application.getCompany(), application.getTitle(),
+                        application.getFollowUpDate()))
+                .toList();
+    }
+
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
             Long ownerId
     ) {
