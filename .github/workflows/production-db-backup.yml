@@ -1,0 +1,89 @@
+name: Encrypted database backup
+
+on:
+  schedule:
+    # Daily at 07:23 UTC; off the hour to reduce scheduler congestion.
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devtrack-production-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Create encrypted PostgreSQL backup
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check backup configuration
+        shell: bash
+        env:
+          DATABASE_PASSWORD_PRESENT: ${{ secrets.DEVTRACK_BACKUP_DB_PASSWORD != '' }}
+          AGE_RECIPIENT: ${{ vars.DEVTRACK_BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          if [[ "$DATABASE_PASSWORD_PRESENT" != 'true' ]]; then
+            echo '::error::Configure the DEVTRACK_BACKUP_DB_PASSWORD repository secret.'
+            exit 1
+          fi
+          if [[ ! "$AGE_RECIPIENT" =~ ^age1[a-z0-9]{40,100}$ ]]; then
+            echo '::error::Configure a valid DEVTRACK_BACKUP_AGE_RECIPIENT repository variable.'
+            exit 1
+          fi
+
+      - name: Install age encryption tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+
+      - name: Create and encrypt database archive
+        shell: bash
+        env:
+          PGHOST: ep-holy-feather-b4jie77x.c-6.us-east-2.aws.neon.tech
+          PGPORT: '5432'
+          PGDATABASE: neondb
+          PGUSER: neondb_owner
+          PGPASSWORD: ${{ secrets.DEVTRACK_BACKUP_DB_PASSWORD }}
+          PGSSLMODE: require
+          AGE_RECIPIENT: ${{ vars.DEVTRACK_BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          umask 077
+          backup_dir="$RUNNER_TEMP/devtrack-backup"
+          mkdir -p "$backup_dir"
+          dump="$backup_dir/database.dump"
+          encrypted="$backup_dir/devtrack-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.dump.age"
+          trap 'rm -f "$dump"' EXIT
+
+          # Use PostgreSQL 17 client against the known, direct Neon endpoint.
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER \
+            -e PGPASSWORD -e PGSSLMODE \
+            -v "$backup_dir:/backup" \
+            postgres:17 sh -eu -c '
+              pg_dump --format=custom --schema=public \
+                --no-owner --no-acl --file=/backup/database.dump
+              pg_restore --list /backup/database.dump > /dev/null
+            '
+
+          test -s "$dump"
+          age --encrypt --recipient "$AGE_RECIPIENT" \
+            --output "$encrypted" "$dump"
+          test -s "$encrypted"
+          rm -f "$dump"
+          echo 'Encrypted backup archive created and archive inventory verified.'
+
+      - name: Store encrypted archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: devtrack-production-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/devtrack-backup/*.dump.age
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
