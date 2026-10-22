@@ -53,6 +53,11 @@ public class DashboardController {
         return dashboardService.getDueFollowUps(ownerId);
     }
 
+    @GetMapping("/follow-ups/upcoming")
+    public List<DueFollowUpResponse> getUpcomingFollowUps(Principal principal) {
+        return dashboardService.getUpcomingFollowUps(accounts.currentUser(principal).getId());
+    }
+
     @GetMapping("/interviews")
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
             Principal principal

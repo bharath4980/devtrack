@@ -129,6 +129,48 @@ test('follow-up dates show due work and can be rescheduled', async ({ page }) =>
     .toContainText('Due today');
 });
 
+test('in-app reminders show seven-day follow-ups and allow inline rescheduling', async ({ page }) => {
+  await registerAndLogin(page);
+  const plusDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const inThreeDays = plusDays(3);
+  const tomorrow = plusDays(1);
+  const yesterday = plusDays(-1);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Reminder Labs');
+  await form.getByLabel('Job title').fill('Backend Engineer');
+  await form.getByLabel('Follow-up date').fill(inThreeDays);
+  await form.getByRole('button', { name: 'Save application' }).click();
+
+  let upcoming = page.locator('.upcoming-follow-up').filter({ hasText: 'Reminder Labs' });
+  await expect(upcoming).toContainText('In 3 days');
+  await upcoming.getByRole('button', { name: 'Reschedule' }).click();
+  await upcoming.getByLabel('New follow-up date for Reminder Labs').fill(tomorrow);
+  await upcoming.getByRole('button', { name: 'Save date' }).click();
+  upcoming = page.locator('.upcoming-follow-up').filter({ hasText: 'Reminder Labs' });
+  await expect(upcoming).toContainText('Tomorrow');
+  await upcoming.getByRole('button', { name: 'Reschedule' }).click();
+  await upcoming.getByLabel('New follow-up date for Reminder Labs').fill(yesterday);
+  await upcoming.getByRole('button', { name: 'Save date' }).click();
+
+  const due = page.locator('.due-follow-up').filter({ hasText: 'Reminder Labs' });
+  await expect(due).toContainText('1 day overdue');
+  await expect(page.getByText('Follow-ups need attention')).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Follow-up priorities' })).toContainText('1 overdue');
+  await page.reload();
+  await expect(page.locator('.due-follow-up').filter({ hasText: 'Reminder Labs' }))
+    .toContainText('1 day overdue');
+
+  await due.getByRole('button', { name: 'Reschedule' }).click();
+  await due.getByLabel('New follow-up date for Reminder Labs').fill(plusDays(8));
+  await due.getByRole('button', { name: 'Save date' }).click();
+  await expect(page.locator('.due-follow-up')).toHaveCount(0);
+  await expect(page.locator('.upcoming-follow-up')).toHaveCount(0);
+  await expect(page.getByText('Follow-ups need attention')).toHaveCount(0);
+  await expect(page.getByRole('article', { name: 'Reminder Labs — Backend Engineer' }))
+    .toContainText(plusDays(8));
+});
+
 test('job posting link fills editable details before saving', async ({ page }) => {
   await registerAndLogin(page);
   await page.route('**/api/job-postings/preview?**', async route => {

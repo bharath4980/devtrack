@@ -1029,3 +1029,41 @@ footer { border-color: var(--line); color: #94a0b3; }
 .history-snapshot .snapshot-status strong { color: #304362; font-size: 12px; }
 .history-snapshot .snapshot-status span { color: #74829b; font-size: 11px; }
 .history-snapshot .form-help { margin: 0; line-height: 1.55; }
+
+/* In-app action center: reminders are visible while signed in (not push notifications). */
+.action-nudge {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 14px; margin: 0 0 18px; padding: 17px 20px;
+  border: 1px solid #f1d6b3; background: #fffaf0; border-radius: 14px;
+}
+.action-nudge strong { color: #8a5524; font-size: 14px; }
+.action-nudge p { margin: 5px 0 0; color: #806b4f; font-size: 12px; line-height: 1.55; }
+.action-nudge a { color: #3949a2; font-size: 12px; font-weight: 750; text-decoration: underline; }
+#follow-ups-heading, #interviews-heading { scroll-margin-top: 24px; }
+.follow-up-task { flex-wrap: wrap; align-items: start; }
+.follow-up-job { flex: 1 1 140px; min-width: 0; }
+.follow-up-date { flex-shrink: 0; }
+.follow-up-date .reschedule-toggle {
+  min-height: 30px; padding: 5px 10px; font-size: 11px; font-weight: 700;
+}
+.upcoming-follow-ups-heading { margin-top: 15px; padding-top: 18px; border-top: 1px solid #eef0f5; }
+.upcoming-follow-ups-heading h4 { margin: 0; color: #243553; font-size: 13px; }
+.upcoming-follow-ups-heading p { margin: 5px 0 0; color: #8b96a7; font-size: 12px; }
+.upcoming-empty { margin: 16px 0 14px; }
+.inline-reschedule { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.inline-reschedule label { color: #53627b; font-size: 12px; font-weight: 700; }
+.inline-reschedule-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inline-reschedule input {
+  min-width: 145px; min-height: 36px; padding: 7px 9px; border: 1px solid #b9c5bf;
+  border-radius: 7px; background: white; color: #24332f;
+}
+.inline-reschedule button { min-height: 36px; padding: 7px 13px; font-size: 12px; }
+.inline-reschedule-error { flex: 1 0 100%; margin: 0; }
+.interview-date { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.interview-date span { color: #977025; font-size: 11px; font-weight: 750; }
+.interview-date time { color: #5e6d83; font-size: 12px; font-weight: 700; }
+@media (max-width: 600px) {
+  .follow-up-date, .interview-date { align-items: flex-start; }
+  .follow-up-task { gap: 12px; }
+  .action-nudge { align-items: flex-start; }
+}

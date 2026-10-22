@@ -90,6 +90,8 @@ class DashboardEndpointTest {
                 .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/dashboard/follow-ups"))
                 .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/dashboard/follow-ups/upcoming"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -284,6 +286,41 @@ class DashboardEndpointTest {
                 .andExpect(jsonPath("$[4].company").value("Due 4"))
                 .andExpect(jsonPath("$[0].followUpDate")
                         .value(today.minusDays(7).toString()));
+    }
+
+    @Test
+    void upcomingFollowUpsAreScopedSortedBoundedAndExcludeTerminalStages() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        for (int i = 1; i <= 7; i++) {
+            JobApplication next = seed(alice, "Soon " + i, ApplicationStatus.APPLIED, null);
+            next.setFollowUpDate(today.plusDays(i));
+            applications.save(next);
+        }
+        JobApplication beyond = seed(alice, "Day 8", ApplicationStatus.INTERVIEW, null);
+        beyond.setFollowUpDate(today.plusDays(8));
+        applications.save(beyond);
+        JobApplication due = seed(alice, "Today", ApplicationStatus.SAVED, null);
+        due.setFollowUpDate(today);
+        applications.save(due);
+        JobApplication offered = seed(alice, "Offer", ApplicationStatus.OFFER, null);
+        offered.setFollowUpDate(today.plusDays(2));
+        applications.save(offered);
+        JobApplication bobNext = seed(bob, "Private", ApplicationStatus.APPLIED, null);
+        bobNext.setFollowUpDate(today.plusDays(1));
+        applications.save(bobNext);
+        JobApplication legacy = seed(null, "Legacy", ApplicationStatus.APPLIED, null);
+        legacy.setFollowUpDate(today.plusDays(1));
+        applications.save(legacy);
+        mvc.perform(get("/api/dashboard/follow-ups/upcoming").session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].company").value("Soon 1"))
+                .andExpect(jsonPath("$[4].company").value("Soon 5"))
+                .andExpect(jsonPath("$[0].followUpDate").value(today.plusDays(1).toString()));
+        mvc.perform(get("/api/dashboard/follow-ups/upcoming").session(login(bob.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].company").value("Private"));
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.bharath.devtrack.application;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.CacheControl;
@@ -71,6 +73,16 @@ public class JobApplicationController {
                 .header("X-Content-Type-Options", "nosniff")
                 .cacheControl(CacheControl.noStore())
                 .body(content);
+    }
+
+    public record RescheduleFollowUpRequest(@NotNull LocalDate followUpDate) {}
+
+    @PatchMapping("/{id}/follow-up")
+    public JobApplication rescheduleFollowUp(
+            Principal principal, @PathVariable Long id,
+            @Valid @RequestBody RescheduleFollowUpRequest request
+    ) {
+        return service.rescheduleFollowUp(accounts.currentUser(principal).getId(), id, request.followUpDate());
     }
 
     @PatchMapping("/{id}/status")

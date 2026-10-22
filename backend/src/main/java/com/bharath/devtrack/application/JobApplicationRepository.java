@@ -71,6 +71,10 @@ public interface JobApplicationRepository
     List<JobApplication> findTop5ByOwner_IdAndStatusInAndFollowUpDateLessThanEqualOrderByFollowUpDateAscIdAsc(
             Long ownerId, Collection<ApplicationStatus> statuses, LocalDate date);
 
+    // Five soonest actionable follow-ups in the next seven UTC days (not including today).
+    List<JobApplication> findTop5ByOwner_IdAndStatusInAndFollowUpDateBetweenOrderByFollowUpDateAscIdAsc(
+            Long ownerId, Collection<ApplicationStatus> statuses, LocalDate from, LocalDate through);
+
     @Query("""
             SELECT application
             FROM JobApplication application

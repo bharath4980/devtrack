@@ -19,7 +19,8 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 
 - **Track the pipeline:** save opportunities; move them through Saved, Applied, Interview, Offer, and Rejected; search, sort, and filter an owner-scoped list.
 - **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
-- **Act on next steps:** record interview dates, optional follow-up dates, and view the upcoming-interview and follow-up panels.
+- **Act on next steps:** track overdue and due-today follow-ups, see the next seven days of upcoming follow-ups, and reschedule follow-up dates directly from the dashboard. Upcoming interviews show clear relative-date labels (UTC).
+- **In-app reminders only:** reminders appear when you open the signed-in dashboard; they are not email, push, or background notifications.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
 - **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, or BambooHR links. Unsupported providers fall back to manual entry.
 - **Avoid repeat entries:** detect matching job URLs within your account (including common tracking-link variations) before saving; review the existing status or explicitly confirm Save anyway.

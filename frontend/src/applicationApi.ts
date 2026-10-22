@@ -97,6 +97,16 @@ export async function createApplication(
   return response.json();
 }
 
+export async function rescheduleFollowUp(id: number, followUpDate: string): Promise<JobApplication> {
+  const response = await apiFetch(`/api/applications/${id}/follow-up`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ followUpDate }),
+  });
+  if (!response.ok) throw await readApiError(response, 'Could not reschedule follow-up.');
+  return response.json();
+}
+
 export async function updateApplicationStatus(
   id: number,
   status: ApplicationStatus,
