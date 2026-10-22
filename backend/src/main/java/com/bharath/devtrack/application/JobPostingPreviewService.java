@@ -209,16 +209,25 @@ public class JobPostingPreviewService {
     private static String bamboohrLocation(JsonNode posting) {
         JsonNode location = posting.path("location");
         String city = text(location.path("city"));
-        String state = text(location.path("state"));
+        String region = text(location.path("state"));
         String country = text(location.path("addressCountry"));
+        if (city.isEmpty() && region.isEmpty() && country.isEmpty()) {
+            // Some boards provide the location only in the ATS-specific location object.
+            location = posting.path("atsLocation");
+            city = text(location.path("city"));
+            region = text(location.path("state"));
+            if (region.isEmpty()) region = text(location.path("province"));
+            country = text(location.path("country"));
+        }
         String place = !city.isEmpty()
-                ? city + (state.isEmpty() ? "" : ", " + state)
-                : !state.isEmpty() ? state : country;
-        boolean remote = posting.path("isRemote").asBoolean(false)
-                || "1".equals(posting.path("locationType").asText());
-        boolean hybrid = "2".equals(posting.path("locationType").asText());
-        String value = remote ? (place.isEmpty() ? "Remote" : "Remote - " + place)
-                : hybrid ? (place.isEmpty() ? "Hybrid" : "Hybrid - " + place) : place;
+                ? city + (region.isEmpty() ? "" : ", " + region)
+                : !region.isEmpty() ? region : country;
+
+        // locationType is an undocumented provider code, not a reliable remote/hybrid label.
+        // Only mark a posting remote when BambooHR explicitly returns isRemote=true.
+        String value = posting.path("isRemote").asBoolean(false)
+                ? (place.isEmpty() ? "Remote" : "Remote - " + place)
+                : place;
         return value.length() > 255 ? value.substring(0, 255) : value;
     }
 
