@@ -184,6 +184,12 @@ public class JobApplicationService {
         return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
+    public JobApplication rescheduleFollowUp(Long ownerId, Long id, LocalDate followUpDate) {
+        JobApplication application = findById(id, ownerId);
+        application.setFollowUpDate(followUpDate);
+        return repository.save(application);
+    }
+
     public JobApplication updateStatus(
             Long ownerId,
             Long id,
