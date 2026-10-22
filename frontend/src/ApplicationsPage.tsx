@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
-import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, updateApplication, updateApplicationStatus } from './applicationApi';
-import { getDashboardSummary, getDueFollowUps, getUpcomingInterviews, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
+import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, updateApplication, updateApplicationStatus } from './applicationApi';
+import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
 import ApplicationForm from './ApplicationForm';
@@ -24,6 +24,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [interviews, setInterviews] = useState<UpcomingInterview[]>([]);
   const [followUps, setFollowUps] = useState<DueFollowUp[]>([]);
+  const [upcomingFollowUps, setUpcomingFollowUps] = useState<DueFollowUp[]>([]);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [recentActivity, setRecentActivity] = useState<ApplicationActivity[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -61,12 +62,12 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     setDashboardError('');
     Promise.all([
       getDashboardSummary(controller.signal), getUpcomingInterviews(controller.signal),
-      getDueFollowUps(controller.signal), getDashboardAnalytics(controller.signal),
-      getRecentActivity(controller.signal),
-    ]).then(([counts, upcoming, due, trends, activity]) => {
+      getDueFollowUps(controller.signal), getUpcomingFollowUps(controller.signal),
+      getDashboardAnalytics(controller.signal), getRecentActivity(controller.signal),
+    ]).then(([counts, upcoming, due, soon, trends, activity]) => {
       if (!controller.signal.aborted) {
         setSummary(counts); setInterviews(upcoming); setFollowUps(due);
-        setAnalytics(trends); setRecentActivity(activity);
+        setUpcomingFollowUps(soon); setAnalytics(trends); setRecentActivity(activity);
       }
     }).catch(error => {
         if (!controller.signal.aborted) setDashboardError(errorMessage(error, 'Could not load dashboard.'));
@@ -97,6 +98,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   async function edit(id: number, values: UpdateJobApplicationRequest) {
     await mutate(() => updateApplication(id, values), 'Changes saved.');
     setEditingId(null);
+  }
+
+  async function changeFollowUpDate(id: number, date: string) {
+    await mutate(() => rescheduleFollowUp(id, date), 'Follow-up rescheduled.');
   }
 
   async function changeStatus(id: number, next: ApplicationStatus) {
@@ -165,7 +170,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <span aria-hidden="true" className="button-plus">+</span> Add application
         </button>
       </div>
-      <Dashboard summary={summary} interviews={interviews} followUps={followUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} />
+      <Dashboard summary={summary} interviews={interviews} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} busy={busy || signingOut} />
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
