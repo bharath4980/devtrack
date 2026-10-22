@@ -17,7 +17,7 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 
 *Illustrative product overview—not a screenshot or production account data. The names and counts above are fictional. [See the safe demo walkthrough](docs/demo.md) for the current UI and an example exploration path.*
 
-- **Track the pipeline:** save opportunities; move them through Saved, Applied, Interview, Offer, and Rejected; search, sort, and filter an owner-scoped list.
+- **Track the pipeline:** switch between a searchable application list and a five-stage pipeline board (Saved, Applied, Interview, Offer, Rejected). Drag cards between stages or use the keyboard-accessible stage selector; load more items within each stage as needed. Changes use the same owner-scoped status endpoint and refresh the dashboard.
 - **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
 - **Act on next steps:** track overdue and due-today follow-ups, see the next seven days of upcoming follow-ups, and reschedule follow-up dates directly from the dashboard. Upcoming interviews show clear relative-date labels (UTC).
 - **In-app reminders only:** reminders appear when you open the signed-in dashboard; they are not email, push, or background notifications.

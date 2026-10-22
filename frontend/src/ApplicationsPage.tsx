@@ -7,6 +7,7 @@ import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, typ
 import ApplicationForm from './ApplicationForm';
 import ApplicationCard from './ApplicationCard';
 import Dashboard from './Dashboard';
+import PipelineBoard from './PipelineBoard';
 
 const initialQuery: ApplicationQuery = { search: '', status: '', sort: 'NEWEST', page: 0 };
 
@@ -14,6 +15,7 @@ type Props = { user: CurrentUser; onLogout: () => void; signingOut: boolean; log
 
 export default function ApplicationsPage({ user, onLogout, signingOut, logoutError }: Props) {
   const [query, setQuery] = useState(initialQuery);
+  const [view, setView] = useState<'list' | 'board'>('list');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ApplicationStatus | ''>('');
   const [sort, setSort] = useState<ApplicationSort>('NEWEST');
@@ -185,7 +187,15 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </button>
         </div>
         {exportError && <p className="form-error" role="alert">{exportError}</p>}
-        <form className="filter-form" onSubmit={applyFilters}>
+        <div className="application-view-switch" role="group" aria-label="Application view">
+          <button type="button" aria-pressed={view === 'list'} disabled={blocked}
+            className={view === 'list' ? 'view-active' : 'secondary-button'}
+            onClick={() => setView('list')}>List view</button>
+          <button type="button" aria-pressed={view === 'board'} disabled={blocked}
+            className={view === 'board' ? 'view-active' : 'secondary-button'}
+            onClick={() => { setView('board'); setEditingId(null); }}>Board view</button>
+        </div>
+        {view === 'list' && <form className="filter-form" onSubmit={applyFilters}>
           <div className="form-field filter-search"><label htmlFor="search">Search</label>
             <input id="search" type="search" maxLength={255} placeholder="Company, title, or location" value={search} onChange={event => setSearch(event.target.value)} />
           </div>
@@ -203,8 +213,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <div className="filter-actions"><button disabled={blocked}>Apply filters</button>
             <button type="button" className="secondary-button" onClick={clearFilters} disabled={blocked}>Clear filters</button>
           </div>
-        </form>
+        </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} />}
+        {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
         {!loading && !loadError && page && <>
@@ -219,6 +231,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
             <span>Page {page.page + 1} of {page.totalPages}</span>
             <button className="secondary-button" disabled={blocked || query.page + 1 >= page.totalPages} onClick={() => { setEditingId(null); setQuery(value => ({ ...value, page: value.page + 1 })); }}>Next</button>
           </nav>}
+        </>}
         </>}
       </section>
     </main>

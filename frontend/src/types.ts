@@ -45,6 +45,7 @@ export type ApplicationQuery = {
   status: ApplicationStatus | '';
   sort: ApplicationSort;
   page: number;
+  size?: number;
 };
 export type ApplicationPage = {
   items: JobApplication[];

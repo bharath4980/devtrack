@@ -49,7 +49,7 @@ export async function getApplicationActivity(id: number, signal?: AbortSignal): 
 
 export async function getApplications(query: ApplicationQuery, signal?: AbortSignal): Promise<ApplicationPage> {
   const params = new URLSearchParams({
-    page: String(query.page), size: '10', sort: query.sort,
+    page: String(query.page), size: String(query.size ?? 10), sort: query.sort,
   });
   if (query.search.trim()) params.set('search', query.search.trim());
   if (query.status) params.set('status', query.status);
