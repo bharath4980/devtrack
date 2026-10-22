@@ -22,6 +22,25 @@ export async function previewJobPosting(url: string, signal?: AbortSignal): Prom
   return response.json();
 }
 
+export type DuplicateApplication = {
+  id: number;
+  company: string;
+  title: string;
+  status: ApplicationStatus;
+};
+
+// This never contacts the pasted URL; the backend looks only at this account's saved links.
+export async function findDuplicateApplication(
+  url: string, excludeId?: number, signal?: AbortSignal,
+): Promise<DuplicateApplication | null> {
+  const params = new URLSearchParams({ url });
+  if (excludeId !== undefined) params.set('excludeId', String(excludeId));
+  const response = await apiFetch(`/api/applications/duplicate?${params}`, { signal, cache: 'no-store' });
+  if (response.status === 204) return null;
+  if (!response.ok) throw await readApiError(response, 'Could not check saved job links.');
+  return response.json();
+}
+
 export async function getApplicationActivity(id: number, signal?: AbortSignal): Promise<import('./dashboardApi').ApplicationActivity[]> {
   const response = await apiFetch(`/api/applications/${id}/activity`, { signal });
   if (!response.ok) throw await readApiError(response, 'Could not load application history.');
