@@ -21,7 +21,7 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 - **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
 - **Act on next steps:** record interview dates, optional follow-up dates, and view the upcoming-interview and follow-up panels.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
-- **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, SmartRecruiters, or Workday links. Unsupported providers fall back to manual entry.
+- **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, or BambooHR links. Unsupported providers fall back to manual entry.
 - **Learn from actual data:** view the six-month application trend, current pipeline distribution, and stage metrics; earlier unrecorded transitions can make some rates incomplete.
 
 ## Architecture
