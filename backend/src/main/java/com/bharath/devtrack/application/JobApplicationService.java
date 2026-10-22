@@ -8,6 +8,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import org.springframework.data.domain.PageRequest;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Locale;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -61,6 +65,78 @@ public class JobApplicationService {
         String escaped = normalized.replace("!", "!!").replace("%", "!%").replace("_", "!_");
         return ApplicationPage.from(repository.search(ownerId, escaped, status,
                 PageRequest.of(page, size, sort.toSort())));
+    }
+
+    public record DuplicateMatch(Long id, String company, String title, ApplicationStatus status) {}
+
+    /**
+     * A read-only, owner-scoped duplicate hint. Queries only URLs on the same host,
+     * then compares the normalized posting identity without fetching any remote page.
+     * Saving a duplicate remains an explicit user choice, not a database constraint.
+     */
+    @Transactional(readOnly = true)
+    public DuplicateMatch findDuplicate(Long ownerId, String url, Long excludeId) {
+        PostingKey requested = postingKey(url);
+        String host = requested.host();
+        for (JobApplication existing : repository.findDuplicateCandidates(
+                ownerId, "http://" + host + "%", "https://" + host + "%")) {
+            if (excludeId != null && excludeId.equals(existing.getId())) continue;
+            try {
+                if (requested.value().equals(postingKey(existing.getPostingUrl()).value())) {
+                    return new DuplicateMatch(existing.getId(), existing.getCompany(),
+                            existing.getTitle(), existing.getStatus());
+                }
+            } catch (ResponseStatusException ignored) {
+                // Old or malformed stored URLs cannot be used as duplicate identities.
+            }
+        }
+        return null;
+    }
+
+    private record PostingKey(String host, String value) {}
+
+    private static PostingKey postingKey(String url) {
+        if (url == null || url.isBlank() || url.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid job posting URL.");
+        }
+        URI uri;
+        try {
+            uri = URI.create(url.trim()).normalize();
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid job posting URL.");
+        }
+        String scheme = uri.getScheme();
+        if (scheme == null || (!scheme.equalsIgnoreCase("https") && !scheme.equalsIgnoreCase("http"))
+                || uri.getHost() == null || uri.getUserInfo() != null
+                || uri.getPort() < -1 || uri.getPort() > 65535) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid job posting URL.");
+        }
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+        while (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+
+        boolean pathBasedBoard = host.equals("boards.greenhouse.io")
+                || host.equals("job-boards.greenhouse.io")
+                || host.equals("jobs.lever.co") || host.equals("jobs.ashbyhq.com")
+                || host.equals("jobs.smartrecruiters.com") || host.equals("www.smartrecruiters.com")
+                || host.matches("[a-z0-9-]+\\.wd[0-9]{1,3}\\.myworkdayjobs\\.com")
+                || host.matches("[a-z0-9-]+\\.bamboohr\\.com");
+        ArrayList<String> functionalParams = new ArrayList<>();
+        if (!pathBasedBoard && uri.getRawQuery() != null) {
+            for (String part : uri.getRawQuery().split("&")) {
+                String key = part.split("=", 2)[0].toLowerCase(Locale.ROOT);
+                if (!part.isBlank() && !key.startsWith("utm_")
+                        && !java.util.Set.of("source", "src", "ref", "referrer",
+                                "gclid", "fbclid", "igshid", "mc_cid", "mc_eid").contains(key)) {
+                    functionalParams.add(part);
+                }
+            }
+        }
+        Collections.sort(functionalParams);
+        String query = functionalParams.isEmpty() ? "" : "?" + String.join("&", functionalParams);
+        String port = uri.getPort() == -1 || uri.getPort() == 80 || uri.getPort() == 443
+                ? "" : ":" + uri.getPort();
+        return new PostingKey(host, host + port + path + query);
     }
 
     /**
