@@ -1208,6 +1208,45 @@ footer { border-color: var(--line); color: #94a0b3; }
   .board-detail-panel .application-form fieldset { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Direct dashboard action-to-application navigation. */
+.quick-view-panel {
+  scroll-margin-top: 18px;
+  margin: 0 0 24px;
+  padding: 22px;
+  border: 1px solid #cddbf2;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(31, 49, 91, .07);
+}
+.quick-view-header, .quick-view-identity {
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+}
+.quick-view-header { margin-bottom: 16px; }
+.quick-view-header .eyebrow { margin: 0 0 5px; }
+.quick-view-header h3 { margin: 0; font-size: 18px; color: #273957; }
+.quick-view-identity { border-top: 1px solid #e8edf7; padding-top: 17px; }
+.quick-view-identity h4 { margin: 0 0 4px; color: #293958; font-size: 17px; }
+.quick-view-identity p { margin: 0; color: #6c7b95; font-size: 13px; }
+.quick-view-details {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px; margin: 18px 0 0;
+}
+.quick-view-details > div { background: #f6f8fc; border-radius: 10px; padding: 12px; min-width: 0; }
+.quick-view-details dt { color: #748299; font-weight: 750; font-size: 11px; margin-bottom: 5px; }
+.quick-view-details dd { margin: 0; color: #253653; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
+.quick-view-notes { margin-top: 17px; color: #334564; font-size: 13px; }
+.quick-view-notes p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quick-view-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin: 18px 0; }
+.quick-view-actions a { font-size: 12px; font-weight: 750; color: #435ac0; }
+.quick-view-panel .application-form { margin-top: 16px; }
+.quick-view-open { margin-top: 7px; padding: 5px 9px; min-height: 30px; font-size: 11px; }
+.follow-up-date .quick-view-open { white-space: nowrap; }
+@media (max-width: 700px) {
+  .quick-view-panel { padding: 15px; }
+  .quick-view-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-view-panel .application-form fieldset { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Page-scoped bulk status actions. Existing status history remains authoritative. */
 .bulk-toolbar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;

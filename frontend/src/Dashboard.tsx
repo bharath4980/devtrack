@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { errorMessage } from './apiError';
+import DashboardQuickView from './DashboardQuickView';
 import type { DashboardSummary, DueFollowUp, UpcomingInterview, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
 import { activityText, activityTime } from './ApplicationTimeline';
-import { statuses, statusLabel } from './types';
+import { statuses, statusLabel, type UpdateJobApplicationRequest } from './types';
 
 type Props = {
   summary: DashboardSummary | null;
@@ -10,6 +11,8 @@ type Props = {
   followUps: DueFollowUp[];
   upcomingFollowUps: DueFollowUp[];
   onReschedule: (id: number, date: string) => Promise<void>;
+  onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
+  revision: number;
   busy: boolean;
   analytics: DashboardAnalytics | null;
   recentActivity: ApplicationActivity[];
@@ -40,9 +43,10 @@ type FollowUpRowProps = {
   upcoming: boolean;
   busy: boolean;
   onReschedule: (id: number, date: string) => Promise<void>;
+  onOpen: (id: number) => void;
 };
 
-function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule }: FollowUpRowProps) {
+function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onOpen }: FollowUpRowProps) {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(item.followUpDate);
   const [saving, setSaving] = useState(false);
@@ -72,6 +76,8 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule }: FollowUpR
           item.followUpDate < todayUtc ? overdueLabel(item.followUpDate, todayUtc) : 'Due today'}
       </span>
       <time dateTime={item.followUpDate}>{item.followUpDate}</time>
+      <button type="button" className="secondary-button quick-view-open"
+        onClick={() => onOpen(item.id)}>Open application</button>
       <button type="button" className="secondary-button reschedule-toggle"
         disabled={busy || saving} aria-expanded={editing}
         onClick={() => { setEditing(!editing); setDate(item.followUpDate); setError(''); }}>
@@ -92,7 +98,8 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule }: FollowUpR
   </div>;
 }
 
-export default function Dashboard({ summary, interviews, followUps, upcomingFollowUps, onReschedule, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, followUps, upcomingFollowUps, onReschedule, onEdit, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+  const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const pipeline = statuses.map(status => ({
     status,
     count: summary?.[status.toLowerCase() as keyof DashboardSummary] ?? 0,
@@ -110,6 +117,9 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
       </div>
       <span className="snapshot-label"><span className="snapshot-dot" aria-hidden="true" /> Current snapshot</span>
     </div>
+    {quickViewId !== null && <DashboardQuickView key={quickViewId}
+      applicationId={quickViewId} revision={revision} busy={busy}
+      onClose={() => setQuickViewId(null)} onSave={onEdit} />}
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}
     {!loading && !error && summary && <>
@@ -213,7 +223,10 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
           ? <p className="form-help">No activity recorded yet. New applications and status changes will appear here.</p>
           : <ol className="recent-list">{recentActivity.map(item =>
               <li key={item.id}><span className="timeline-marker" aria-hidden="true" />
-                <div><strong>{activityText(item)}</strong><p>{item.company} · {item.title}</p></div>
+                <div><strong>{activityText(item)}</strong><p>{item.company} · {item.title}</p>
+                  <button type="button" className="secondary-button quick-view-open"
+                    onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+                </div>
                 <time dateTime={item.occurredAt}>{activityTime(item.occurredAt)}</time>
               </li>)}</ol>}
       </section>
@@ -237,7 +250,7 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
                   <p>You're all caught up.</p><small>Set a follow-up date on an application to keep it on your radar.</small>
                 </div>
               : followUps.map(item => <FollowUpRow key={item.id} item={item} todayUtc={todayUtc}
-                  onReschedule={onReschedule} busy={busy} upcoming={false} />)}
+                  onReschedule={onReschedule} onOpen={setQuickViewId} busy={busy} upcoming={false} />)}
           </div>
           <p className="form-help follow-up-count-note">Counts include all due applications, including those outside this five-item list.</p>
           <div className="upcoming-follow-ups-heading">
@@ -248,7 +261,7 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
             {upcomingFollowUps.length === 0
               ? <p className="form-help upcoming-empty">No upcoming follow-ups in the next seven days.</p>
               : upcomingFollowUps.map(item => <FollowUpRow key={item.id} item={item}
-                  todayUtc={todayUtc} onReschedule={onReschedule} busy={busy} upcoming />)}
+                  todayUtc={todayUtc} onReschedule={onReschedule} onOpen={setQuickViewId} busy={busy} upcoming />)}
           </div>
         </section>
         <section className="schedule-panel" aria-labelledby="interviews-heading">
@@ -262,7 +275,10 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
                   <p>No interviews scheduled.</p><small>Add an interview date and set an application's status to Interview.</small>
                 </div>
               : interviews.map(item => <div className="upcoming-interview" key={item.id}>
-                  <div><h4>{item.title}</h4><p>{item.company}</p></div>
+                  <div><h4>{item.title}</h4><p>{item.company}</p>
+                    <button type="button" className="secondary-button quick-view-open"
+                      onClick={() => setQuickViewId(item.id)}>Open application</button>
+                  </div>
                   <div className="interview-date">
                     <span>{daysUntil(item.interviewDate, todayUtc) <= 7
                       ? upcomingLabel(item.interviewDate, todayUtc) : 'Scheduled'}</span>

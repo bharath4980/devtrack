@@ -103,6 +103,11 @@ public class JobApplicationController {
         return service.update(accounts.currentUser(principal).getId(), id, request);
     }
 
+    @GetMapping("/{id}")
+    public JobApplication findOne(Principal principal, @PathVariable Long id) {
+        return service.getForOwner(accounts.currentUser(principal).getId(), id);
+    }
+
     @GetMapping("/{id}/activity")
     public java.util.List<ApplicationActivityResponse> getActivity(Principal principal, @PathVariable Long id) {
         return activity.getForApplication(accounts.currentUser(principal).getId(), id);
