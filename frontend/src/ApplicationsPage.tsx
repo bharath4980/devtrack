@@ -190,7 +190,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <div className="application-view-switch" role="group" aria-label="Application view">
           <button type="button" aria-pressed={view === 'list'} disabled={blocked}
             className={view === 'list' ? 'view-active' : 'secondary-button'}
-            onClick={() => setView('list')}>List view</button>
+            onClick={() => { setView('list'); refresh(); }}>List view</button>
           <button type="button" aria-pressed={view === 'board'} disabled={blocked}
             className={view === 'board' ? 'view-active' : 'secondary-button'}
             onClick={() => { setView('board'); setEditingId(null); }}>Board view</button>
