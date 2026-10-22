@@ -21,6 +21,22 @@ public interface JobApplicationRepository
 
     long countByOwner_Id(Long ownerId);
 
+    // Only consider URLs from the signed-in owner's applications on the same host.
+    @Query("""
+            SELECT application FROM JobApplication application
+            WHERE application.owner.id = :ownerId
+              AND application.postingUrl IS NOT NULL
+              AND (LOWER(application.postingUrl) LIKE :httpPrefix
+                   OR LOWER(application.postingUrl) LIKE :httpsPrefix)
+            ORDER BY application.id ASC
+            """)
+    List<JobApplication> findDuplicateCandidates(
+            @Param("ownerId") Long ownerId,
+            @Param("httpPrefix") String httpPrefix,
+            @Param("httpsPrefix") String httpsPrefix);
+
+
+
     // Fetch one bounded, stable ID-ordered set for the owner's CSV export.
     List<JobApplication> findByOwner_IdOrderByIdAsc(Long ownerId, Pageable pageable);
 
