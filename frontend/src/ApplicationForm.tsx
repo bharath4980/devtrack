@@ -105,7 +105,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
           <div className="posting-import-actions">
             <button type="button" className="secondary-button" disabled={busy || lookupBusy || !values.postingUrl.trim()}
               onClick={() => void importDetails()}>{lookupBusy ? 'Looking up…' : 'Fill from job link'}</button>
-            <span className="form-help">Supports public Greenhouse, Lever, Ashby, and SmartRecruiters links. Other sites can be entered manually.</span>
+            <span className="form-help">Supports public Greenhouse, Lever, Ashby, SmartRecruiters, and Workday links. Other sites can be entered manually.</span>
           </div>
           {lookupMessage && <p className="form-help lookup-success" role="status">{lookupMessage}</p>}
           {lookupError && <p className="form-error" role="alert">{lookupError}</p>}
