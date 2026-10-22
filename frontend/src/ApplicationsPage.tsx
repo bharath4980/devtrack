@@ -215,7 +215,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </div>
         </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} />}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} />}
         {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
