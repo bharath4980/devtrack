@@ -382,6 +382,41 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void reschedulingFollowUpsRequiresOwnershipValidationAndCsrf() throws Exception {
+        JobApplication mine = seed(alice, "Reminder Co");
+        mine.setFollowUpDate(java.time.LocalDate.of(2026, 10, 20));
+        mine = applications.save(mine);
+        JobApplication other = seed(bob, "Private Reminder");
+        MockHttpSession session = login(alice.getEmail());
+        Csrf csrf = csrf(session);
+        mvc.perform(patch("/api/applications/" + mine.getId() + "/follow-up").session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"followUpDate\":\"2026-10-30\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/applications/" + other.getId() + "/follow-up").session(session)
+                        .header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"followUpDate\":\"2026-10-30\"}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(patch("/api/applications/" + mine.getId() + "/follow-up").session(session)
+                        .header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"followUpDate\":null}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/applications/" + mine.getId() + "/follow-up").session(session)
+                        .header(csrf.header(), csrf.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"followUpDate\":\"2026-10-30\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.followUpDate").value("2026-10-30"))
+                .andExpect(jsonPath("$.company").value("Reminder Co"));
+        assertThat(applications.findById(mine.getId()).orElseThrow().getFollowUpDate())
+                .isEqualTo(java.time.LocalDate.of(2026, 10, 30));
+        assertThat(applications.findById(other.getId()).orElseThrow().getFollowUpDate())
+                .isNull();
+    }
+
+    @Test
     void followUpDatesAreSavedUpdatedAndReturnedToTheOwner() throws Exception {
         MockHttpSession session = login(alice.getEmail());
         Csrf csrf = csrf(session);
