@@ -211,6 +211,35 @@ test('SmartRecruiters job posting link fills editable details before saving', as
     .toHaveAttribute('href', 'https://jobs.smartrecruiters.com/SampleCo/884352026-platform-engineer');
 });
 
+test('Workday job posting link fills editable details and preserves the job URL', async ({ page }) => {
+  await registerAndLogin(page);
+  const jobUrl = 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Platform-Engineer_JR102030';
+  await page.route('**/api/job-postings/preview?**', async route => {
+    const request = new URL(route.request().url());
+    expect(request.searchParams.get('url')).toBe(jobUrl);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        company: 'Nvidia', title: 'Platform Engineer', location: 'Santa Clara, CA',
+      }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill(jobUrl);
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Nvidia');
+  await expect(form.getByLabel('Job title')).toHaveValue('Platform Engineer');
+  await expect(form.getByLabel('Location')).toHaveValue('Santa Clara, CA');
+  await form.getByLabel('Company', { exact: true }).fill('NVIDIA');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  const card = page.getByRole('article', { name: 'NVIDIA — Platform Engineer' });
+  await expect(card).toContainText('Santa Clara, CA');
+  await expect(card.getByRole('link', { name: 'View job posting' }))
+    .toHaveAttribute('href', jobUrl);
+});
+
 test('dashboard metrics, distribution and navigation reflect saved applications', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Alpha Company');
