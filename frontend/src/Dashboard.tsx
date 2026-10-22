@@ -1,3 +1,5 @@
+import { useState, type FormEvent } from 'react';
+import { errorMessage } from './apiError';
 import type { DashboardSummary, DueFollowUp, UpcomingInterview, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
 import { activityText, activityTime } from './ApplicationTimeline';
 import { statuses, statusLabel } from './types';
@@ -6,6 +8,9 @@ type Props = {
   summary: DashboardSummary | null;
   interviews: UpcomingInterview[];
   followUps: DueFollowUp[];
+  upcomingFollowUps: DueFollowUp[];
+  onReschedule: (id: number, date: string) => Promise<void>;
+  busy: boolean;
   analytics: DashboardAnalytics | null;
   recentActivity: ApplicationActivity[];
   loading: boolean;
@@ -19,7 +24,75 @@ function overdueLabel(date: string, todayUtc: string) {
   return days + (days === 1 ? ' day overdue' : ' days overdue');
 }
 
-export default function Dashboard({ summary, interviews, followUps, analytics, recentActivity, loading, error, onRetry }: Props) {
+function daysUntil(date: string, todayUtc: string) {
+  return Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(todayUtc + 'T00:00:00Z')) / 86400000);
+}
+
+function upcomingLabel(date: string, todayUtc: string) {
+  const days = daysUntil(date, todayUtc);
+  return days === 0 ? 'Today' : days === 1 ? 'Tomorrow' :
+    days > 1 && days <= 7 ? 'In ' + days + ' days' : date;
+}
+
+type FollowUpRowProps = {
+  item: DueFollowUp;
+  todayUtc: string;
+  upcoming: boolean;
+  busy: boolean;
+  onReschedule: (id: number, date: string) => Promise<void>;
+};
+
+function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule }: FollowUpRowProps) {
+  const [editing, setEditing] = useState(false);
+  const [date, setDate] = useState(item.followUpDate);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const fieldId = 'followup-' + (upcoming ? 'next-' : 'due-') + item.id;
+  async function saveDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || saving) return;
+    setError('');
+    setSaving(true);
+    try {
+      await onReschedule(item.id, date);
+      setEditing(false);
+    } catch (failure) {
+      setError(errorMessage(failure, 'Could not reschedule follow-up.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <div className={upcoming ? 'upcoming-interview follow-up-task upcoming-follow-up' :
+      'upcoming-interview follow-up-task due-follow-up'}>
+    <div className="follow-up-job"><h4>{item.title}</h4><p>{item.company}</p></div>
+    <div className="follow-up-date">
+      <span className={!upcoming && item.followUpDate < todayUtc ? 'due-label overdue' : 'due-label'}>
+        {upcoming ? upcomingLabel(item.followUpDate, todayUtc) :
+          item.followUpDate < todayUtc ? overdueLabel(item.followUpDate, todayUtc) : 'Due today'}
+      </span>
+      <time dateTime={item.followUpDate}>{item.followUpDate}</time>
+      <button type="button" className="secondary-button reschedule-toggle"
+        disabled={busy || saving} aria-expanded={editing}
+        onClick={() => { setEditing(!editing); setDate(item.followUpDate); setError(''); }}>
+        {editing ? 'Close' : 'Reschedule'}
+      </button>
+    </div>
+    {editing && <form className="inline-reschedule" onSubmit={event => void saveDate(event)}>
+      <label htmlFor={fieldId}>New follow-up date for {item.company}</label>
+      <div className="inline-reschedule-controls">
+        <input id={fieldId} type="date" value={date} required disabled={busy || saving}
+          onChange={event => setDate(event.currentTarget.value)} />
+        <button type="submit" disabled={busy || saving || !date || date === item.followUpDate}>
+          {saving ? 'Saving…' : 'Save date'}
+        </button>
+      </div>
+    </form>}
+    {error && <p className="form-error inline-reschedule-error" role="alert">{error}</p>}
+  </div>;
+}
+
+export default function Dashboard({ summary, interviews, followUps, upcomingFollowUps, onReschedule, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const pipeline = statuses.map(status => ({
     status,
     count: summary?.[status.toLowerCase() as keyof DashboardSummary] ?? 0,
@@ -40,6 +113,14 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}
     {!loading && !error && summary && <>
+      {(summary.overdueFollowUps > 0 || summary.dueTodayFollowUps > 0) && <div className="action-nudge" role="status">
+        <div>
+          <strong>Follow-ups need attention</strong>
+          <p>{summary.overdueFollowUps} overdue · {summary.dueTodayFollowUps} due today.
+            Reschedule them directly from the dashboard.</p>
+        </div>
+        <a href="#follow-ups-heading">Review follow-ups ↓</a>
+      </div>}
       <div className="kpi-grid">
         <div className="kpi-card kpi-primary"><span>Total applications</span><strong>{summary.total}</strong><small>Across your pipeline</small></div>
         <div className="kpi-card"><span>Applied</span><strong>{summary.applied}</strong><small>Applications submitted</small></div>
@@ -155,15 +236,20 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
               ? <div className="schedule-empty"><span className="empty-symbol" aria-hidden="true">✓</span>
                   <p>You're all caught up.</p><small>Set a follow-up date on an application to keep it on your radar.</small>
                 </div>
-              : followUps.map(item => <div className="upcoming-interview due-follow-up" key={item.id}>
-                  <div><h4>{item.title}</h4><p>{item.company}</p></div>
-                  <div className="follow-up-date">
-                    <span className={item.followUpDate < todayUtc ? 'due-label overdue' : 'due-label'}>{item.followUpDate < todayUtc ? overdueLabel(item.followUpDate, todayUtc) : 'Due today'}</span>
-                    <time dateTime={item.followUpDate}>{item.followUpDate}</time>
-                  </div>
-                </div>)}
+              : followUps.map(item => <FollowUpRow key={item.id} item={item} todayUtc={todayUtc}
+                  onReschedule={onReschedule} busy={busy} upcoming={false} />)}
           </div>
           <p className="form-help follow-up-count-note">Counts include all due applications, including those outside this five-item list.</p>
+          <div className="upcoming-follow-ups-heading">
+            <h4>Coming up · next 7 days</h4>
+            <p>Next five upcoming follow-ups · UTC dates</p>
+          </div>
+          <div className="schedule-items">
+            {upcomingFollowUps.length === 0
+              ? <p className="form-help upcoming-empty">No upcoming follow-ups in the next seven days.</p>
+              : upcomingFollowUps.map(item => <FollowUpRow key={item.id} item={item}
+                  todayUtc={todayUtc} onReschedule={onReschedule} busy={busy} upcoming />)}
+          </div>
         </section>
         <section className="schedule-panel" aria-labelledby="interviews-heading">
           <div className="schedule-heading">
@@ -177,7 +263,11 @@ export default function Dashboard({ summary, interviews, followUps, analytics, r
                 </div>
               : interviews.map(item => <div className="upcoming-interview" key={item.id}>
                   <div><h4>{item.title}</h4><p>{item.company}</p></div>
-                  <time dateTime={item.interviewDate}>{item.interviewDate}</time>
+                  <div className="interview-date">
+                    <span>{daysUntil(item.interviewDate, todayUtc) <= 7
+                      ? upcomingLabel(item.interviewDate, todayUtc) : 'Scheduled'}</span>
+                    <time dateTime={item.interviewDate}>{item.interviewDate}</time>
+                  </div>
                 </div>)}
           </div>
         </section>
