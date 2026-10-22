@@ -31,6 +31,7 @@ jobs:
             echo '::error::Configure the DEVTRACK_BACKUP_DB_PASSWORD repository secret.'
             exit 1
           fi
+          AGE_RECIPIENT="$(printf '%s' "$AGE_RECIPIENT" | tr -d '[:space:]')"
           if [[ ! "$AGE_RECIPIENT" =~ ^age1[a-z0-9]{40,100}$ ]]; then
             echo '::error::Configure a valid DEVTRACK_BACKUP_AGE_RECIPIENT repository variable.'
             exit 1
@@ -73,6 +74,7 @@ jobs:
             '
 
           test -s "$dump"
+          AGE_RECIPIENT="$(printf '%s' "$AGE_RECIPIENT" | tr -d '[:space:]')"
           age --encrypt --recipient "$AGE_RECIPIENT" \
             --output "$encrypted" "$dump"
           test -s "$encrypted"
