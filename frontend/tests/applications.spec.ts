@@ -71,6 +71,65 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('pipeline board moves applications by stage selector and stays in sync with list and dashboard', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Board Example');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  const saved = board.getByRole('region', { name: 'Saved stage' });
+  const applied = board.getByRole('region', { name: 'Applied stage' });
+  const card = saved.getByRole('article', { name: 'Board Example — Software Engineer' });
+  await expect(card).toBeVisible();
+  await expect(saved.getByLabel('1 applications')).toBeVisible();
+  await card.getByLabel('Move to stage').selectOption('APPLIED');
+  await expect(applied.getByRole('article', { name: 'Board Example — Software Engineer' })).toBeVisible();
+  await expect(saved.getByLabel('0 applications')).toBeVisible();
+  await page.getByRole('button', { name: 'List view' }).click();
+  const listCard = page.getByRole('article', { name: 'Board Example — Software Engineer' });
+  await expect(listCard.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await expect(board.getByRole('region', { name: 'Applied stage' })
+    .getByRole('article', { name: 'Board Example — Software Engineer' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('pipeline board loads later pages instead of silently hiding applications', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 22; i++) await seed(page, 'Board Company ' + i);
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const saved = page.getByRole('region', { name: 'Saved stage' });
+  await expect(saved.getByRole('article')).toHaveCount(20);
+  await expect(saved.getByLabel('22 applications')).toBeVisible();
+  await saved.getByRole('button', { name: 'Load more (20 of 22)' }).click();
+  await expect(saved.getByRole('article')).toHaveCount(22);
+  await expect(saved.getByRole('button', { name: 'Load more (20 of 22)' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'List view' }).click();
+  await page.getByLabel('Search', { exact: true }).fill('not listed');
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.getByText('No matches. Try another search or clear your filters.')).toBeVisible();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await expect(page.getByRole('region', { name: 'Saved stage' })
+    .getByRole('article')).toHaveCount(20);
+});
+
+test('dragging a pipeline card changes its saved stage', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'Mobile uses the accessible stage selector.');
+  await registerAndLogin(page);
+  await seed(page, 'Drag Example');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  const saved = board.getByRole('region', { name: 'Saved stage' });
+  const applied = board.getByRole('region', { name: 'Applied stage' });
+  const card = saved.getByRole('article', { name: 'Drag Example — Software Engineer' });
+  await expect(card).toBeVisible();
+  await card.dragTo(applied);
+  await expect(applied.getByRole('article', { name: 'Drag Example — Software Engineer' })).toBeVisible();
+  await expect(saved.getByRole('article')).toHaveCount(0);
+});
+
 test('CSV export downloads every owned application independent of list pagination', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 12; i++) await seed(page, 'Export Company ' + i);
