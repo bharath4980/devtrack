@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 public class JobPostingPreviewService {
     private static final int MAX_BODY_BYTES = 256 * 1024;
     private static final int MAX_ASHBY_BODY_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_WORKDAY_BODY_BYTES = 512 * 1024;
     private static final Pattern GREENHOUSE_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/jobs/([0-9]{1,20})/?$");
     private static final Pattern LEVER_PATH = Pattern.compile(
@@ -28,6 +29,12 @@ public class JobPostingPreviewService {
             "^/([a-zA-Z0-9_-]{1,80})/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})(?:/application)?/?$");
     private static final Pattern SMARTRECRUITERS_PATH = Pattern.compile(
             "^/([a-zA-Z0-9_-]{1,80})/([0-9]{6,20})(?:-[a-zA-Z0-9_-]{1,120})?/?$");
+    private static final Pattern WORKDAY_HOST = Pattern.compile(
+            "^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\\.wd[0-9]{1,3}\\.myworkdayjobs\\.com$");
+    private static final Pattern WORKDAY_PATH = Pattern.compile(
+            "^/(?:[a-zA-Z]{2}(?:-[a-zA-Z]{2})?/)?([a-zA-Z0-9_-]{1,80})"
+                    + "(/job(?:/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}){0,7}"
+                    + "/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}_[a-zA-Z0-9-]{3,50})/?$");
 
     private final ObjectMapper mapper;
     private final HttpClient client;
@@ -69,6 +76,8 @@ public class JobPostingPreviewService {
         Matcher lever = LEVER_PATH.matcher(path == null ? "" : path);
         Matcher ashby = ASHBY_PATH.matcher(path == null ? "" : path);
         Matcher smartRecruiters = SMARTRECRUITERS_PATH.matcher(path == null ? "" : path);
+        Matcher workdayHost = WORKDAY_HOST.matcher(host);
+        Matcher workdayPath = WORKDAY_PATH.matcher(path == null ? "" : path);
 
         boolean isGreenhouse = (host.equals("boards.greenhouse.io")
                 || host.equals("job-boards.greenhouse.io")) && greenhouse.matches();
@@ -76,23 +85,29 @@ public class JobPostingPreviewService {
         boolean isAshby = host.equals("jobs.ashbyhq.com") && ashby.matches();
         boolean isSmartRecruiters = (host.equals("jobs.smartrecruiters.com")
                 || host.equals("www.smartrecruiters.com")) && smartRecruiters.matches();
-        if (!isGreenhouse && !isLever && !isAshby && !isSmartRecruiters) {
+        boolean isWorkday = workdayHost.matches() && workdayPath.matches();
+        if (!isGreenhouse && !isLever && !isAshby && !isSmartRecruiters && !isWorkday) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Automatic import supports Greenhouse, Lever, Ashby, and SmartRecruiters job links. Enter details manually for other sites.");
+                    "Automatic import supports Greenhouse, Lever, Ashby, SmartRecruiters, and Workday job links. Enter details manually for other sites.");
         }
 
         String companySlug = isGreenhouse ? greenhouse.group(1)
-                : isLever ? lever.group(1) : isAshby ? ashby.group(1) : smartRecruiters.group(1);
+                : isLever ? lever.group(1) : isAshby ? ashby.group(1)
+                : isSmartRecruiters ? smartRecruiters.group(1) : workdayHost.group(1);
         String jobId = isGreenhouse ? greenhouse.group(2)
-                : isLever ? lever.group(2) : isAshby ? ashby.group(2) : smartRecruiters.group(2);
+                : isLever ? lever.group(2) : isAshby ? ashby.group(2)
+                : isSmartRecruiters ? smartRecruiters.group(2) : workdayPath.group(2);
 
-        // Only contact fixed public ATS API hosts using validated board and job identifiers.
-        // Never fetch the user-supplied URL or follow provider redirects.
+        // Only contact validated public ATS endpoints with validated job identifiers.
+        // Never fetch the original pasted URL or follow provider redirects.
         URI endpoint = URI.create(isGreenhouse
                 ? "https://boards-api.greenhouse.io/v1/boards/" + companySlug + "/jobs/" + jobId
                 : isLever ? "https://api.lever.co/v0/postings/" + companySlug + "/" + jobId
                 : isAshby ? "https://api.ashbyhq.com/posting-api/job-board/" + companySlug
-                : "https://api.smartrecruiters.com/v1/companies/" + companySlug + "/postings/" + jobId);
+                : isSmartRecruiters ? "https://api.smartrecruiters.com/v1/companies/" + companySlug
+                        + "/postings/" + jobId
+                : "https://" + host + "/wday/cxs/" + companySlug
+                        + "/" + workdayPath.group(1) + jobId);
 
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(Duration.ofSeconds(5))
@@ -107,7 +122,8 @@ public class JobPostingPreviewService {
                     throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                             "Job details are unavailable. Check the link or enter the details manually.");
                 }
-                int limit = isAshby ? MAX_ASHBY_BODY_BYTES : MAX_BODY_BYTES;
+                int limit = isAshby ? MAX_ASHBY_BODY_BYTES
+                        : isWorkday ? MAX_WORKDAY_BODY_BYTES : MAX_BODY_BYTES;
                 byte[] bytes = stream.readNBytes(limit + 1);
                 if (bytes.length > limit) {
                     throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -115,7 +131,8 @@ public class JobPostingPreviewService {
                 }
 
                 JsonNode data = mapper.readTree(bytes);
-                JsonNode posting = isAshby ? findAshbyPosting(data, companySlug, jobId) : data;
+                JsonNode posting = isAshby ? findAshbyPosting(data, companySlug, jobId)
+                        : isWorkday ? data.path("jobPostingInfo") : data;
                 if (isSmartRecruiters) {
                     // The public detail endpoint must return the requested company and posting.
                     String returnedId = text(posting.path("id"));
@@ -128,11 +145,13 @@ public class JobPostingPreviewService {
                     }
                 }
                 String title = text(isSmartRecruiters ? posting.path("name")
+                        : isWorkday ? posting.path("title")
                         : isAshby ? posting.path("title")
                         : isGreenhouse ? posting.path("title") : posting.path("text"));
                 String location = isSmartRecruiters
                         ? smartRecruitersLocation(posting.path("location"))
-                        : text(isAshby ? posting.path("location")
+                        : text(isWorkday ? posting.path("location")
+                        : isAshby ? posting.path("location")
                         : isGreenhouse ? posting.path("location").path("name")
                         : posting.path("categories").path("location"));
                 if (title.isEmpty()) {
