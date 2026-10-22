@@ -33,7 +33,8 @@ public class JobPostingPreviewService {
             "^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\\.wd[0-9]{1,3}\\.myworkdayjobs\\.com$");
     private static final Pattern WORKDAY_PATH = Pattern.compile(
             "^/(?:[a-zA-Z]{2}(?:-[a-zA-Z]{2})?/)?([a-zA-Z0-9_-]{1,80})"
-                    + "(/job(?:/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}){1,8})/?$");
+                    + "(/job(?:/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}){0,7}"
+                    + "/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}_[a-zA-Z0-9-]{3,50})/?$");
 
     private final ObjectMapper mapper;
     private final HttpClient client;
