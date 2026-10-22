@@ -35,6 +35,9 @@ public class JobPostingPreviewService {
             "^/(?:[a-zA-Z]{2}(?:-[a-zA-Z]{2})?/)?([a-zA-Z0-9_-]{1,80})"
                     + "(/job(?:/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}){0,7}"
                     + "/[a-zA-Z0-9_-][a-zA-Z0-9._~-]{0,119}_[a-zA-Z0-9-]{3,50})/?$");
+    private static final Pattern BAMBOOHR_HOST = Pattern.compile(
+            "^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\\.bamboohr\\.com$");
+    private static final Pattern BAMBOOHR_PATH = Pattern.compile("^/careers/([0-9]{1,12})/?$");
 
     private final ObjectMapper mapper;
     private final HttpClient client;
@@ -78,6 +81,8 @@ public class JobPostingPreviewService {
         Matcher smartRecruiters = SMARTRECRUITERS_PATH.matcher(path == null ? "" : path);
         Matcher workdayHost = WORKDAY_HOST.matcher(host);
         Matcher workdayPath = WORKDAY_PATH.matcher(path == null ? "" : path);
+        Matcher bamboohrHost = BAMBOOHR_HOST.matcher(host);
+        Matcher bamboohrPath = BAMBOOHR_PATH.matcher(path == null ? "" : path);
 
         boolean isGreenhouse = (host.equals("boards.greenhouse.io")
                 || host.equals("job-boards.greenhouse.io")) && greenhouse.matches();
@@ -86,17 +91,21 @@ public class JobPostingPreviewService {
         boolean isSmartRecruiters = (host.equals("jobs.smartrecruiters.com")
                 || host.equals("www.smartrecruiters.com")) && smartRecruiters.matches();
         boolean isWorkday = workdayHost.matches() && workdayPath.matches();
-        if (!isGreenhouse && !isLever && !isAshby && !isSmartRecruiters && !isWorkday) {
+        boolean isBamboohr = bamboohrHost.matches() && bamboohrPath.matches();
+        if (!isGreenhouse && !isLever && !isAshby && !isSmartRecruiters
+                && !isWorkday && !isBamboohr) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Automatic import supports Greenhouse, Lever, Ashby, SmartRecruiters, and Workday job links. Enter details manually for other sites.");
+                    "Automatic import supports Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR job links. Enter details manually for other sites.");
         }
 
         String companySlug = isGreenhouse ? greenhouse.group(1)
                 : isLever ? lever.group(1) : isAshby ? ashby.group(1)
-                : isSmartRecruiters ? smartRecruiters.group(1) : workdayHost.group(1);
+                : isSmartRecruiters ? smartRecruiters.group(1)
+                : isWorkday ? workdayHost.group(1) : bamboohrHost.group(1);
         String jobId = isGreenhouse ? greenhouse.group(2)
                 : isLever ? lever.group(2) : isAshby ? ashby.group(2)
-                : isSmartRecruiters ? smartRecruiters.group(2) : workdayPath.group(2);
+                : isSmartRecruiters ? smartRecruiters.group(2)
+                : isWorkday ? workdayPath.group(2) : bamboohrPath.group(1);
 
         // Only contact validated public ATS endpoints with validated job identifiers.
         // Never fetch the original pasted URL or follow provider redirects.
@@ -106,8 +115,9 @@ public class JobPostingPreviewService {
                 : isAshby ? "https://api.ashbyhq.com/posting-api/job-board/" + companySlug
                 : isSmartRecruiters ? "https://api.smartrecruiters.com/v1/companies/" + companySlug
                         + "/postings/" + jobId
-                : "https://" + host + "/wday/cxs/" + companySlug
-                        + "/" + workdayPath.group(1) + jobId);
+                : isWorkday ? "https://" + host + "/wday/cxs/" + companySlug
+                        + "/" + workdayPath.group(1) + jobId
+                : "https://" + host + "/careers/" + jobId + "/detail");
 
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(Duration.ofSeconds(5))
@@ -132,7 +142,28 @@ public class JobPostingPreviewService {
 
                 JsonNode data = mapper.readTree(bytes);
                 JsonNode posting = isAshby ? findAshbyPosting(data, companySlug, jobId)
-                        : isWorkday ? data.path("jobPostingInfo") : data;
+                        : isWorkday ? data.path("jobPostingInfo")
+                        : isBamboohr ? data.path("result").path("jobOpening") : data;
+                if (isBamboohr) {
+                    // A detail response can only describe the posting requested on the same board.
+                    String shareUrl = text(posting.path("jobOpeningShareUrl"));
+                    if (!shareUrl.isEmpty()) {
+                        URI shared;
+                        try {
+                            shared = URI.create(shareUrl);
+                        } catch (IllegalArgumentException exception) {
+                            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                                    "The requested job is not available. Enter details manually.");
+                        }
+                        if (!"https".equalsIgnoreCase(shared.getScheme())
+                                || !host.equalsIgnoreCase(shared.getHost())
+                                || shared.getUserInfo() != null || shared.getPort() != -1
+                                || !("/careers/" + jobId).equals(shared.getPath())) {
+                            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                                    "The requested job is not available. Enter details manually.");
+                        }
+                    }
+                }
                 if (isSmartRecruiters) {
                     // The public detail endpoint must return the requested company and posting.
                     String returnedId = text(posting.path("id"));
@@ -145,11 +176,13 @@ public class JobPostingPreviewService {
                     }
                 }
                 String title = text(isSmartRecruiters ? posting.path("name")
+                        : isBamboohr ? posting.path("jobOpeningName")
                         : isWorkday ? posting.path("title")
                         : isAshby ? posting.path("title")
                         : isGreenhouse ? posting.path("title") : posting.path("text"));
                 String location = isSmartRecruiters
                         ? smartRecruitersLocation(posting.path("location"))
+                        : isBamboohr ? bamboohrLocation(posting)
                         : text(isWorkday ? posting.path("location")
                         : isAshby ? posting.path("location")
                         : isGreenhouse ? posting.path("location").path("name")
@@ -171,6 +204,22 @@ public class JobPostingPreviewService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Job lookup was interrupted. Try again or enter details manually.");
         }
+    }
+
+    private static String bamboohrLocation(JsonNode posting) {
+        JsonNode location = posting.path("location");
+        String city = text(location.path("city"));
+        String state = text(location.path("state"));
+        String country = text(location.path("addressCountry"));
+        String place = !city.isEmpty()
+                ? city + (state.isEmpty() ? "" : ", " + state)
+                : !state.isEmpty() ? state : country;
+        boolean remote = posting.path("isRemote").asBoolean(false)
+                || "1".equals(posting.path("locationType").asText());
+        boolean hybrid = "2".equals(posting.path("locationType").asText());
+        String value = remote ? (place.isEmpty() ? "Remote" : "Remote - " + place)
+                : hybrid ? (place.isEmpty() ? "Hybrid" : "Hybrid - " + place) : place;
+        return value.length() > 255 ? value.substring(0, 255) : value;
     }
 
     private static String smartRecruitersLocation(JsonNode location) {
