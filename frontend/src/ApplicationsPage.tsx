@@ -172,7 +172,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <span aria-hidden="true" className="button-plus">+</span> Add application
         </button>
       </div>
-      <Dashboard summary={summary} interviews={interviews} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} busy={busy || signingOut} />
+      <Dashboard summary={summary} interviews={interviews} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} revision={revision} busy={busy || signingOut} />
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
