@@ -209,6 +209,74 @@ test('board highlights actionable dates and stacks columns on mobile', async ({ 
   }
 });
 
+test('dashboard actions open the exact application for editing and history', async ({ page }) => {
+  await registerAndLogin(page);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  const headers = { [csrf.headerName]: csrf.token };
+  const dueResponse = await page.request.post('/api/applications', {
+    headers,
+    data: { company: 'Quick Access Labs', title: 'Platform Engineer',
+      applicationDate: '2026-10-20', followUpDate: yesterday,
+      postingUrl: '', notes: 'Email hiring manager after the application.' },
+  });
+  expect(dueResponse.status()).toBe(201);
+  const dueId = (await dueResponse.json()).id;
+  const interviewResponse = await page.request.post('/api/applications', {
+    headers,
+    data: { company: 'Interview Works', title: 'Backend Engineer',
+      applicationDate: '2026-10-20', interviewDate: tomorrow,
+      postingUrl: '', notes: 'Ask about backend architecture.' },
+  });
+  expect(interviewResponse.status()).toBe(201);
+  const interviewId = (await interviewResponse.json()).id;
+  const scheduled = await page.request.put('/api/applications/' + interviewId, {
+    headers,
+    data: { company: 'Interview Works', title: 'Backend Engineer',
+      applicationDate: '2026-10-20', interviewDate: tomorrow,
+      followUpDate: null, location: '', postingUrl: '',
+      notes: 'Ask about backend architecture.' },
+  });
+  expect(scheduled.ok()).toBe(true);
+  const transition = await page.request.patch('/api/applications/' + interviewId + '/status', {
+    headers, data: { status: 'INTERVIEW' },
+  });
+  expect(transition.ok()).toBe(true);
+  await page.reload();
+
+  const due = page.locator('.due-follow-up').filter({ hasText: 'Quick Access Labs' });
+  await due.getByRole('button', { name: 'Open application' }).click();
+  const view = page.getByRole('region', { name: 'Application quick view' });
+  await expect(view).toContainText('Platform Engineer');
+  await expect(view).toContainText('Email hiring manager after the application.');
+  await view.getByRole('button', { name: 'View history' }).click();
+  await expect(view.getByLabel('Application activity')).toContainText('Application saved');
+  await view.getByRole('button', { name: 'Edit application' }).click();
+  const form = view.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Followed up with hiring manager.');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(view).toContainText('Followed up with hiring manager.');
+  await view.getByRole('button', { name: 'Close quick view' }).click();
+  await expect(view).toHaveCount(0);
+
+  const interviews = page.locator('.schedule-panel').filter({ hasText: 'Upcoming interviews' });
+  await interviews.getByRole('button', { name: 'Open application' }).click();
+  await expect(view).toContainText('Interview Works');
+  await expect(view).toContainText('Ask about backend architecture.');
+  await view.getByRole('button', { name: 'Close quick view' }).click();
+
+  const activity = page.locator('.recent-panel').getByRole('button', { name: 'Open application' });
+  await expect(activity.first()).toBeVisible();
+  await activity.first().click();
+  await expect(view).toContainText('Interview Works');
+  await view.getByRole('button', { name: 'Close quick view' }).click();
+  await page.reload();
+  const savedCard = page.getByRole('article', { name: 'Quick Access Labs — Platform Engineer' });
+  await expect(savedCard).toContainText('Followed up with hiring manager.');
+  expect(dueId).toBeGreaterThan(0);
+});
+
 test('CSV export downloads every owned application independent of list pagination', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 12; i++) await seed(page, 'Export Company ' + i);

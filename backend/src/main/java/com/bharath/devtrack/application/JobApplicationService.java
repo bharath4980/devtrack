@@ -184,6 +184,11 @@ public class JobApplicationService {
         return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
+    @Transactional(readOnly = true)
+    public JobApplication getForOwner(Long ownerId, Long id) {
+        return findById(id, ownerId);
+    }
+
     public JobApplication rescheduleFollowUp(Long ownerId, Long id, LocalDate followUpDate) {
         JobApplication application = findById(id, ownerId);
         application.setFollowUpDate(followUpDate);

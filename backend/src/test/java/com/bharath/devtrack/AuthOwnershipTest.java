@@ -55,6 +55,31 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void applicationDetailLookupRequiresAuthenticationAndOwnership() throws Exception {
+        JobApplication mine = seed(alice, "Owned Detail");
+        JobApplication other = seed(bob, "Private Detail");
+        JobApplication legacy = seed(null, "Legacy Detail");
+
+        mvc.perform(get("/api/applications/" + mine.getId()))
+                .andExpect(status().isUnauthorized());
+        MockHttpSession aliceSession = login(alice.getEmail());
+        mvc.perform(get("/api/applications/" + mine.getId()).session(aliceSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(mine.getId()))
+                .andExpect(jsonPath("$.company").value("Owned Detail"))
+                .andExpect(jsonPath("$.location").value("Houston"));
+        mvc.perform(get("/api/applications/" + other.getId()).session(aliceSession))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/applications/" + legacy.getId()).session(aliceSession))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/applications/999999999").session(aliceSession))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/applications/" + other.getId()).session(login(bob.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company").value("Private Detail"));
+    }
+
+    @Test
     void csvExportRequiresAuthenticationAndOnlyReturnsAllOwnedRows() throws Exception {
         mvc.perform(get("/api/applications/export.csv")).andExpect(status().isUnauthorized());
 
