@@ -268,6 +268,118 @@ class JobPostingPreviewServiceTest {
     }
 
     @Test
+    void importsBamboohrPostingFromPublicCareersDetail() throws Exception {
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"Infrastructure Ops Engineer",
+                  "jobOpeningShareUrl":"https://flyio.bamboohr.com/careers/35",
+                  "location":{"city":"Chicago","state":"Illinois","addressCountry":"United States"},
+                  "locationType":0}}}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://flyio.bamboohr.com/careers/35?source=company-careers");
+        assertThat(preview).isEqualTo(
+                new JobPostingPreview("Flyio", "Infrastructure Ops Engineer", "Chicago, Illinois"));
+        assertRequest("https://flyio.bamboohr.com/careers/35/detail");
+    }
+
+    @Test
+    void importsRemoteAndHybridBamboohrLocations() throws Exception {
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"Software Engineer",
+                  "locationType":"1","location":{"city":null,"state":null}}}}
+                """);
+        assertThat(service.preview("https://acme-company.bamboohr.com/careers/124"))
+                .isEqualTo(new JobPostingPreview("Acme Company", "Software Engineer", "Remote"));
+        assertRequest("https://acme-company.bamboohr.com/careers/124/detail");
+
+        clearInvocations(client);
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"IT Administrator",
+                  "locationType":2,"location":{"city":"Austin","state":"TX"}}}}
+                """);
+        assertThat(service.preview("https://acme-company.bamboohr.com/careers/125/"))
+                .isEqualTo(new JobPostingPreview("Acme Company", "IT Administrator",
+                        "Hybrid - Austin, TX"));
+        assertRequest("https://acme-company.bamboohr.com/careers/125/detail");
+    }
+
+    @Test
+    void rejectsBamboohrResponseForDifferentPosting() throws Exception {
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"Wrong Job",
+                  "jobOpeningShareUrl":"https://flyio.bamboohr.com/careers/99"}}}
+                """);
+        assertThatThrownBy(() -> service.preview("https://flyio.bamboohr.com/careers/35"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        clearInvocations(client);
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"Wrong Company",
+                  "jobOpeningShareUrl":"https://other.bamboohr.com/careers/35"}}}
+                """);
+        assertThatThrownBy(() -> service.preview("https://flyio.bamboohr.com/careers/35"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    @Test
+    void requiresBamboohrTitleAndHandlesUnavailablePosts() throws Exception {
+        respond(200, """
+                {"result":{"jobOpening":{"location":{"city":"Austin"}}}}
+                """);
+        assertThatThrownBy(() -> service.preview("https://flyio.bamboohr.com/careers/35"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        clearInvocations(client);
+        respond(404, """
+                {"internalSecret":"provider unavailable"}
+                """);
+        assertThatThrownBy(() -> service.preview("https://flyio.bamboohr.com/careers/35"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageNotContaining("internalSecret");
+    }
+
+    @Test
+    void refusesOversizedBamboohrDetailResponse() throws Exception {
+        respond(200, "A".repeat(256 * 1024 + 1));
+        assertThatThrownBy(() -> service.preview("https://flyio.bamboohr.com/careers/35"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    @Test
+    void rejectsUnsafeBamboohrUrlsWithoutMakingNetworkRequests() {
+        for (String url : new String[]{
+                "http://flyio.bamboohr.com/careers/35",
+                "https://flyio.bamboohr.com.evil.test/careers/35",
+                "https://flyio.bamboohr.com@127.0.0.1/careers/35",
+                "https://flyio.bamboohr.com:443/careers/35",
+                "https://flyio.bamboohr.com/careers/35#jobs",
+                "https://flyio.bamboohr.com/careers/%33%35",
+                "https://flyio.bamboohr.com/careers/35/detail",
+                "https://flyio.bamboohr.com/careers/35/extra",
+                "https://flyio.bamboohr.com/careers/35/../99",
+                "https://flyio.bamboohr.com/careers/list",
+                "https://.bamboohr.com/careers/35",
+                "https://flyio.bamboohr.com/careers/35%2Fdetail",
+                "https://flyio.bamboohr.com/careers/35?source=ok#unsafe"
+        }) {
+            assertThatThrownBy(() -> service.preview(url))
+                    .as("Rejected: " + url)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(error -> assertThat(
+                            ((ResponseStatusException) error).getStatusCode().value()).isEqualTo(400));
+        }
+        verifyNoInteractions(client);
+    }
+
+    @Test
     void rejectsUnsafeAndUnsupportedUrlsWithoutMakingNetworkRequests() {
         for (String url : new String[]{
                 "http://boards.greenhouse.io/acme/jobs/123",
