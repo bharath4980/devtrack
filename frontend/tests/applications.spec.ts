@@ -130,6 +130,85 @@ test('dragging a pipeline card changes its saved stage', async ({ page }, testIn
   await expect(saved.getByRole('article')).toHaveCount(0);
 });
 
+test('board application details open and edit without switching to the list', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Detail Example');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const saved = page.getByRole('region', { name: 'Saved stage' });
+  const card = saved.getByRole('article', { name: 'Detail Example — Software Engineer' });
+  await card.getByRole('button', { name: 'View details' }).click();
+  const details = page.getByRole('region', { name: 'Application details' });
+  await expect(details).toContainText('Detail Example');
+  await expect(details).toContainText('Software Engineer');
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const form = details.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Job title').fill('Senior Platform Engineer');
+  await form.getByLabel('Notes').fill('Confirm team structure and responsibilities.');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(details).toContainText('Senior Platform Engineer');
+  await expect(details).toContainText('Confirm team structure and responsibilities.');
+  await expect(saved.getByRole('article', { name: 'Detail Example — Senior Platform Engineer' })).toBeVisible();
+  await details.getByRole('button', { name: 'Close details' }).click();
+  await expect(details).toHaveCount(0);
+  await page.getByRole('button', { name: 'List view' }).click();
+  await expect(page.getByRole('article', { name: 'Detail Example — Senior Platform Engineer' }))
+    .toContainText('Confirm team structure and responsibilities.');
+});
+
+test('board searches full account data and can filter stages independently of list', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 22; i++) await seed(page, 'Searchable Company ' + i);
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  await board.getByLabel('Search board').fill('Searchable Company 21');
+  await board.getByRole('button', { name: 'Apply', exact: true }).click();
+  const saved = board.getByRole('region', { name: 'Saved stage' });
+  await expect(saved.getByRole('article', { name: 'Searchable Company 21 — Software Engineer' }))
+    .toBeVisible();
+  await expect(saved.getByRole('article')).toHaveCount(1);
+  await board.getByLabel('Show stages').selectOption('APPLIED');
+  await board.getByRole('button', { name: 'Apply', exact: true }).click();
+  await expect(board.getByRole('region', { name: 'Saved stage' })).toHaveCount(0);
+  await expect(board.getByRole('region', { name: 'Applied stage' }).getByRole('article'))
+    .toHaveCount(0);
+  await board.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(board.getByRole('region', { name: 'Saved stage' }).getByRole('article')).toHaveCount(20);
+  await expect(board.getByRole('region', { name: 'Applied stage' })).toBeVisible();
+  await page.getByRole('button', { name: 'List view' }).click();
+  await expect(page.getByRole('article')).toHaveCount(10);
+});
+
+test('board highlights actionable dates and stacks columns on mobile', async ({ page }, testInfo) => {
+  await registerAndLogin(page);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  for (const [company, date] of [['Overdue Corp', yesterday], ['Upcoming Corp', tomorrow]]) {
+    const result = await page.request.post('/api/applications', {
+      headers: { [csrf.headerName]: csrf.token },
+      data: { company, title: 'Engineer', applicationDate: '2026-10-20', postingUrl: '',
+        notes: '', followUpDate: date },
+    });
+    expect(result.status()).toBe(201);
+  }
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  await expect(board.getByRole('article', { name: 'Overdue Corp — Engineer' }))
+    .toContainText('Follow-up overdue');
+  await expect(board.getByRole('article', { name: 'Upcoming Corp — Engineer' }))
+    .toContainText('Follow-up in 1 day');
+  if (testInfo.project.name === 'mobile') {
+    const positions = await board.getByRole('region', { name: 'Saved stage' }).boundingBox();
+    const applied = await board.getByRole('region', { name: 'Applied stage' }).boundingBox();
+    expect(positions).not.toBeNull();
+    expect(applied).not.toBeNull();
+    expect(applied!.y).toBeGreaterThan(positions!.y);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
+
 test('CSV export downloads every owned application independent of list pagination', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 12; i++) await seed(page, 'Export Company ' + i);

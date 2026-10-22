@@ -190,7 +190,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <div className="application-view-switch" role="group" aria-label="Application view">
           <button type="button" aria-pressed={view === 'list'} disabled={blocked}
             className={view === 'list' ? 'view-active' : 'secondary-button'}
-            onClick={() => setView('list')}>List view</button>
+            onClick={() => { setView('list'); refresh(); }}>List view</button>
           <button type="button" aria-pressed={view === 'board'} disabled={blocked}
             className={view === 'board' ? 'view-active' : 'secondary-button'}
             onClick={() => { setView('board'); setEditingId(null); }}>Board view</button>
@@ -215,7 +215,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </div>
         </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} />}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} />}
         {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
