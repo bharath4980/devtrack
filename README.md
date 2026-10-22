@@ -207,6 +207,6 @@ Current tradeoffs:
 - Upcoming interviews use day-level dates and UTC; reminders and time-of-day scheduling are out of scope.
 - Search uses relational substring matching instead of a dedicated full-text search service.
 - Concurrent edits use last-write-wins.
-- Job posting autofill supports public Greenhouse, Lever, Ashby, and SmartRecruiters links; other job boards require manual entry.
+- Job posting autofill supports public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR links; other job boards require manual entry.
 
 For the detailed reasoning behind these choices, see [engineering notes](docs/engineering.md). The [safe demo walkthrough](docs/demo.md) uses only illustrative or disposable data, and the [deployment case study](docs/deployment-case-study.md) distinguishes confirmed evidence from outstanding checks.
