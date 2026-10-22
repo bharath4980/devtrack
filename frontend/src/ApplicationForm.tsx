@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { previewJobPosting } from './applicationApi';
+import { previewJobPosting, findDuplicateApplication, type DuplicateApplication } from './applicationApi';
 import { ApiError, errorMessage } from './apiError';
-import type { JobApplication, UpdateJobApplicationRequest } from './types';
+import { statusLabel, type JobApplication, type UpdateJobApplicationRequest } from './types';
 
 type Props = {
   application?: JobApplication;
@@ -29,8 +29,33 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   const [lookupMessage, setLookupMessage] = useState('');
   const [lookupError, setLookupError] = useState('');
   const lookupController = useRef<AbortController | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateApplication | null>(null);
+  const [duplicateChecking, setDuplicateChecking] = useState(false);
+  const [duplicateError, setDuplicateError] = useState('');
+  const [confirmedDuplicateUrl, setConfirmedDuplicateUrl] = useState('');
 
   useEffect(() => () => lookupController.current?.abort(), []);
+
+  useEffect(() => {
+    const url = values.postingUrl.trim();
+    setDuplicate(null);
+    setDuplicateError('');
+    if (!/^https?:\/\/[^/]+/i.test(url) || url.length > 255) {
+      setDuplicateChecking(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setDuplicateChecking(true);
+      void findDuplicateApplication(url, application?.id, controller.signal)
+        .then(match => { if (!controller.signal.aborted) setDuplicate(match); })
+        .catch(() => {
+          if (!controller.signal.aborted) setDuplicateError('Could not check this link for duplicates.');
+        })
+        .finally(() => { if (!controller.signal.aborted) setDuplicateChecking(false); });
+    }, 450);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [values.postingUrl, application?.id]);
 
   async function importDetails() {
     const url = values.postingUrl.trim();
@@ -65,8 +90,23 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     event.preventDefault();
     setError('');
     setFieldErrors({});
+    const url = values.postingUrl.trim();
+    if (url && confirmedDuplicateUrl !== url) {
+      try {
+        const match = await findDuplicateApplication(url, application?.id);
+        if (match) {
+          setDuplicate(match);
+          setError('This job is already tracked. Choose Save anyway if you want another entry.');
+          return;
+        }
+      } catch (failure) {
+        setError(errorMessage(failure,
+          'Could not check this link for duplicates. Try again or clear the URL to save manually.'));
+        return;
+      }
+    }
     try {
-      await onSave({ ...values, company: values.company.trim(), title: values.title.trim(), postingUrl: values.postingUrl.trim() });
+      await onSave({ ...values, company: values.company.trim(), title: values.title.trim(), postingUrl: url });
     } catch (failure) {
       setError(errorMessage(failure, 'Could not save the application. Please try again.'));
       if (failure instanceof ApiError) setFieldErrors(failure.fieldErrors);
@@ -98,6 +138,9 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
               setLookupBusy(false);
               setLookupMessage('');
               setLookupError('');
+              setDuplicate(null);
+              setDuplicateError('');
+              setConfirmedDuplicateUrl('');
             }
             setValues(current => ({ ...current, [name]: value }));
           }} />
@@ -109,6 +152,18 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
           </div>
           {lookupMessage && <p className="form-help lookup-success" role="status">{lookupMessage}</p>}
           {lookupError && <p className="form-error" role="alert">{lookupError}</p>}
+          {duplicateChecking && <p className="form-help" role="status">Checking saved job links…</p>}
+          {duplicateError && <p className="form-help" role="status">{duplicateError}</p>}
+          {duplicate && <div className="form-field-full" role="alert">
+            <p className="form-error">Already tracked: {duplicate.company} — {duplicate.title} ({statusLabel(duplicate.status)}).
+              Check your existing entry before saving another.</p>
+            {confirmedDuplicateUrl === values.postingUrl.trim()
+              ? <p className="form-help">Duplicate acknowledged. Select Save application to continue.</p>
+              : <button type="button" className="secondary-button"
+                  onClick={() => { setConfirmedDuplicateUrl(values.postingUrl.trim()); setError(''); }}>
+                  Save anyway
+                </button>}
+          </div>}
         </>}
         {fieldErrors[name] && <span className="form-error" id={`${prefix}-${name}-error`}>{fieldErrors[name]}</span>}
       </div>)}
