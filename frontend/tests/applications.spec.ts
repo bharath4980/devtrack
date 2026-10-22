@@ -240,6 +240,35 @@ test('Workday job posting link fills editable details and preserves the job URL'
     .toHaveAttribute('href', jobUrl);
 });
 
+test('BambooHR posting fills editable details before saving', async ({ page }) => {
+  await registerAndLogin(page);
+  const jobUrl = 'https://flyio.bamboohr.com/careers/35';
+  await page.route('**/api/job-postings/preview?**', async route => {
+    const request = new URL(route.request().url());
+    expect(request.searchParams.get('url')).toBe(jobUrl);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        company: 'Flyio', title: 'Infrastructure Ops Engineer', location: 'Remote',
+      }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill(jobUrl);
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Flyio');
+  await expect(form.getByLabel('Job title')).toHaveValue('Infrastructure Ops Engineer');
+  await expect(form.getByLabel('Location')).toHaveValue('Remote');
+  await form.getByLabel('Company', { exact: true }).fill('Fly.io');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  const card = page.getByRole('article', { name: 'Fly.io — Infrastructure Ops Engineer' });
+  await expect(card).toContainText('Remote');
+  await expect(card.getByRole('link', { name: 'View job posting' }))
+    .toHaveAttribute('href', jobUrl);
+});
+
 test('dashboard metrics, distribution and navigation reflect saved applications', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Alpha Company');
