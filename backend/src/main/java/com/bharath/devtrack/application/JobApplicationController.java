@@ -47,6 +47,20 @@ public class JobApplicationController {
         return service.findAll(accounts.currentUser(principal).getId(), search, status, page, size, sort);
     }
 
+    @GetMapping("/duplicate")
+    public ResponseEntity<JobApplicationService.DuplicateMatch> findDuplicate(
+            Principal principal,
+            @RequestParam String url,
+            @RequestParam(required = false) Long excludeId
+    ) {
+        JobApplicationService.DuplicateMatch match =
+                service.findDuplicate(accounts.currentUser(principal).getId(), url, excludeId);
+        if (match == null) {
+            return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(match);
+    }
+
     @GetMapping("/export.csv")
     public ResponseEntity<byte[]> exportCsv(Principal principal) {
         byte[] content = service.exportCsv(accounts.currentUser(principal).getId());

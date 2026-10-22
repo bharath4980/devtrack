@@ -211,6 +211,54 @@ test('SmartRecruiters job posting link fills editable details before saving', as
     .toHaveAttribute('href', 'https://jobs.smartrecruiters.com/SampleCo/884352026-platform-engineer');
 });
 
+test('warns before duplicate job URL save and requires explicit confirmation', async ({ page }) => {
+  await registerAndLogin(page);
+  const url = 'https://jobs.lever.co/acme/role-123';
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  const initial = await page.request.post('/api/applications', {
+    headers: { [csrf.headerName]: csrf.token },
+    data: { company: 'Acme', title: 'Backend Engineer', applicationDate: '2026-10-20',
+      postingUrl: url + '?utm_source=linkedin', notes: '' },
+  });
+  expect(initial.status()).toBe(201);
+  await page.reload();
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill(url + '?source=careers');
+  await expect(form.getByText(/Already tracked: Acme — Backend Engineer/)).toBeVisible();
+  await form.getByLabel('Company', { exact: true }).fill('Acme');
+  await form.getByLabel('Job title').fill('Backend Engineer');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  await expect(form.getByText(/Choose Save anyway/)).toBeVisible();
+  await expect(page.locator('.results-count')).toContainText('1 application');
+  await form.getByRole('button', { name: 'Save anyway' }).click();
+  await expect(form.getByText('Duplicate acknowledged. Select Save application to continue.'))
+    .toBeVisible();
+  await form.getByRole('button', { name: 'Save application' }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.locator('.results-count')).toContainText('2 applications');
+});
+
+test('editing an application does not flag its own posting URL as a duplicate', async ({ page }) => {
+  await registerAndLogin(page);
+  const url = 'https://jobs.lever.co/acme/role-123';
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  const initial = await page.request.post('/api/applications', {
+    headers: { [csrf.headerName]: csrf.token },
+    data: { company: 'Acme', title: 'Backend Engineer', applicationDate: '2026-10-20',
+      postingUrl: url, notes: '' },
+  });
+  expect(initial.status()).toBe(201);
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Acme — Backend Engineer' });
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const form = card.getByRole('form', { name: 'Edit application' });
+  await expect(form.getByText(/Already tracked:/)).toHaveCount(0);
+  await form.getByLabel('Job title').fill('Backend Engineer II');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('article', { name: 'Acme — Backend Engineer II' })).toBeVisible();
+});
+
 test('Workday job posting link fills editable details and preserves the job URL', async ({ page }) => {
   await registerAndLogin(page);
   const jobUrl = 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Platform-Engineer_JR102030';
