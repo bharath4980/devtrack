@@ -231,6 +231,14 @@ test('dashboard actions open the exact application for editing and history', asy
   });
   expect(interviewResponse.status()).toBe(201);
   const interviewId = (await interviewResponse.json()).id;
+  const scheduled = await page.request.put('/api/applications/' + interviewId, {
+    headers,
+    data: { company: 'Interview Works', title: 'Backend Engineer',
+      applicationDate: '2026-10-20', interviewDate: tomorrow,
+      followUpDate: null, location: '', postingUrl: '',
+      notes: 'Ask about backend architecture.' },
+  });
+  expect(scheduled.ok()).toBe(true);
   const transition = await page.request.patch('/api/applications/' + interviewId + '/status', {
     headers, data: { status: 'INTERVIEW' },
   });
