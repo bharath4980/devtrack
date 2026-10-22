@@ -283,10 +283,11 @@ class JobPostingPreviewServiceTest {
     }
 
     @Test
-    void importsRemoteAndHybridBamboohrLocations() throws Exception {
+    void importsExplicitRemoteAndStructuredBamboohrLocations() throws Exception {
         respond(200, """
                 {"result":{"jobOpening":{"jobOpeningName":"Software Engineer",
-                  "locationType":"1","location":{"city":null,"state":null}}}}
+                  "isRemote":true,"locationType":"1",
+                  "location":{"city":null,"state":null}}}}
                 """);
         assertThat(service.preview("https://acme-company.bamboohr.com/careers/124"))
                 .isEqualTo(new JobPostingPreview("Acme Company", "Software Engineer", "Remote"));
@@ -298,9 +299,18 @@ class JobPostingPreviewServiceTest {
                   "locationType":2,"location":{"city":"Austin","state":"TX"}}}}
                 """);
         assertThat(service.preview("https://acme-company.bamboohr.com/careers/125/"))
-                .isEqualTo(new JobPostingPreview("Acme Company", "IT Administrator",
-                        "Hybrid - Austin, TX"));
+                .isEqualTo(new JobPostingPreview("Acme Company", "IT Administrator", "Austin, TX"));
         assertRequest("https://acme-company.bamboohr.com/careers/125/detail");
+
+        clearInvocations(client);
+        respond(200, """
+                {"result":{"jobOpening":{"jobOpeningName":"Developer",
+                  "locationType":1,"location":{"city":null,"state":null},
+                  "atsLocation":{"city":"Toronto","province":"Ontario","country":"Canada"}}}}
+                """);
+        assertThat(service.preview("https://acme-company.bamboohr.com/careers/126"))
+                .isEqualTo(new JobPostingPreview("Acme Company", "Developer", "Toronto, Ontario"));
+        assertRequest("https://acme-company.bamboohr.com/careers/126/detail");
     }
 
     @Test
