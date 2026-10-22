@@ -16,6 +16,9 @@ type Props = { user: CurrentUser; onLogout: () => void; signingOut: boolean; log
 export default function ApplicationsPage({ user, onLogout, signingOut, logoutError }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [view, setView] = useState<'list' | 'board'>('list');
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkTarget, setBulkTarget] = useState<ApplicationStatus | ''>('');
+  const [bulkProgress, setBulkProgress] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ApplicationStatus | ''>('');
   const [sort, setSort] = useState<ApplicationSort>('NEWEST');
@@ -41,6 +44,12 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [notice, setNotice] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
   const refresh = () => setRevision(value => value + 1);
+
+  // A page change must never silently include applications from another page.
+  useEffect(() => {
+    setSelectedIds([]);
+    setBulkTarget('');
+  }, [query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -111,6 +120,45 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     catch (error) { setActionError(errorMessage(error, 'Could not update status.')); }
   }
 
+  async function applyBulkStatus() {
+    if (!page || busy || signingOut || mutationPending.current || !bulkTarget) return;
+    const affected = page.items.filter(application =>
+      selectedIds.includes(application.id) && application.status !== bulkTarget);
+    if (affected.length === 0) return;
+    if (!window.confirm(`Move ${affected.length} selected ${affected.length === 1 ? 'application' : 'applications'} to ${statusLabel(bulkTarget)}? This records a status change for each application.`)) return;
+
+    mutationPending.current = true;
+    setBusy(true);
+    setActionError('');
+    setNotice('');
+    let updated = 0;
+    let failure: unknown = null;
+    try {
+      for (const application of affected) {
+        setBulkProgress(`Updating ${updated + 1} of ${affected.length}…`);
+        try {
+          await updateApplicationStatus(application.id, bulkTarget);
+          updated++;
+        } catch (error) {
+          failure = error;
+          break; // Preserve prior successful changes; never claim an atomic batch.
+        }
+      }
+      if (failure) {
+        setActionError(`Updated ${updated} of ${affected.length} applications. Remaining updates were not applied. ${errorMessage(failure, 'Could not update status.')}`);
+      } else {
+        setNotice(`${updated} ${updated === 1 ? 'application' : 'applications'} moved to ${statusLabel(bulkTarget)}.`);
+      }
+    } finally {
+      mutationPending.current = false;
+      setBulkProgress('');
+      setBusy(false);
+      setSelectedIds([]);
+      setBulkTarget('');
+      refresh();
+    }
+  }
+
   async function remove(application: JobApplication) {
     if (!window.confirm(`Delete ${application.company} — ${application.title}? This cannot be undone.`)) return;
     try {
@@ -144,6 +192,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   }
 
   const blocked = busy || signingOut;
+  const selectedOnPage = page?.items.filter(application => selectedIds.includes(application.id)) ?? [];
+  const countToMove = selectedOnPage.filter(application => application.status !== bulkTarget).length;
   return <div className="page">
     <a className="skip-link" href="#applications">Skip to applications</a>
     <header className="header">
@@ -193,7 +243,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
             onClick={() => { setView('list'); refresh(); }}>List view</button>
           <button type="button" aria-pressed={view === 'board'} disabled={blocked}
             className={view === 'board' ? 'view-active' : 'secondary-button'}
-            onClick={() => { setView('board'); setEditingId(null); }}>Board view</button>
+            onClick={() => { setView('board'); setEditingId(null); setSelectedIds([]); setBulkTarget(''); }}>Board view</button>
         </div>
         {view === 'list' && <form className="filter-form" onSubmit={applyFilters}>
           <div className="form-field filter-search"><label htmlFor="search">Search</label>
@@ -221,9 +271,38 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
         {!loading && !loadError && page && <>
           <p className="results-count" role="status">{page.totalElements} {page.totalElements === 1 ? 'application' : 'applications'}{query.search || query.status ? ' matching your filters' : ''}</p>
+          {page.items.length > 0 && <div className="bulk-toolbar" role="group" aria-label="Bulk status actions">
+            <label className="bulk-select-all">
+              <input type="checkbox" aria-label="Select all applications on this page"
+                checked={selectedOnPage.length === page.items.length}
+                disabled={blocked}
+                onChange={event => setSelectedIds(event.target.checked ? page.items.map(item => item.id) : [])} />
+              <span>Select page</span>
+            </label>
+            <span className="bulk-selected-count">{selectedOnPage.length} selected on this page</span>
+            <label htmlFor="bulk-status-target">Move selected to</label>
+            <select id="bulk-status-target" value={bulkTarget} disabled={blocked || !selectedOnPage.length}
+              onChange={event => setBulkTarget(event.target.value as ApplicationStatus | '')}>
+              <option value="">Choose stage</option>
+              {statuses.map(stage => <option key={stage} value={stage}>{statusLabel(stage)}</option>)}
+            </select>
+            <button type="button" disabled={blocked || !bulkTarget || countToMove === 0}
+              onClick={() => void applyBulkStatus()}>Move selected</button>
+            <button type="button" className="secondary-button" disabled={blocked || !selectedOnPage.length}
+              onClick={() => { setSelectedIds([]); setBulkTarget(''); }}>Clear selection</button>
+            {bulkTarget && selectedOnPage.length > 0 && <p className="form-help bulk-change-note">
+              {countToMove} of {selectedOnPage.length} will change stage; already-matching applications stay unchanged.
+            </p>}
+            {bulkProgress && <p className="form-help bulk-progress" role="status">{bulkProgress}</p>}
+          </div>}
           {page.items.length === 0 ? <div className="empty-state"><span className="empty-symbol" aria-hidden="true">◇</span><p>{query.search || query.status ? 'No matches. Try another search or clear your filters.' : 'Your list is empty. Add your first application to get started.'}</p></div> :
             <div className="applications-list">{page.items.map(application => <ApplicationCard key={application.id} application={application}
-              editing={editingId === application.id} busy={blocked} onEdit={() => { setEditingId(application.id); setCreating(false); }}
+              editing={editingId === application.id} busy={blocked}
+              selected={selectedIds.includes(application.id)}
+              onSelect={checked => setSelectedIds(current => checked
+                ? current.includes(application.id) ? current : [...current, application.id]
+                : current.filter(id => id !== application.id))}
+              onEdit={() => { setEditingId(application.id); setCreating(false); }}
               onCancel={() => setEditingId(null)} onSave={values => edit(application.id, values)}
               onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} />)}</div>}
           {page.totalPages > 1 && <nav className="pagination" aria-label="Application pages">
