@@ -47,6 +47,12 @@ export async function getApplicationActivity(id: number, signal?: AbortSignal): 
   return response.json();
 }
 
+export async function getApplication(id: number, signal?: AbortSignal): Promise<JobApplication> {
+  const response = await apiFetch(`/api/applications/${id}`, { signal, cache: 'no-store' });
+  if (!response.ok) throw await readApiError(response, 'Could not load this application.');
+  return response.json();
+}
+
 export async function getApplications(query: ApplicationQuery, signal?: AbortSignal): Promise<ApplicationPage> {
   const params = new URLSearchParams({
     page: String(query.page), size: String(query.size ?? 10), sort: query.sort,
