@@ -183,6 +183,91 @@ class JobPostingPreviewServiceTest {
     }
 
     @Test
+    void importsWorkdayPostingFromItsPublicDetailEndpoint() throws Exception {
+        respond(200, """
+                {"jobPostingInfo":{"title":"Senior Platform Engineer",
+                "location":"Santa Clara, California, United States",
+                "jobReqId":"JR102030","jobDescription":"<p>Do not copy this HTML.</p>"}}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite"
+                + "/job/US-CA-Santa-Clara/Senior-Platform-Engineer_JR102030?source=careers");
+        assertThat(preview).isEqualTo(new JobPostingPreview(
+                "Nvidia", "Senior Platform Engineer", "Santa Clara, California, United States"));
+        assertRequest("https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia"
+                + "/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Platform-Engineer_JR102030");
+    }
+
+    @Test
+    void importsWorkdayPostingWithoutLocaleOrLocationPath() throws Exception {
+        respond(200, """
+                {"jobPostingInfo":{"title":"Software Developer", "location":"Remote"}}
+                """);
+        JobPostingPreview preview = service.preview(
+                "https://example-company.wd12.myworkdayjobs.com/External/job/Software-Developer_R12345");
+        assertThat(preview).isEqualTo(
+                new JobPostingPreview("Example Company", "Software Developer", "Remote"));
+        assertRequest("https://example-company.wd12.myworkdayjobs.com/wday/cxs/"
+                + "example-company/External/job/Software-Developer_R12345");
+    }
+
+    @Test
+    void rejectsUnavailableAndMalformedWorkdayResponses() throws Exception {
+        respond(200, """
+                {"jobPostingInfo":{"location":"Remote","jobDescription":"HTML without a title"}}
+                """);
+        assertThatThrownBy(() -> service.preview(
+                "https://acme.wd1.myworkdayjobs.com/en-US/External/job/Remote/Backend_R1234"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        clearInvocations(client);
+        respond(302, "The posting moved to a non-Workday host.");
+        assertThatThrownBy(() -> service.preview(
+                "https://acme.wd1.myworkdayjobs.com/en-US/External/job/Remote/Backend_R1234"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageNotContaining("non-Workday");
+    }
+
+    @Test
+    void refusesOversizedWorkdayDetailResponse() throws Exception {
+        respond(200, "A".repeat(512 * 1024 + 1));
+        assertThatThrownBy(() -> service.preview(
+                "https://acme.wd1.myworkdayjobs.com/en-US/External/job/Remote/Backend_R1234"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(
+                        ((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    @Test
+    void rejectsUnsafeWorkdayUrlsWithoutNetworkRequests() {
+        for (String url : new String[]{
+                "http://acme.wd1.myworkdayjobs.com/External/job/Remote/Backend_R1234",
+                "https://acme.wd1.myworkdayjobs.com.evil.test/External/job/Remote/Backend_R1234",
+                "https://acme.wd1.myworkdayjobs.com@127.0.0.1/External/job/Remote/Backend_R1234",
+                "https://acme.wd1.myworkdayjobs.com:443/External/job/Remote/Backend_R1234",
+                "https://acme.wd1.myworkdayjobs.com/External/job/Remote/Backend_R1234#details",
+                "https://acme.wd1.myworkdayjobs.com/External/job/Remote/Backend%2Fadmin",
+                "https://acme.wd1.myworkdayjobs.com/External/job/Remote/../admin",
+                "https://acme.wd1.myworkdayjobs.com/External/job",
+                "https://acme.wd1.myworkdayjobs.com/External/job/Remote/Backend_R1234/edit",
+                "https://acme.wd1.myworkdayjobs.com/wday/cxs/acme/External/job/Remote/Backend_R1234",
+                "https://acme.wd1.myworkdayjobs.com/External/job/Remote/Backend_R1234%2e",
+                "https://other.example.com/External/job/Remote/Backend_R1234"
+        }) {
+            assertThatThrownBy(() -> service.preview(url))
+                    .as("Rejected: " + url)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(error -> assertThat(
+                            ((ResponseStatusException) error).getStatusCode().value()).isEqualTo(400));
+        }
+        verifyNoInteractions(client);
+    }
+
+    @Test
     void rejectsUnsafeAndUnsupportedUrlsWithoutMakingNetworkRequests() {
         for (String url : new String[]{
                 "http://boards.greenhouse.io/acme/jobs/123",
