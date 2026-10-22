@@ -31,6 +31,12 @@ export async function getDueFollowUps(signal?: AbortSignal): Promise<DueFollowUp
   return response.json();
 }
 
+export async function getUpcomingFollowUps(signal?: AbortSignal): Promise<DueFollowUp[]> {
+  const response = await apiFetch('/api/dashboard/follow-ups/upcoming', { signal });
+  if (!response.ok) throw new Error('Failed to load upcoming follow-ups');
+  return response.json();
+}
+
 export async function getDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary> {
   const response = await apiFetch('/api/dashboard', { signal });
 
