@@ -245,6 +245,84 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void duplicateLookupOnlyRevealsOwnSavedPostingAndIgnoresTrackingParameters() throws Exception {
+        JobApplication owned = seed(alice, "Acme");
+        owned.setTitle("Backend Engineer");
+        owned.setPostingUrl("https://jobs.lever.co/acme/role-123/?utm_source=linkedin#apply");
+        owned = applications.save(owned);
+        JobApplication another = seed(bob, "Private Employer");
+        another.setPostingUrl("https://jobs.lever.co/another/secret-1");
+        applications.save(another);
+        JobApplication legacy = seed(null, "Legacy Employer");
+        legacy.setPostingUrl("https://jobs.lever.co/legacy/secret-2");
+        applications.save(legacy);
+        long before = applications.count();
+        MockHttpSession aliceSession = login(alice.getEmail());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://JOBS.LEVER.CO/acme/role-123?source=other")
+                        .session(aliceSession))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.id").value(owned.getId()))
+                .andExpect(jsonPath("$.company").value("Acme"))
+                .andExpect(jsonPath("$.title").value("Backend Engineer"))
+                .andExpect(jsonPath("$.status").value("SAVED"))
+                .andExpect(jsonPath("$.postingUrl").doesNotExist())
+                .andExpect(jsonPath("$.owner").doesNotExist());
+
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/acme/role-123")
+                        .param("excludeId", owned.getId().toString()).session(aliceSession))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Cache-Control", "no-store"));
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/another/secret-1").session(aliceSession))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/legacy/secret-2").session(aliceSession))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/acme/different-role").session(aliceSession))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/acme/role-123"))
+                .andExpect(status().isUnauthorized());
+
+        MockHttpSession bobSession = login(bob.getEmail());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.lever.co/acme/role-123").session(bobSession))
+                .andExpect(status().isNoContent());
+        assertThat(applications.count()).isEqualTo(before);
+    }
+
+    @Test
+    void duplicateLookupPreservesJobIdentifyingQueryParametersOnOtherSites() throws Exception {
+        JobApplication owned = seed(alice, "Other Board");
+        owned.setPostingUrl("https://jobs.example.com/search?job=123&utm_medium=email&lang=en");
+        applications.save(owned);
+        MockHttpSession session = login(alice.getEmail());
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.example.com/search?lang=en&job=123&source=feed")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company").value("Other Board"));
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.example.com/search?job=456&lang=en")
+                        .session(session))
+                .andExpect(status().isNoContent());
+        for (String invalid : java.util.List.of("not-a-job-url",
+                "javascript:alert(1)", "https://user@jobs.example.com/job",
+                "https://jobs.example.com/%bad-escape%")) {
+            mvc.perform(get("/api/applications/duplicate")
+                            .param("url", invalid).session(session))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get("/api/applications/duplicate")
+                        .param("url", "https://jobs.example.com/" + "a".repeat(256)).session(session))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void listingSearchAndFiltersNeverIncludeAnotherUsersOrLegacyRows() throws Exception {
         JobApplication owned = seed(alice, "Acme");
         seed(bob, "Acme");
