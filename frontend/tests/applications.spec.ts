@@ -25,6 +25,26 @@ async function seed(page: Page, company: string) {
   return result.json();
 }
 
+test('repeated sign-in submission sends one authentication request', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Email', { exact: true }).fill('duplicate-attempt@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('wrong-password');
+  let attempts = 0;
+  await page.route('**/api/auth/login', async route => {
+    if (route.request().method() === 'POST') {
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    await route.continue();
+  });
+  await page.locator('.auth-form').evaluate(element => {
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole('alert')).toBeVisible();
+  expect(attempts).toBe(1);
+});
+
 test('password visibility toggle preserves input across account modes', async ({ page }) => {
   await page.goto('/');
   const password = page.getByLabel('Password', { exact: true });
