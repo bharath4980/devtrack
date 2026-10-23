@@ -6,6 +6,11 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   const method = (options.method ?? 'GET').toUpperCase();
   const headers = new Headers(options.headers);
 
+  // Dashboard date boundaries follow the browser's calendar day, not UTC.
+  if (path.startsWith('/api/dashboard')) {
+    headers.set('X-DevTrack-Time-Zone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  }
+
   // A fresh token handles login/logout rotation without a client-side token cache.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const response = await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });

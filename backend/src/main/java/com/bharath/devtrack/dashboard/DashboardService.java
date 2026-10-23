@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -85,8 +86,8 @@ public class DashboardService {
         return denominator == 0 ? 0 : Math.round(numerator * 1000.0 / denominator) / 10.0;
     }
 
-    public DashboardSummaryResponse getSummary(Long ownerId) {
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+    public DashboardSummaryResponse getSummary(Long ownerId, ZoneId zone) {
+        LocalDate today = LocalDate.now(zone);
         List<ApplicationStatus> active = List.of(
                 ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW);
         return new DashboardSummaryResponse(
@@ -117,12 +118,12 @@ public class DashboardService {
         );
     }
 
-    public List<DueFollowUpResponse> getDueFollowUps(Long ownerId) {
+    public List<DueFollowUpResponse> getDueFollowUps(Long ownerId, ZoneId zone) {
         return repository
                 .findTop5ByOwner_IdAndStatusInAndFollowUpDateLessThanEqualOrderByFollowUpDateAscIdAsc(
                         ownerId,
                         List.of(ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW),
-                        LocalDate.now(java.time.ZoneOffset.UTC)
+                        LocalDate.now(zone)
                 )
                 .stream()
                 .map(application -> new DueFollowUpResponse(
@@ -134,8 +135,8 @@ public class DashboardService {
                 .toList();
     }
 
-    public List<DueFollowUpResponse> getUpcomingFollowUps(Long ownerId) {
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+    public List<DueFollowUpResponse> getUpcomingFollowUps(Long ownerId, ZoneId zone) {
+        LocalDate today = LocalDate.now(zone);
         return repository
                 .findTop5ByOwner_IdAndStatusInAndFollowUpDateBetweenOrderByFollowUpDateAscIdAsc(
                         ownerId,
@@ -148,12 +149,12 @@ public class DashboardService {
                 .toList();
     }
 
-    public List<UpcomingInterviewRoundResponse> getUpcomingInterviewRounds(Long ownerId) {
+    public List<UpcomingInterviewRoundResponse> getUpcomingInterviewRounds(Long ownerId, ZoneId zone) {
         return interviewRounds.findDashboardUpcoming(
                 ownerId,
                 List.of(ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW),
                 InterviewRound.Outcome.PLANNED,
-                LocalDate.now(ZoneOffset.UTC),
+                LocalDate.now(zone),
                 PageRequest.of(0, 5))
                 .stream()
                 .map(row -> {
@@ -169,13 +170,13 @@ public class DashboardService {
     }
 
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
-            Long ownerId
+            Long ownerId, ZoneId zone
     ) {
         return repository
                 .findTop5ByOwner_IdAndStatusAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
                         ownerId,
                         ApplicationStatus.INTERVIEW,
-                        LocalDate.now(java.time.ZoneOffset.UTC)
+                        LocalDate.now(zone)
                 )
                 .stream()
                 .map(application ->

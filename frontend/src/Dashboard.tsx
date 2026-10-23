@@ -129,7 +129,9 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
   }));
   const distributionLabel = 'Pipeline: ' + pipeline.map(item =>
     item.count + ' ' + statusLabel(item.status).toLowerCase()).join(', ');
-  const todayUtc = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayUtc = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')].join('-');
 
   return <section className="overview" id="overview" aria-label="Dashboard">
     <div className="section-heading">
@@ -257,7 +259,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
         <section className="schedule-panel" aria-labelledby="follow-ups-heading">
           <div className="schedule-heading">
             <div className="schedule-icon followup-icon" aria-hidden="true">↗</div>
-            <div><h3 id="follow-ups-heading">Follow-ups due</h3><p>Earliest five · dates in UTC</p></div>
+            <div><h3 id="follow-ups-heading">Follow-ups due</h3><p>Earliest five · browser-local dates</p></div>
           </div>
           <div className="follow-up-priorities" role="group" aria-label="Follow-up priorities">
             <span className={summary.overdueFollowUps ? 'priority-count priority-overdue' : 'priority-count'}>

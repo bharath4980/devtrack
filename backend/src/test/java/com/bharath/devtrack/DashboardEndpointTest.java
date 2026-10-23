@@ -82,6 +82,43 @@ class DashboardEndpointTest {
     }
 
     @Test
+    void followUpDayBoundariesRespectClientTimeZone() throws Exception {
+        // These zones straddle different calendar dates for much of the UTC day.
+        String[] zones = {"Pacific/Kiritimati", "America/Adak"};
+        for (String zone : zones) {
+            LocalDate localToday = LocalDate.now(java.time.ZoneId.of(zone));
+            JobApplication item = seed(alice, "Local due " + zone,
+                    ApplicationStatus.APPLIED, null);
+            item.setFollowUpDate(localToday);
+            applications.save(item);
+            mvc.perform(get("/api/dashboard")
+                    .header("X-DevTrack-Time-Zone", zone)
+                    .session(login(alice.getEmail())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.dueTodayFollowUps").value(1));
+            mvc.perform(get("/api/dashboard/follow-ups")
+                    .header("X-DevTrack-Time-Zone", zone)
+                    .session(login(alice.getEmail())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].followUpDate").value(localToday.toString()));
+            applications.delete(item);
+        }
+    }
+
+    @Test
+    void invalidTimeZoneFallsBackToUtc() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        JobApplication item = seed(alice, "UTC due", ApplicationStatus.APPLIED, null);
+        item.setFollowUpDate(today);
+        applications.save(item);
+        mvc.perform(get("/api/dashboard")
+                .header("X-DevTrack-Time-Zone", "Not/A_Zone")
+                .session(login(alice.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dueTodayFollowUps").value(1));
+    }
+
+    @Test
     void dashboardEndpointsRequireAuthentication() throws Exception {
         mvc.perform(get("/api/dashboard"))
                 .andExpect(status().isUnauthorized());
