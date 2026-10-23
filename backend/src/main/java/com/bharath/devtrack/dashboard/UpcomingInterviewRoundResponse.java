@@ -11,5 +11,7 @@ public record UpcomingInterviewRoundResponse(
         String title,
         String roundName,
         InterviewRound.Format format,
-        LocalDate scheduledDate
+        LocalDate scheduledDate,
+        String scheduledTime,
+        String timeZone
 ) {}

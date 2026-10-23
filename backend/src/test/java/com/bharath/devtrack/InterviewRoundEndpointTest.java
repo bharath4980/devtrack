@@ -168,6 +168,79 @@ class InterviewRoundEndpointTest {
                 .header(a.header(), a.token())).andExpect(status().isNotFound());
     }
 
+    @Test
+    void timezoneAwareCalendarExportIsPrivateAndUsesCorrectUtcInstant() throws Exception {
+        long ownId = seed(alice, "Acme Team");
+        long otherId = seed(bob, "Private Company");
+        SessionCredentials a = login(alice.getEmail());
+        SessionCredentials b = login(bob.getEmail());
+        String payload = json.writeValueAsString(Map.of(
+                "roundName", "System design", "scheduledDate", "2026-11-02",
+                "scheduledTime", "14:30", "timeZone", "America/Chicago",
+                "format", "VIDEO", "outcome", "PLANNED",
+                "preparationNotes", "Private preparation notes"));
+        long id = json.readTree(mvc.perform(post("/api/applications/" + ownId + "/interviews")
+                .session(a.session()).header(a.header(), a.token())
+                .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scheduledTime").value("14:30"))
+                .andExpect(jsonPath("$.timeZone").value("America/Chicago"))
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        String endpoint = "/api/applications/" + ownId + "/interviews/" + id + "/calendar.ics";
+        mvc.perform(get(endpoint)).andExpect(status().isUnauthorized());
+        mvc.perform(get(endpoint).session(b.session())).andExpect(status().isNotFound());
+        mvc.perform(get("/api/applications/" + otherId + "/interviews/" + id + "/calendar.ics")
+                .session(a.session())).andExpect(status().isNotFound());
+        var response = mvc.perform(get(endpoint).session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/calendar;charset=UTF-8"))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"interview-round-" + id + ".ics\""))
+                .andReturn().getResponse();
+        String calendar = new String(response.getContentAsByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(calendar).contains("BEGIN:VCALENDAR\r\n", "BEGIN:VEVENT\r\n",
+                "DTSTART:20261102T203000Z\r\n", "DTEND:20261102T213000Z\r\n",
+                "SUMMARY:System design - Acme Team\r\n", "END:VCALENDAR\r\n");
+        assertThat(calendar).doesNotContain("Private preparation notes");
+
+        mvc.perform(get("/api/applications/" + ownId + "/interviews").session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].scheduledTime").value("14:30"))
+                .andExpect(jsonPath("$[0].timeZone").value("America/Chicago"));
+    }
+
+    @Test
+    void dateOnlyRoundsRemainValidAndInvalidTimesAreRejected() throws Exception {
+        long applicationId = seed(alice, "Scheduling validation");
+        SessionCredentials a = login(alice.getEmail());
+        String base = "/api/applications/" + applicationId + "/interviews";
+        long dateOnlyId = json.readTree(mvc.perform(post(base).session(a.session())
+                .header(a.header(), a.token()).contentType(MediaType.APPLICATION_JSON)
+                .content(payload("Date only")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scheduledTime").isEmpty())
+                .andExpect(jsonPath("$.timeZone").isEmpty())
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(get(base + "/" + dateOnlyId + "/calendar.ics").session(a.session()))
+                .andExpect(status().isConflict());
+        String[] invalid = {
+                "{\"roundName\":\"Screen\",\"scheduledDate\":\"2026-11-02\",\"scheduledTime\":\"14:30\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}",
+                "{\"roundName\":\"Screen\",\"scheduledDate\":\"2026-11-02\",\"timeZone\":\"America/Chicago\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}",
+                "{\"roundName\":\"Screen\",\"scheduledDate\":\"2026-11-02\",\"scheduledTime\":\"14:30\",\"timeZone\":\"Mars/Phobos\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}",
+                "{\"roundName\":\"Screen\",\"scheduledTime\":\"14:30\",\"timeZone\":\"UTC\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}",
+                "{\"roundName\":\"Screen\",\"scheduledDate\":\"2026-11-01\",\"scheduledTime\":\"01:30\",\"timeZone\":\"America/Chicago\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}",
+                "{\"roundName\":\"Screen\",\"scheduledDate\":\"2027-03-14\",\"scheduledTime\":\"02:30\",\"timeZone\":\"America/Chicago\",\"format\":\"VIDEO\",\"outcome\":\"PLANNED\"}"
+        };
+        for (String body : invalid) {
+            mvc.perform(post(base).session(a.session()).header(a.header(), a.token())
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(rounds.count()).isEqualTo(1);
+    }
+
     private long seed(UserAccount owner, String company) {
         JobApplication application = new JobApplication();
         application.setOwner(owner);

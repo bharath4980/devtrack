@@ -25,7 +25,9 @@ public interface InterviewRoundRepository extends JpaRepository<InterviewRound, 
               AND application.status IN :activeStatuses
               AND round.outcome = :outcome
               AND round.scheduledDate >= :today
-            ORDER BY round.scheduledDate ASC, round.id ASC
+            ORDER BY round.scheduledDate ASC, 
+                     CASE WHEN round.scheduledTime IS NULL THEN 1 ELSE 0 END ASC, 
+                     round.scheduledTime ASC, round.id ASC
             """)
     List<Object[]> findDashboardUpcoming(
             @Param("ownerId") Long ownerId,

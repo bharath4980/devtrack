@@ -161,7 +161,9 @@ public class DashboardService {
                     return new UpcomingInterviewRoundResponse(
                             round.getId(), round.getApplicationId(),
                             (String) row[1], (String) row[2],
-                            round.getRoundName(), round.getFormat(), round.getScheduledDate());
+                            round.getRoundName(), round.getFormat(), round.getScheduledDate(),
+                            round.getScheduledTime() == null ? null : round.getScheduledTime().toString(),
+                            round.getTimeZone());
                 })
                 .toList();
     }
