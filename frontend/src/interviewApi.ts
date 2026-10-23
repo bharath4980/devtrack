@@ -15,7 +15,11 @@ export type InterviewRoundInput = {
   followUpNotes: string | null;
   outcome: InterviewOutcome;
 };
-export type InterviewRound = InterviewRoundInput & { id: number };
+export type InterviewRound = InterviewRoundInput & {
+  id: number;
+  googleCalendarUrl: string | null;
+  outlookCalendarUrl: string | null;
+};
 
 export async function getInterviewRounds(applicationId: number, signal?: AbortSignal): Promise<InterviewRound[]> {
   const response = await apiFetch('/api/applications/' + applicationId + '/interviews', {
