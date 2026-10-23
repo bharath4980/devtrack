@@ -2,6 +2,7 @@ package com.bharath.devtrack.interview;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "interview_rounds")
@@ -24,6 +25,12 @@ public class InterviewRound {
 
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
+
+    @Column(name = "scheduled_time")
+    private LocalTime scheduledTime;
+
+    @Column(name = "time_zone", length = 64)
+    private String timeZone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
@@ -54,6 +61,10 @@ public class InterviewRound {
     public void setRoundName(String roundName) { this.roundName = roundName; }
     public LocalDate getScheduledDate() { return scheduledDate; }
     public void setScheduledDate(LocalDate scheduledDate) { this.scheduledDate = scheduledDate; }
+    public LocalTime getScheduledTime() { return scheduledTime; }
+    public void setScheduledTime(LocalTime scheduledTime) { this.scheduledTime = scheduledTime; }
+    public String getTimeZone() { return timeZone; }
+    public void setTimeZone(String timeZone) { this.timeZone = timeZone; }
     public Format getFormat() { return format; }
     public void setFormat(Format format) { this.format = format; }
     public String getContactName() { return contactName; }
