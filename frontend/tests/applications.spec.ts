@@ -84,6 +84,8 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   const form = workspace.getByRole('form', { name: 'Interview round form' });
   await form.getByLabel('Round name').fill('Technical screen');
   await form.getByLabel('Scheduled date').fill('2026-11-02');
+  await form.getByLabel('Start time (optional)').fill('14:30');
+  await form.getByLabel('Time zone (IANA)').fill('America/Chicago');
   await form.getByLabel('Format').selectOption('VIDEO');
   await form.getByLabel('Recruiter or interviewer').fill('Jordan');
   await form.getByLabel('Contact email').fill('jordan@example.com');
@@ -93,6 +95,12 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   const round = workspace.getByRole('article', { name: 'Technical screen' });
   await expect(round).toContainText('Practice APIs and SQL');
   await expect(round).toContainText('jordan@example.com');
+  await expect(round).toContainText('14:30 (America/Chicago)');
+  const [calendarDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    round.getByRole('button', { name: 'Add to calendar (.ics)' }).click(),
+  ]);
+  expect(calendarDownload.suggestedFilename()).toMatch(/devtrack-interview-\\d+\\.ics/);
 
   await page.reload();
   const reopened = page.getByRole('article', { name: 'Interview Studio — Software Engineer' });
@@ -100,6 +108,7 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   const restored = reopened.getByRole('region', { name: 'Interview preparation' });
   const storedRound = restored.getByRole('article', { name: 'Technical screen' });
   await expect(storedRound).toContainText('Ask about team goals');
+  await expect(storedRound).toContainText('14:30 (America/Chicago)');
   await storedRound.getByRole('button', { name: 'Edit round' }).click();
   const edit = restored.getByRole('form', { name: 'Interview round form' });
   await edit.getByLabel('Outcome').selectOption('COMPLETED');
