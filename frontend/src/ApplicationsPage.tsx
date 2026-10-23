@@ -8,6 +8,7 @@ import ApplicationForm from './ApplicationForm';
 import ApplicationCard from './ApplicationCard';
 import Dashboard from './Dashboard';
 import PipelineBoard from './PipelineBoard';
+import CsvImportPanel from './CsvImportPanel';
 
 const initialQuery: ApplicationQuery = { search: '', status: '', sort: 'NEWEST', page: 0 };
 
@@ -42,6 +43,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const mutationPending = useRef(false);
   const [actionError, setActionError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [exportError, setExportError] = useState('');
   const [notice, setNotice] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
@@ -234,12 +236,28 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <div className="section-heading export-heading">
           <div><p className="eyebrow">Application tracker</p><h2 id="applications-heading">Your applications</h2>
             <p className="section-description">Search, filter, and manage each opportunity in one place.</p></div>
-          <button type="button" className="secondary-button export-button"
-            disabled={blocked || exporting} onClick={() => void exportCsv()}>
-            {exporting ? 'Preparing CSV…' : 'Export all CSV'}
-          </button>
+          <div className="csv-action-buttons">
+            <button type="button" className="secondary-button"
+              disabled={blocked || exporting} aria-expanded={showCsvImport}
+              onClick={() => setShowCsvImport(current => !current)}>
+              {showCsvImport ? 'Hide CSV import' : 'Import CSV'}
+            </button>
+            <button type="button" className="secondary-button export-button"
+              disabled={blocked || exporting} onClick={() => void exportCsv()}>
+              {exporting ? 'Preparing CSV…' : 'Export all CSV'}
+            </button>
+          </div>
         </div>
         {exportError && <p className="form-error" role="alert">{exportError}</p>}
+        {showCsvImport && <CsvImportPanel disabled={blocked} onCancel={() => setShowCsvImport(false)}
+          onImported={count => {
+            setShowCsvImport(false);
+            setNotice(count + (count === 1 ? ' application imported.' : ' applications imported.'));
+            setQuery({ ...initialQuery });
+            setView('list');
+            setSelectedIds([]);
+            refresh();
+          }} />}
         <div className="application-view-switch" role="group" aria-label="Application view">
           <button type="button" aria-pressed={view === 'list'} disabled={blocked}
             className={view === 'list' ? 'view-active' : 'secondary-button'}
