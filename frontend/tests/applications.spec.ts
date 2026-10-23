@@ -117,6 +117,45 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('dashboard shows newly scheduled interview rounds and opens the application', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Scheduled Studio');
+  await page.reload();
+
+  const upcomingRounds = page.getByRole('region', { name: 'Upcoming interview rounds' });
+  await expect(upcomingRounds).toContainText('No planned interview rounds.');
+
+  const card = page.getByRole('article', { name: 'Scheduled Studio — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const prep = card.getByRole('region', { name: 'Interview preparation' });
+  await prep.getByRole('button', { name: 'Add interview round' }).click();
+  const form = prep.getByRole('form', { name: 'Interview round form' });
+  const date = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  await form.getByLabel('Round name').fill('Technical interview');
+  await form.getByLabel('Scheduled date').fill(date);
+  await form.getByLabel('Preparation notes').fill('Keep these notes private');
+  await form.getByRole('button', { name: 'Save interview round' }).click();
+
+  await expect(upcomingRounds).toContainText('Technical interview');
+  await expect(upcomingRounds).toContainText('Scheduled Studio');
+  await expect(upcomingRounds).not.toContainText('Keep these notes private');
+  await expect(upcomingRounds.locator('time')).toHaveAttribute('datetime', date);
+  await upcomingRounds.getByRole('button', { name: 'Open application' }).click();
+  const quickView = page.getByRole('region', { name: 'Application quick view' });
+  await expect(quickView).toContainText('Scheduled Studio');
+  const quickPrep = quickView.getByRole('region', { name: 'Interview preparation' });
+  await expect(quickPrep.getByRole('article', { name: 'Technical interview' }))
+    .toContainText('Keep these notes private');
+
+  await quickPrep.getByRole('article', { name: 'Technical interview' })
+    .getByRole('button', { name: 'Edit round' }).click();
+  const edit = quickPrep.getByRole('form', { name: 'Interview round form' });
+  await edit.getByLabel('Outcome').selectOption('COMPLETED');
+  await edit.getByRole('button', { name: 'Save interview round' }).click();
+  await expect(upcomingRounds).toContainText('No planned interview rounds.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('bulk status change confirms before moving selected applications and records each change', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Batch Alpha');

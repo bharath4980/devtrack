@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
 import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, updateApplication, updateApplicationStatus } from './applicationApi';
-import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
+import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getUpcomingInterviewRounds, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type UpcomingInterviewRound, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
 import ApplicationForm from './ApplicationForm';
@@ -26,8 +26,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [dashboardRevision, setDashboardRevision] = useState(0);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [interviews, setInterviews] = useState<UpcomingInterview[]>([]);
+  const [upcomingRounds, setUpcomingRounds] = useState<UpcomingInterviewRound[]>([]);
   const [followUps, setFollowUps] = useState<DueFollowUp[]>([]);
   const [upcomingFollowUps, setUpcomingFollowUps] = useState<DueFollowUp[]>([]);
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
@@ -44,6 +46,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [notice, setNotice] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
   const refresh = () => setRevision(value => value + 1);
+  const refreshDashboard = () => setDashboardRevision(value => value + 1);
 
   // A page change must never silently include applications from another page.
   useEffect(() => {
@@ -72,19 +75,19 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     setDashboardLoading(true);
     setDashboardError('');
     Promise.all([
-      getDashboardSummary(controller.signal), getUpcomingInterviews(controller.signal),
+      getDashboardSummary(controller.signal), getUpcomingInterviews(controller.signal), getUpcomingInterviewRounds(controller.signal),
       getDueFollowUps(controller.signal), getUpcomingFollowUps(controller.signal),
       getDashboardAnalytics(controller.signal), getRecentActivity(controller.signal),
-    ]).then(([counts, upcoming, due, soon, trends, activity]) => {
+    ]).then(([counts, upcoming, rounds, due, soon, trends, activity]) => {
       if (!controller.signal.aborted) {
-        setSummary(counts); setInterviews(upcoming); setFollowUps(due);
+        setSummary(counts); setInterviews(upcoming); setUpcomingRounds(rounds); setFollowUps(due);
         setUpcomingFollowUps(soon); setAnalytics(trends); setRecentActivity(activity);
       }
     }).catch(error => {
         if (!controller.signal.aborted) setDashboardError(errorMessage(error, 'Could not load dashboard.'));
       }).finally(() => { if (!controller.signal.aborted) setDashboardLoading(false); });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, dashboardRevision]);
 
   async function mutate(action: () => Promise<unknown>, message: string) {
     if (mutationPending.current) throw new Error('Please wait for the current change to finish.');
@@ -222,7 +225,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <span aria-hidden="true" className="button-plus">+</span> Add application
         </button>
       </div>
-      <Dashboard summary={summary} interviews={interviews} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} revision={revision} busy={busy || signingOut} />
+      <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
@@ -265,7 +268,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </div>
         </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} />}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} onInterviewChange={refreshDashboard} />}
         {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
@@ -304,7 +307,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
                 : current.filter(id => id !== application.id))}
               onEdit={() => { setEditingId(application.id); setCreating(false); }}
               onCancel={() => setEditingId(null)} onSave={values => edit(application.id, values)}
-              onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} />)}</div>}
+              onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} onInterviewChange={refreshDashboard} />)}</div>}
           {page.totalPages > 1 && <nav className="pagination" aria-label="Application pages">
             <button className="secondary-button" disabled={blocked || query.page === 0} onClick={() => { setEditingId(null); setQuery(value => ({ ...value, page: value.page - 1 })); }}>Previous</button>
             <span>Page {page.page + 1} of {page.totalPages}</span>
