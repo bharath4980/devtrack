@@ -6,7 +6,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   const method = (options.method ?? 'GET').toUpperCase();
   const headers = new Headers(options.headers);
 
-  // A fresh token handles login/logout rotation without a client-side token cache.
+  // Dashboard date boundaries follow the browser's calendar day, not UTC.\n  if (path.startsWith('/api/dashboard')) {\n    headers.set('X-DevTrack-Time-Zone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');\n  }\n\n  // A fresh token handles login/logout rotation without a client-side token cache.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const response = await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
     if (!response.ok) throw new Error('Could not prepare the request. Please try again.');
