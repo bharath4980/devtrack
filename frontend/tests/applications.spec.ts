@@ -1036,10 +1036,9 @@ test('existing applications without history show a truthful status snapshot', as
   await expect(snapshot.locator('time')).toHaveCount(0);
 });
 
-test('application history timestamps use the browser time zone', async ({ browser }) => {
-  const context = await browser.newContext({ timezoneId: 'America/Los_Angeles' });
-  try {
-    const page = await context.newPage();
+test.describe('history in the browser time zone', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+  test('application history timestamps use the browser time zone', async ({ page }) => {
     await registerAndLogin(page);
     await seed(page, 'Local Time Co');
     await page.reload();
@@ -1049,13 +1048,11 @@ test('application history timestamps use the browser time zone', async ({ browse
     await expect(timestamp).toBeVisible();
     const utc = await timestamp.getAttribute('datetime');
     const expected = await page.evaluate(iso => new Date(iso!).toLocaleString(undefined, {
-      dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short',
+      year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
     }), utc);
     await expect(timestamp).toHaveText(expected);
     expect(expected).not.toMatch(/ UTC$/);
-  } finally {
-    await context.close();
-  }
+  });
 });
 
 test('application history and analytics reflect status transitions', async ({ page }) => {
