@@ -12,6 +12,7 @@ type Props = {
   busy: boolean;
   onClose: () => void;
   onSave: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
+  onInterviewChange: () => void;
 };
 
 function safePostingUrl(raw: string | null) {
@@ -22,7 +23,7 @@ function safePostingUrl(raw: string | null) {
   } catch { return null; }
 }
 
-export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave }: Props) {
+export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange }: Props) {
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -91,7 +92,7 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
             <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
             {link && <a href={link} target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
-          <InterviewWorkspace applicationId={application.id} busy={busy} />
+          <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />
           <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
         </>}
     </>}
