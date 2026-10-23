@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getApplication } from './applicationApi';
 import ApplicationForm from './ApplicationForm';
 import ApplicationTimeline from './ApplicationTimeline';
+import InterviewWorkspace from './InterviewWorkspace';
 import { errorMessage } from './apiError';
 import { statusLabel, type JobApplication, type UpdateJobApplicationRequest } from './types';
 
@@ -90,6 +91,7 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
             <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
             {link && <a href={link} target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
+          <InterviewWorkspace applicationId={application.id} busy={busy} />
           <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
         </>}
     </>}

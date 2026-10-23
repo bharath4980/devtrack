@@ -1278,3 +1278,32 @@ footer { border-color: var(--line); color: #94a0b3; }
   .bulk-toolbar select { flex: 1 1 140px; }
   .bulk-toolbar button { flex: 1 1 auto; }
 }
+/* Interview preparation is account-scoped and loaded only when the user opens a detail view. */
+.interview-toggle-wrap { margin: 12px 0; }
+.interview-workspace { margin: 18px 0; padding: 17px; background: #f8faff; border: 1px solid #dfe6f2; border-radius: 13px; min-width: 0; }
+.interview-workspace-heading { display: flex; align-items: start; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+.interview-workspace-heading h4 { margin: 0 0 5px; font-size: 16px; color: #253653; }
+.interview-workspace-heading p { margin: 0 0 13px; }
+.interview-round-list { padding: 0; margin: 12px 0; list-style: none; display: grid; gap: 10px; }
+.interview-round { padding: 14px; background: #fff; border: 1px solid #e3e9f2; border-radius: 10px; overflow-wrap: anywhere; }
+.interview-round-header { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.interview-round-header strong { color: #293b58; }
+.interview-round-header p, .interview-round-contact { font-size: 13px; color: #62718a; margin: 5px 0 0; }
+.interview-round-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.interview-round-actions button { min-height: 35px; font-size: 12px; }
+.interview-round-notes { margin-top: 12px; font-size: 13px; overflow-wrap: anywhere; }
+.interview-round-notes strong { color: #35445c; }
+.interview-round-notes p { white-space: pre-wrap; margin: 4px 0; color: #57657e; }
+.interview-round-form { padding: 15px; margin-top: 12px; border: 1px solid #dce4f1; border-radius: 10px; background: #fff; }
+.interview-round-form h5 { font-size: 15px; margin: 0 0 13px; }
+.interview-round-form fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.interview-round-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-bottom: 13px; }
+.interview-round-fields .form-field { min-width: 0; }
+.interview-round-fields .form-field input, .interview-round-fields .form-field select, .interview-round-fields .form-field textarea { width: 100%; }
+.interview-round-fields .interview-wide { grid-column: 1 / -1; }
+@media (max-width: 650px) {
+  .interview-workspace { padding: 12px; }
+  .interview-round-fields { grid-template-columns: minmax(0, 1fr); }
+  .interview-round-fields .interview-wide { grid-column: auto; }
+  .interview-round-header, .interview-workspace-heading { flex-direction: column; }
+}
