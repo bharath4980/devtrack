@@ -94,6 +94,32 @@ test('first-time guide opens the CSV importer without creating sample data', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('repeated CSV import clicks send only one batch', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Import applications from CSV' });
+  await panel.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
+    name: 'single.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('company,title,application_date\nImport Once,Backend Engineer,2026-10-23\n'),
+  });
+  await panel.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
+
+  let imports = 0;
+  await page.route('**/api/applications/import', async route => {
+    if (route.request().method() === 'POST') {
+      imports++;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    await route.continue();
+  });
+  await panel.getByRole('button', { name: 'Import 1 application' }).evaluate(button => {
+    (button as HTMLButtonElement).click();
+    (button as HTMLButtonElement).click();
+  });
+  await expect(page.getByText('1 application imported.')).toBeVisible();
+  expect(imports).toBe(1);
+});
+
 test('CSV preview validates files and imports atomically with duplicate protection', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
