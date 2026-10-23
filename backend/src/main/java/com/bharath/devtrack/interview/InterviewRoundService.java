@@ -99,7 +99,7 @@ public class InterviewRoundService {
                 "DTEND:" + utc.format(startsAt.plusSeconds(3600)),
                 "SUMMARY:" + escapeCalendarText(round.getRoundName() + " - " + application.getCompany()),
                 "DESCRIPTION:" + escapeCalendarText("Role: " + application.getTitle()
-                        + "\\nOne-hour placeholder. Confirm the actual duration with your interviewer."),
+                        + "\nOne-hour placeholder. Confirm the actual duration with your interviewer."),
                 "END:VEVENT", "END:VCALENDAR"
         };
         StringBuilder calendar = new StringBuilder();
