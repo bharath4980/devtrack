@@ -12,6 +12,7 @@ type Props = {
   followUps: DueFollowUp[];
   upcomingFollowUps: DueFollowUp[];
   onReschedule: (id: number, date: string) => Promise<void>;
+  onCompleteFollowUp: (id: number) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
   revision: number;
@@ -45,15 +46,31 @@ type FollowUpRowProps = {
   upcoming: boolean;
   busy: boolean;
   onReschedule: (id: number, date: string) => Promise<void>;
+  onComplete: (id: number) => Promise<void>;
   onOpen: (id: number) => void;
 };
 
-function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onOpen }: FollowUpRowProps) {
+function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onComplete, onOpen }: FollowUpRowProps) {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(item.followUpDate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fieldId = 'followup-' + (upcoming ? 'next-' : 'due-') + item.id;
+  async function markComplete() {
+    if (busy || saving || !window.confirm(
+      'Complete the follow-up for ' + item.company + '? This clears its due date and records the completion in application history.'
+    )) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onComplete(item.id);
+    } catch (failure) {
+      setError(errorMessage(failure, 'Could not complete follow-up.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveDate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || saving) return;
@@ -80,6 +97,10 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onOpen }: F
       <time dateTime={item.followUpDate}>{item.followUpDate}</time>
       <button type="button" className="secondary-button quick-view-open"
         onClick={() => onOpen(item.id)}>Open application</button>
+      <button type="button" className="secondary-button follow-up-complete"
+        disabled={busy || saving} onClick={() => void markComplete()}>
+        {saving ? 'Working…' : 'Complete follow-up'}
+      </button>
       <button type="button" className="secondary-button reschedule-toggle"
         disabled={busy || saving} aria-expanded={editing}
         onClick={() => { setEditing(!editing); setDate(item.followUpDate); setError(''); }}>
@@ -100,7 +121,7 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onOpen }: F
   </div>;
 }
 
-export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const pipeline = statuses.map(status => ({
     status,
@@ -129,7 +150,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
         <div>
           <strong>Follow-ups need attention</strong>
           <p>{summary.overdueFollowUps} overdue · {summary.dueTodayFollowUps} due today.
-            Reschedule them directly from the dashboard.</p>
+            Complete or reschedule them directly from the dashboard.</p>
         </div>
         <a href="#follow-ups-heading">Review follow-ups ↓</a>
       </div>}
@@ -252,7 +273,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                   <p>You're all caught up.</p><small>Set a follow-up date on an application to keep it on your radar.</small>
                 </div>
               : followUps.map(item => <FollowUpRow key={item.id} item={item} todayUtc={todayUtc}
-                  onReschedule={onReschedule} onOpen={setQuickViewId} busy={busy} upcoming={false} />)}
+                  onReschedule={onReschedule} onComplete={onCompleteFollowUp} onOpen={setQuickViewId} busy={busy} upcoming={false} />)}
           </div>
           <p className="form-help follow-up-count-note">Counts include all due applications, including those outside this five-item list.</p>
           <div className="upcoming-follow-ups-heading">
@@ -263,7 +284,8 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
             {upcomingFollowUps.length === 0
               ? <p className="form-help upcoming-empty">No upcoming follow-ups in the next seven days.</p>
               : upcomingFollowUps.map(item => <FollowUpRow key={item.id} item={item}
-                  todayUtc={todayUtc} onReschedule={onReschedule} onOpen={setQuickViewId} busy={busy} upcoming />)}
+                  todayUtc={todayUtc} onReschedule={onReschedule} onComplete={onCompleteFollowUp}
+                  onOpen={setQuickViewId} busy={busy} upcoming />)}
           </div>
         </section>
         <section className="schedule-panel" aria-labelledby="interviews-heading">
