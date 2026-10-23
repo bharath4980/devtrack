@@ -18,6 +18,22 @@ export type UpcomingInterview = {
   interviewDate: string;
 };
 
+export type UpcomingInterviewRound = {
+  roundId: number;
+  applicationId: number;
+  company: string;
+  title: string;
+  roundName: string;
+  format: 'PHONE' | 'VIDEO' | 'ONSITE' | 'TAKE_HOME' | 'OTHER';
+  scheduledDate: string;
+};
+
+export async function getUpcomingInterviewRounds(signal?: AbortSignal): Promise<UpcomingInterviewRound[]> {
+  const response = await apiFetch('/api/dashboard/interviews/rounds', { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error('Failed to load upcoming interview rounds');
+  return response.json();
+}
+
 export type DueFollowUp = {
   id: number;
   company: string;
