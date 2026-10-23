@@ -26,6 +26,8 @@ export type UpcomingInterviewRound = {
   roundName: string;
   format: 'PHONE' | 'VIDEO' | 'ONSITE' | 'TAKE_HOME' | 'OTHER';
   scheduledDate: string;
+  scheduledTime: string | null;
+  timeZone: string | null;
 };
 
 export async function getUpcomingInterviewRounds(signal?: AbortSignal): Promise<UpcomingInterviewRound[]> {
