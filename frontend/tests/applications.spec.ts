@@ -48,6 +48,25 @@ test('repeated form submission creates only one application', async ({ page }) =
   expect(creates).toBe(1);
 });
 
+test('browser exit warning activates only for unsaved application edits', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+
+  const isExitBlocked = () => page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(await isExitBlocked()).toBe(false);
+
+  await form.getByLabel('Company', { exact: true }).fill('Unsaved Draft');
+  await expect.poll(isExitBlocked).toBe(true);
+
+  await form.getByLabel('Company', { exact: true }).fill('');
+  await expect.poll(isExitBlocked).toBe(false);
+});
+
 test('cancel asks before discarding unsaved application details', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
