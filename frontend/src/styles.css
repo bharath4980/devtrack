@@ -1246,3 +1246,35 @@ footer { border-color: var(--line); color: #94a0b3; }
   .quick-view-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .quick-view-panel .application-form fieldset { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Page-scoped bulk status actions. Existing status history remains authoritative. */
+.bulk-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
+  padding: 13px 15px; margin: 13px 0 18px; background: #f7f9fd;
+  border: 1px solid #e0e7f2; border-radius: 12px;
+}
+.bulk-toolbar label { color: #44536e; font-size: 12px; font-weight: 750; }
+.bulk-select-all { display: inline-flex; align-items: center; gap: 7px; }
+.bulk-toolbar input[type="checkbox"], .application-select input[type="checkbox"] {
+  width: 17px; height: 17px; accent-color: #4058b7; cursor: pointer;
+}
+.bulk-selected-count { color: #66768d; font-size: 12px; margin-right: auto; }
+.bulk-toolbar select {
+  min-width: 130px; min-height: 36px; padding: 7px 9px; border-radius: 8px;
+  background: #fff; color: #263955; border: 1px solid #cbd5e5;
+}
+.bulk-toolbar button { min-height: 36px; padding: 8px 12px; font-size: 12px; }
+.bulk-change-note, .bulk-progress { margin: 0; flex-basis: 100%; font-size: 12px; }
+.application-card-selected { outline: 2px solid #8495ea; outline-offset: 0; }
+.application-select {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  color: #62728d; font-size: 11px; font-weight: 750; margin-bottom: 13px;
+}
+.application-select:has(input:disabled) { cursor: not-allowed; opacity: .7; }
+@media (max-width: 700px) {
+  .bulk-toolbar { align-items: stretch; }
+  .bulk-selected-count { margin-left: auto; align-self: center; }
+  .bulk-toolbar label[for="bulk-status-target"] { flex: 1 0 100%; }
+  .bulk-toolbar select { flex: 1 1 140px; }
+  .bulk-toolbar button { flex: 1 1 auto; }
+}

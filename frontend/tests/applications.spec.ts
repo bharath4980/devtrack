@@ -71,6 +71,62 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('bulk status change confirms before moving selected applications and records each change', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Batch Alpha');
+  await seed(page, 'Batch Beta');
+  await seed(page, 'Batch Gamma');
+  await page.reload();
+
+  const alpha = page.getByRole('article', { name: 'Batch Alpha — Software Engineer' });
+  const beta = page.getByRole('article', { name: 'Batch Beta — Software Engineer' });
+  const gamma = page.getByRole('article', { name: 'Batch Gamma — Software Engineer' });
+  await alpha.getByRole('checkbox', { name: 'Select Batch Alpha — Software Engineer' }).check();
+  await beta.getByRole('checkbox', { name: 'Select Batch Beta — Software Engineer' }).check();
+  const toolbar = page.getByRole('group', { name: 'Bulk status actions' });
+  await expect(toolbar).toContainText('2 selected on this page');
+  await toolbar.getByLabel('Move selected to').selectOption('APPLIED');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await toolbar.getByRole('button', { name: 'Move selected' }).click();
+  await expect(alpha.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
+  await expect(beta.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
+
+  page.once('dialog', dialog => dialog.accept());
+  await toolbar.getByRole('button', { name: 'Move selected' }).click();
+  await expect(alpha.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
+  await expect(beta.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
+  await expect(gamma.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
+  await expect(toolbar).toContainText('0 selected on this page');
+  await expect(page.getByText('2 applications moved to Applied.')).toBeVisible();
+  await page.reload();
+  await expect(alpha.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
+  await expect(beta.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
+  await expect(gamma.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
+});
+
+test('bulk status selection never includes applications from another page', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 11; i++) await seed(page, 'Page Batch ' + i);
+  await page.reload();
+  const toolbar = page.getByRole('group', { name: 'Bulk status actions' });
+  await toolbar.getByRole('checkbox', { name: 'Select all applications on this page' }).check();
+  await expect(toolbar).toContainText('10 selected on this page');
+  await toolbar.getByLabel('Move selected to').selectOption('APPLIED');
+  page.once('dialog', dialog => dialog.accept());
+  await toolbar.getByRole('button', { name: 'Move selected' }).click();
+  await expect(toolbar).toContainText('0 selected on this page');
+  await page.getByLabel('Status filter').selectOption('SAVED');
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.getByRole('article', { name: 'Page Batch 0 — Software Engineer' })).toBeVisible();
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await expect(toolbar).toContainText('0 selected on this page');
+  await toolbar.getByRole('checkbox', { name: 'Select all applications on this page' }).check();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await page.getByRole('button', { name: 'List view' }).click();
+  await expect(page.getByRole('group', { name: 'Bulk status actions' })).toContainText('0 selected on this page');
+});
+
 test('pipeline board moves applications by stage selector and stays in sync with list and dashboard', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Board Example');

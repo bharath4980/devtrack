@@ -14,6 +14,8 @@ type Props = {
   application: JobApplication;
   editing: boolean;
   busy: boolean;
+  selected: boolean;
+  onSelect: (selected: boolean) => void;
   onEdit: () => void;
   onCancel: () => void;
   onSave: (values: UpdateJobApplicationRequest) => Promise<void>;
@@ -21,9 +23,15 @@ type Props = {
   onDelete: () => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, onEdit, onCancel, onSave, onStatus, onDelete }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete }: Props) {
   const link = safeLink(application.postingUrl);
-  return <article className="application-card" aria-label={`${application.company} — ${application.title}`}>
+  return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
+    aria-label={`${application.company} — ${application.title}`}>
+    <label className="application-select">
+      <input type="checkbox" disabled={busy || editing} checked={selected} onChange={event => onSelect(event.target.checked)}
+        aria-label={`Select ${application.company} — ${application.title}`} />
+      <span>Select application</span>
+    </label>
     {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel} /> : <>
       <div className="application-card-header">
         <div className="application-identity">
