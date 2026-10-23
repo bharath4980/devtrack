@@ -48,6 +48,22 @@ test('repeated form submission creates only one application', async ({ page }) =
   expect(creates).toBe(1);
 });
 
+test('cancel asks before discarding unsaved application details', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Keep My Draft');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Keep My Draft');
+
+  page.once('dialog', dialog => dialog.accept());
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form).toHaveCount(0);
+  expect((await (await page.request.get('/api/applications')).json()).totalElements).toBe(0);
+});
+
 test('first-time guide shows only on an empty account and leads to the first real application', async ({ page }) => {
   await registerAndLogin(page);
   const gettingStarted = page.getByRole('region', { name: 'Welcome to your job search workspace' });
