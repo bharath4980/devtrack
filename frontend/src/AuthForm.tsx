@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { ApiError } from './apiError';
 import { login, register, type CurrentUser } from './authApi';
 
@@ -10,11 +10,14 @@ export default function AuthForm({ onAuthenticated }: {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const requestPending = useRef(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (requestPending.current) return;
+    requestPending.current = true;
     setBusy(true);
     setError('');
     setNotice('');
@@ -33,6 +36,7 @@ export default function AuthForm({ onAuthenticated }: {
         ? Object.entries(error.fieldErrors).map(([field, message]) => `${field}: ${message}`).join('. ')
         : error instanceof Error ? error.message : 'Something went wrong. Please try again.');
     } finally {
+      requestPending.current = false;
       setBusy(false);
     }
   }
