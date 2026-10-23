@@ -116,6 +116,58 @@ class ApplicationActivityEndpointTest {
     }
 
     @Test
+    void completingFollowUpIsOwnerScopedCsrfProtectedAndRecordedOnce() throws Exception {
+        SessionCredentials a = login(alice.getEmail());
+        SessionCredentials b = login(bob.getEmail());
+        long id = create(a, "Reminder Studio");
+        LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
+
+        mvc.perform(patch("/api/applications/" + id + "/follow-up").session(a.session())
+                .header(a.header(), a.token()).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("followUpDate", yesterday.toString()))))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/dashboard").session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueFollowUps").value(1));
+        mvc.perform(patch("/api/applications/" + id + "/follow-up/complete")
+                .session(a.session()))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/applications/" + id + "/follow-up/complete")
+                .session(b.session()).header(b.header(), b.token()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(patch("/api/applications/" + id + "/follow-up/complete")
+                .session(a.session()).header(a.header(), a.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SAVED"))
+                .andExpect(jsonPath("$.followUpDate").isEmpty());
+
+        mvc.perform(get("/api/dashboard").session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueFollowUps").value(0))
+                .andExpect(jsonPath("$.dueTodayFollowUps").value(0));
+        mvc.perform(get("/api/dashboard/follow-ups").session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/applications/" + id + "/activity").session(a.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].type").value("FOLLOW_UP_COMPLETED"))
+                .andExpect(jsonPath("$[0].toStatus").value("SAVED"))
+                .andExpect(jsonPath("$[0].fromStatus").isEmpty())
+                .andExpect(jsonPath("$[1].type").value("CREATED"));
+
+        mvc.perform(patch("/api/applications/" + id + "/follow-up/complete")
+                .session(a.session()).header(a.header(), a.token()))
+                .andExpect(status().isConflict());
+        assertThat(activity.count()).isEqualTo(2);
+        mvc.perform(get("/api/dashboard/activity").session(b.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void oldRowsHaveNoInventedHistoryButCurrentStagesCountForAnalytics() throws Exception {
         JobApplication earlier = new JobApplication();
         earlier.setOwner(alice);

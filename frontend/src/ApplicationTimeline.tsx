@@ -6,9 +6,9 @@ import type { ApplicationActivity } from './dashboardApi';
 type Props = { applicationId: number; status: ApplicationStatus };
 
 export function activityText(item: ApplicationActivity): string {
-  return item.type === 'CREATED'
-    ? 'Application saved'
-    : `Status changed: ${item.fromStatus ? statusLabel(item.fromStatus) : 'Unknown'} → ${statusLabel(item.toStatus)}`;
+  if (item.type === 'CREATED') return 'Application saved';
+  if (item.type === 'FOLLOW_UP_COMPLETED') return 'Follow-up completed';
+  return `Status changed: ${item.fromStatus ? statusLabel(item.fromStatus) : 'Unknown'} → ${statusLabel(item.toStatus)}`;
 }
 
 export function activityTime(isoDate: string): string {
@@ -33,7 +33,8 @@ export default function ApplicationTimeline({ applicationId, status }: Props) {
     return () => controller.abort();
   }, [applicationId, status, expanded]);
 
-  const lastRecorded = items[0];
+  // Follow-up events do not start a new application stage.
+  const lastRecorded = items.find(item => item.type === 'CREATED' || item.type === 'STATUS_CHANGED');
   const daysInStage = !loading && lastRecorded?.toStatus === status
     ? Math.max(0, Math.floor((Date.now() - new Date(lastRecorded.occurredAt).getTime()) / 86400000))
     : null;

@@ -7,7 +7,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "application_activity")
 public class ApplicationActivity {
-    public enum Type { CREATED, STATUS_CHANGED }
+    public enum Type { CREATED, STATUS_CHANGED, FOLLOW_UP_COMPLETED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

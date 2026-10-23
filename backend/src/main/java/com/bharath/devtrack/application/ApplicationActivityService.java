@@ -33,6 +33,13 @@ public class ApplicationActivityService {
                 previous, application.getStatus(), Instant.now()));
     }
 
+    @Transactional
+    public void recordFollowUpCompleted(JobApplication application, UserAccount owner) {
+        activity.save(new ApplicationActivity(application, owner,
+                ApplicationActivity.Type.FOLLOW_UP_COMPLETED,
+                null, application.getStatus(), Instant.now()));
+    }
+
     @Transactional(readOnly = true)
     public List<ApplicationActivityResponse> getForApplication(Long ownerId, Long applicationId) {
         applications.findByIdAndOwner_Id(applicationId, ownerId).orElseThrow(

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
-import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, updateApplication, updateApplicationStatus } from './applicationApi';
+import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, completeFollowUp, updateApplication, updateApplicationStatus } from './applicationApi';
 import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getUpcomingInterviewRounds, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type UpcomingInterviewRound, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
@@ -139,6 +139,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     await mutate(() => rescheduleFollowUp(id, date), 'Follow-up rescheduled.');
   }
 
+  async function markFollowUpComplete(id: number) {
+    await mutate(() => completeFollowUp(id), 'Follow-up completed. Its due date was cleared and the completion was recorded.');
+  }
+
   async function changeStatus(id: number, next: ApplicationStatus) {
     try { await mutate(() => updateApplicationStatus(id, next), 'Status updated.'); }
     catch (error) { setActionError(errorMessage(error, 'Could not update status.')); }
@@ -249,7 +253,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
       {isEmptyAccount
         ? <GettingStarted disabled={blocked} onAddApplication={startFirstApplication}
             onImportCsv={startCsvImport} />
-        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />}
+        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />}
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" id="new-application" tabIndex={-1} aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />

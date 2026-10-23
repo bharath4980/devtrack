@@ -80,7 +80,7 @@ export type ApplicationActivity = {
   applicationId: number;
   company: string;
   title: string;
-  type: 'CREATED' | 'STATUS_CHANGED';
+  type: 'CREATED' | 'STATUS_CHANGED' | 'FOLLOW_UP_COMPLETED';
   fromStatus: import('./types').ApplicationStatus | null;
   toStatus: import('./types').ApplicationStatus;
   occurredAt: string;
