@@ -71,6 +71,52 @@ test('register, create, edit, interview, filter, persist, delete and logout', as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('interview preparation creates, updates, persists and deletes a round', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Interview Studio');
+  await page.reload();
+
+  const card = page.getByRole('article', { name: 'Interview Studio — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await expect(workspace.getByText('No rounds yet.', { exact: false })).toBeVisible();
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Technical screen');
+  await form.getByLabel('Scheduled date').fill('2026-11-02');
+  await form.getByLabel('Format').selectOption('VIDEO');
+  await form.getByLabel('Recruiter or interviewer').fill('Jordan');
+  await form.getByLabel('Contact email').fill('jordan@example.com');
+  await form.getByLabel('Preparation notes').fill('Practice APIs and SQL');
+  await form.getByLabel('Follow-up notes').fill('Ask about team goals');
+  await form.getByRole('button', { name: 'Save interview round' }).click();
+  const round = workspace.getByRole('article', { name: 'Technical screen' });
+  await expect(round).toContainText('Practice APIs and SQL');
+  await expect(round).toContainText('jordan@example.com');
+
+  await page.reload();
+  const reopened = page.getByRole('article', { name: 'Interview Studio — Software Engineer' });
+  await reopened.getByRole('button', { name: 'Interview prep' }).click();
+  const restored = reopened.getByRole('region', { name: 'Interview preparation' });
+  const storedRound = restored.getByRole('article', { name: 'Technical screen' });
+  await expect(storedRound).toContainText('Ask about team goals');
+  await storedRound.getByRole('button', { name: 'Edit round' }).click();
+  const edit = restored.getByRole('form', { name: 'Interview round form' });
+  await edit.getByLabel('Outcome').selectOption('COMPLETED');
+  await edit.getByLabel('Follow-up notes').fill('Sent thank-you note');
+  await edit.getByRole('button', { name: 'Save interview round' }).click();
+  await expect(restored.getByRole('article', { name: 'Technical screen' })).toContainText('Completed');
+  await expect(restored.getByRole('article', { name: 'Technical screen' })).toContainText('Sent thank-you note');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await restored.getByRole('button', { name: 'Delete round' }).click();
+  await expect(restored.getByRole('article', { name: 'Technical screen' })).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
+  await restored.getByRole('button', { name: 'Delete round' }).click();
+  await expect(restored.getByText('No rounds yet.', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('bulk status change confirms before moving selected applications and records each change', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Batch Alpha');
