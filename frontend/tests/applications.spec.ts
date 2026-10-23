@@ -85,7 +85,11 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   await form.getByLabel('Round name').fill('Technical screen');
   await form.getByLabel('Scheduled date').fill('2026-11-02');
   await form.getByLabel('Start time (optional)').fill('14:30');
-  await form.getByLabel('Time zone (IANA)').fill('America/Chicago');
+  const timeZone = form.getByLabel('Time zone', { exact: true });
+  await expect(timeZone).not.toHaveValue('');
+  await timeZone.selectOption('Asia/Kolkata');
+  await expect(timeZone).toHaveValue('Asia/Kolkata');
+  await timeZone.selectOption('America/Chicago');
   await form.getByLabel('Format').selectOption('VIDEO');
   await form.getByLabel('Recruiter or interviewer').fill('Jordan');
   await form.getByLabel('Contact email').fill('jordan@example.com');
@@ -111,6 +115,7 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   await expect(storedRound).toContainText('14:30 (America/Chicago)');
   await storedRound.getByRole('button', { name: 'Edit round' }).click();
   const edit = restored.getByRole('form', { name: 'Interview round form' });
+  await expect(edit.getByLabel('Time zone', { exact: true })).toHaveValue('America/Chicago');
   await edit.getByLabel('Outcome').selectOption('COMPLETED');
   await edit.getByLabel('Follow-up notes').fill('Sent thank-you note');
   await edit.getByRole('button', { name: 'Save interview round' }).click();

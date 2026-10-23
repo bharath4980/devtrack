@@ -14,6 +14,32 @@ const outcomes: InterviewRoundInput['outcome'][] = ['PLANNED', 'COMPLETED', 'CAN
 const labelFor = (value: string) => value.replaceAll('_', ' ').toLowerCase()
   .replace(/^./, letter => letter.toUpperCase());
 
+// Keep familiar choices first, then expose all time zones supported by the browser.
+// These are IANA identifiers so the backend can safely handle daylight saving time.
+const commonTimeZones = [
+  { value: 'America/New_York', label: 'Eastern Time — New York' },
+  { value: 'America/Chicago', label: 'Central Time — Chicago' },
+  { value: 'America/Denver', label: 'Mountain Time — Denver' },
+  { value: 'America/Phoenix', label: 'Arizona Time — Phoenix' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time — Los Angeles' },
+  { value: 'America/Anchorage', label: 'Alaska Time — Anchorage' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time — Honolulu' },
+  { value: 'Asia/Kolkata', label: 'India Standard Time — Kolkata' },
+  { value: 'Europe/London', label: 'United Kingdom — London' },
+  { value: 'Europe/Berlin', label: 'Central Europe — Berlin' },
+  { value: 'Asia/Dubai', label: 'United Arab Emirates — Dubai' },
+  { value: 'Asia/Singapore', label: 'Singapore' },
+  { value: 'Asia/Tokyo', label: 'Japan — Tokyo' },
+  { value: 'Australia/Sydney', label: 'Australia — Sydney' },
+  { value: 'UTC', label: 'Coordinated Universal Time (UTC)' },
+];
+const commonZoneIds = new Set(commonTimeZones.map(zone => zone.value));
+const otherTimeZones = (typeof Intl.supportedValuesOf === 'function'
+  ? Intl.supportedValuesOf('timeZone') : [])
+  .filter(zone => !commonZoneIds.has(zone))
+  .sort((a, b) => a.localeCompare(b));
+const selectableZoneIds = new Set([...commonZoneIds, ...otherTimeZones]);
+
 type Props = { applicationId: number; busy?: boolean; onChanged?: () => void };
 
 export default function InterviewWorkspace({ applicationId, busy = false, onChanged }: Props) {
@@ -198,10 +224,25 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
               }} />
           </div>
           {draft.scheduledTime && <div className="form-field">
-            <label htmlFor={id + '-zone'}>Time zone (IANA)</label>
-            <input id={id + '-zone'} required maxLength={64} value={draft.timeZone ?? ''}
-              placeholder="America/Chicago"
-              onChange={event => setField('timeZone', event.target.value)} />
+            <label htmlFor={id + '-zone'}>Time zone</label>
+            <select id={id + '-zone'} required value={draft.timeZone ?? ''}
+              onChange={event => setField('timeZone', event.target.value)}>
+              <option value="" disabled>Select a time zone</option>
+              <optgroup label="Common time zones">
+                {commonTimeZones.map(zone => <option key={zone.value} value={zone.value}>
+                  {zone.label} ({zone.value})
+                </option>)}
+              </optgroup>
+              {otherTimeZones.length > 0 && <optgroup label="More time zones">
+                {otherTimeZones.map(zone => <option key={zone} value={zone}>
+                  {zone.replaceAll('_', ' ')}
+                </option>)}
+              </optgroup>}
+              {draft.timeZone && !selectableZoneIds.has(draft.timeZone) &&
+                <option value={draft.timeZone}>{draft.timeZone} (saved selection)</option>}
+            </select>
+            <p className="form-help">Defaults to your browser time zone. Choose the time zone
+              given in your interview invitation if it differs.</p>
           </div>}
           <div className="form-field">
             <label htmlFor={id + '-format'}>Format</label>
