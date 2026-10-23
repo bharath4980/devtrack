@@ -2,6 +2,7 @@ package com.bharath.devtrack.dashboard;
 
 import com.bharath.devtrack.interview.InterviewRound;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /** Dashboard projection excludes private preparation notes and recruiter contacts. */
 public record UpcomingInterviewRoundResponse(
@@ -11,5 +12,7 @@ public record UpcomingInterviewRoundResponse(
         String title,
         String roundName,
         InterviewRound.Format format,
-        LocalDate scheduledDate
+        LocalDate scheduledDate,
+        String scheduledTime,
+        String timeZone
 ) {}
