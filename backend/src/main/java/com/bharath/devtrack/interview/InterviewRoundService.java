@@ -2,6 +2,14 @@ package com.bharath.devtrack.interview;
 
 import com.bharath.devtrack.application.JobApplicationService;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.Instant;
+import java.time.DateTimeException;
+import java.time.format.DateTimeFormatter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,11 +29,12 @@ public class InterviewRoundService {
     }
 
     public record RoundDetails(Long id, String roundName, LocalDate scheduledDate,
-                               InterviewRound.Format format, String contactName, String contactEmail,
+                               String scheduledTime, String timeZone, InterviewRound.Format format, String contactName, String contactEmail,
                                String preparationNotes, String followUpNotes, InterviewRound.Outcome outcome) {
         static RoundDetails from(InterviewRound round) {
             return new RoundDetails(round.getId(), round.getRoundName(), round.getScheduledDate(),
-                    round.getFormat(), round.getContactName(), round.getContactEmail(),
+                    round.getScheduledTime() == null ? null : round.getScheduledTime().toString(),
+                    round.getTimeZone(), round.getFormat(), round.getContactName(), round.getContactEmail(),
                     round.getPreparationNotes(), round.getFollowUpNotes(), round.getOutcome());
         }
     }
@@ -66,13 +75,93 @@ public class InterviewRoundService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Interview round not found"));
     }
 
+    @Transactional(readOnly = true)
+    public byte[] calendar(Long ownerId, Long applicationId, Long roundId) {
+        var application = applications.getForOwner(ownerId, applicationId);
+        InterviewRound round = findOwned(ownerId, applicationId, roundId);
+        if (round.getScheduledDate() == null || round.getScheduledTime() == null
+                || round.getTimeZone() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Set an interview date, time and time zone before exporting a calendar event");
+        }
+        ZoneId zone = validateZone(round.getTimeZone(), round.getScheduledDate(), round.getScheduledTime());
+        Instant startsAt = LocalDateTime.of(round.getScheduledDate(), round.getScheduledTime())
+                .atZone(zone).toInstant();
+        // A one-hour placeholder is deliberate; the user can edit duration in their calendar.
+        DateTimeFormatter utc = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
+        String[] lines = {
+                "BEGIN:VCALENDAR", "VERSION:2.0",
+                "PRODID:-//DevTrack//Interview Calendar//EN", "CALSCALE:GREGORIAN",
+                "BEGIN:VEVENT",
+                "UID:interview-" + round.getId() + "-application-" + applicationId + "@devtrack.invalid",
+                "DTSTAMP:" + utc.format(Instant.now()),
+                "DTSTART:" + utc.format(startsAt),
+                "DTEND:" + utc.format(startsAt.plusSeconds(3600)),
+                "SUMMARY:" + escapeCalendarText(round.getRoundName() + " - " + application.getCompany()),
+                "DESCRIPTION:" + escapeCalendarText("Role: " + application.getTitle()
+                        + "\\nOne-hour placeholder. Confirm the actual duration with your interviewer."),
+                "END:VEVENT", "END:VCALENDAR"
+        };
+        StringBuilder calendar = new StringBuilder();
+        for (String line : lines) calendar.append(foldCalendarLine(line));
+        return calendar.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String escapeCalendarText(String raw) {
+        return raw.replace("\\", "\\\\")
+                .replace("\r\n", "\n").replace("\r", "\n")
+                .replace("\n", "\\n")
+                .replace(",", "\\,").replace(";", "\\;");
+    }
+
+    private static String foldCalendarLine(String line) {
+        StringBuilder result = new StringBuilder();
+        int column = 0;
+        for (int offset = 0; offset < line.length();) {
+            int cp = line.codePointAt(offset);
+            String part = new String(Character.toChars(cp));
+            int bytes = part.getBytes(StandardCharsets.UTF_8).length;
+            if (column + bytes > 75) {
+                result.append("\r\n ");
+                column = 1;
+            }
+            result.append(part);
+            column += bytes;
+            offset += Character.charCount(cp);
+        }
+        return result.append("\r\n").toString();
+    }
+
+    private static ZoneId validateZone(String raw, LocalDate day, LocalTime time) {
+        try {
+            ZoneId zone = ZoneId.of(raw.trim());
+            if (zone.getRules().getValidOffsets(LocalDateTime.of(day, time)).size() != 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "This local time is ambiguous or skipped due to daylight saving time. Choose another time.");
+            }
+            return zone;
+        } catch (DateTimeException | NullPointerException failure) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Enter a valid IANA time zone, for example America/Chicago");
+        }
+    }
+
     private static String optionalText(String text) {
         return text == null || text.isBlank() ? null : text.trim();
     }
 
     private static void copy(InterviewRoundRequest request, InterviewRound round) {
         round.setRoundName(request.roundName().trim());
+        LocalTime time = request.scheduledTime();
+        String zoneText = optionalText(request.timeZone());
+        if (time == null && zoneText != null || time != null && (request.scheduledDate() == null || zoneText == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Set a date, time and time zone together, or leave both time and time zone blank");
+        }
+        if (time != null) validateZone(zoneText, request.scheduledDate(), time);
         round.setScheduledDate(request.scheduledDate());
+        round.setScheduledTime(time);
+        round.setTimeZone(zoneText);
         round.setFormat(request.format());
         round.setContactName(optionalText(request.contactName()));
         round.setContactEmail(optionalText(request.contactEmail()));
