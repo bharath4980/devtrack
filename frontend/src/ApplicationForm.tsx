@@ -96,6 +96,16 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   const hasUnsavedChanges = (Object.keys(initialValues) as (keyof UpdateJobApplicationRequest)[])
     .some(key => values[key] !== initialValues[key]);
 
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    function warnBeforeLeaving(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [hasUnsavedChanges]);
+
   function cancelEditing() {
     if (hasUnsavedChanges && !window.confirm('Discard your unsaved application changes?')) return;
     onCancel();
