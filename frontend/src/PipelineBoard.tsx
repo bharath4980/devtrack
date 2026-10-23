@@ -19,6 +19,7 @@ type Props = {
   busy: boolean;
   onMove: (id: number, status: ApplicationStatus) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
+  onInterviewChange: () => void;
 };
 
 function postingLink(value: string | null) {
@@ -52,7 +53,7 @@ function attentionLabels(application: JobApplication, today: string) {
   return labels;
 }
 
-export default function PipelineBoard({ revision, busy, onMove, onEdit }: Props) {
+export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange }: Props) {
   const [filters, setFilters] = useState<BoardFilters>(initialFilters);
   const [draftSearch, setDraftSearch] = useState('');
   const [draftStage, setDraftStage] = useState<ApplicationStatus | ''>('');
@@ -259,7 +260,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit }: Props)
               target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
         </>}
-        {!editing && <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} />}
+        {!editing && <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} onChanged={onInterviewChange} />}
       </section>}
       {moreError && <p className="form-error" role="alert">{moreError}</p>}
       <div className="pipeline-board-scroll" tabIndex={0} aria-label="Scrollable pipeline columns">
