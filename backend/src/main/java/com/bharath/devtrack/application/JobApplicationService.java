@@ -189,6 +189,17 @@ public class JobApplicationService {
         return findById(id, ownerId);
     }
 
+    public JobApplication completeFollowUp(Long ownerId, Long id) {
+        JobApplication application = findById(id, ownerId);
+        if (application.getFollowUpDate() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This application has no scheduled follow-up.");
+        }
+        application.setFollowUpDate(null);
+        JobApplication saved = repository.save(application);
+        activity.recordFollowUpCompleted(saved, saved.getOwner());
+        return saved;
+    }
+
     public JobApplication rescheduleFollowUp(Long ownerId, Long id, LocalDate followUpDate) {
         JobApplication application = findById(id, ownerId);
         application.setFollowUpDate(followUpDate);
