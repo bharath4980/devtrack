@@ -25,6 +25,29 @@ async function seed(page: Page, company: string) {
   return result.json();
 }
 
+test('repeated form submission creates only one application', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Single Save Co');
+  await form.getByLabel('Job title').fill('Backend Engineer');
+
+  let creates = 0;
+  await page.route('**/api/applications', async route => {
+    if (route.request().method() === 'POST') {
+      creates++;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    await route.continue();
+  });
+  await form.evaluate(element => {
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole('article', { name: 'Single Save Co — Backend Engineer' })).toBeVisible();
+  expect(creates).toBe(1);
+});
+
 test('first-time guide shows only on an empty account and leads to the first real application', async ({ page }) => {
   await registerAndLogin(page);
   const gettingStarted = page.getByRole('region', { name: 'Welcome to your job search workspace' });
