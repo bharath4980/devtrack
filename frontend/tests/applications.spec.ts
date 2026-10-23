@@ -1037,7 +1037,7 @@ test('existing applications without history show a truthful status snapshot', as
 });
 
 test('application history timestamps use the browser time zone', async ({ browser }) => {
-  const context = await browser.newContext({ timeZoneId: 'America/Los_Angeles' });
+  const context = await browser.newContext({ timezoneId: 'America/Los_Angeles' });
   try {
     const page = await context.newPage();
     await registerAndLogin(page);
