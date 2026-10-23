@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { getApplications } from './applicationApi';
 import ApplicationForm from './ApplicationForm';
+import InterviewWorkspace from './InterviewWorkspace';
 import { errorMessage } from './apiError';
 import {
   statuses, statusLabel,
@@ -258,6 +259,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit }: Props)
               target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
         </>}
+        {!editing && <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} />}
       </section>}
       {moreError && <p className="form-error" role="alert">{moreError}</p>}
       <div className="pipeline-board-scroll" tabIndex={0} aria-label="Scrollable pipeline columns">

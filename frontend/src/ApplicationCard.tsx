@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import InterviewWorkspace from './InterviewWorkspace';
 import ApplicationForm from './ApplicationForm';
 import ApplicationTimeline from './ApplicationTimeline';
 import { statuses, statusLabel, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
@@ -24,6 +26,7 @@ type Props = {
 };
 
 export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete }: Props) {
+  const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const link = safeLink(application.postingUrl);
   return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
     aria-label={`${application.company} — ${application.title}`}>
@@ -61,6 +64,11 @@ export default function ApplicationCard({ application, editing, busy, selected, 
           <button className="danger-button" disabled={busy} onClick={onDelete}>Delete</button>
         </div>
       </div>
+      <div className="interview-toggle-wrap"><button type="button" className="secondary-button" disabled={busy}
+        aria-expanded={showInterviewPrep} onClick={() => setShowInterviewPrep(value => !value)}>
+        {showInterviewPrep ? 'Hide interview prep' : 'Interview prep'}
+      </button></div>
+      {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy} />}
       <ApplicationTimeline applicationId={application.id} status={application.status} />
     </>}
   </article>;
