@@ -3,6 +3,9 @@ package com.bharath.devtrack.dashboard;
 import com.bharath.devtrack.application.ApplicationActivity;
 import com.bharath.devtrack.application.ApplicationStatus;
 import com.bharath.devtrack.application.JobApplicationRepository;
+import com.bharath.devtrack.interview.InterviewRound;
+import com.bharath.devtrack.interview.InterviewRoundRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -19,12 +22,15 @@ import java.util.List;
 public class DashboardService {
 
     private final JobApplicationRepository repository;
+    private final InterviewRoundRepository interviewRounds;
     private final com.bharath.devtrack.application.ApplicationActivityRepository activity;
 
     public DashboardService(JobApplicationRepository repository,
-                            com.bharath.devtrack.application.ApplicationActivityRepository activity) {
+                            com.bharath.devtrack.application.ApplicationActivityRepository activity,
+                            InterviewRoundRepository interviewRounds) {
         this.repository = repository;
         this.activity = activity;
+        this.interviewRounds = interviewRounds;
     }
 
     public DashboardAnalyticsResponse getAnalytics(Long ownerId) {
@@ -139,6 +145,24 @@ public class DashboardService {
                 .map(application -> new DueFollowUpResponse(
                         application.getId(), application.getCompany(), application.getTitle(),
                         application.getFollowUpDate()))
+                .toList();
+    }
+
+    public List<UpcomingInterviewRoundResponse> getUpcomingInterviewRounds(Long ownerId) {
+        return interviewRounds.findDashboardUpcoming(
+                ownerId,
+                List.of(ApplicationStatus.SAVED, ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW),
+                InterviewRound.Outcome.PLANNED,
+                LocalDate.now(ZoneOffset.UTC),
+                PageRequest.of(0, 5))
+                .stream()
+                .map(row -> {
+                    InterviewRound round = (InterviewRound) row[0];
+                    return new UpcomingInterviewRoundResponse(
+                            round.getId(), round.getApplicationId(),
+                            (String) row[1], (String) row[2],
+                            round.getRoundName(), round.getFormat(), round.getScheduledDate());
+                })
                 .toList();
     }
 
