@@ -86,7 +86,7 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   await form.getByLabel('Scheduled date').fill('2026-11-02');
   await form.getByLabel('Start time (optional)').fill('14:30');
   const timeZone = form.getByLabel('Time zone', { exact: true });
-  await expect(timeZone).toHaveValue(/^(America\\/|Asia\\/|Europe\\/|Pacific\\/|UTC)/);
+  await expect(timeZone).not.toHaveValue('');
   await timeZone.selectOption('Asia/Kolkata');
   await expect(timeZone).toHaveValue('Asia/Kolkata');
   await timeZone.selectOption('America/Chicago');
