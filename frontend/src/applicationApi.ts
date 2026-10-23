@@ -103,6 +103,12 @@ export async function createApplication(
   return response.json();
 }
 
+export async function completeFollowUp(id: number): Promise<JobApplication> {
+  const response = await apiFetch(`/api/applications/${id}/follow-up/complete`, { method: 'PATCH' });
+  if (!response.ok) throw await readApiError(response, 'Could not complete this follow-up.');
+  return response.json();
+}
+
 export async function rescheduleFollowUp(id: number, followUpDate: string): Promise<JobApplication> {
   const response = await apiFetch(`/api/applications/${id}/follow-up`, {
     method: 'PATCH',
