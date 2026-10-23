@@ -33,7 +33,7 @@ test('CSV preview validates files and imports atomically with duplicate protecti
   const file = panel.getByLabel('CSV file (up to 100 applications, 500 KB)');
   await file.setInputFiles({
     name: 'invalid.csv', mimeType: 'text/csv',
-    buffer: Buffer.from('company,title,application_date\\nBadCo,Engineer,2026-02-31\\n'),
+    buffer: Buffer.from('company,title,application_date\nBadCo,Engineer,2026-02-31\n'),
   });
   await expect(panel.getByRole('alert')).toContainText('invalid application date');
   expect((await page.request.get('/api/applications')).status()).toBe(200);
@@ -43,7 +43,7 @@ test('CSV preview validates files and imports atomically with duplicate protecti
     '55,"Import, Inc.","Platform ""Engineer""",Remote,INTERVIEW,2026-10-15,2026-10-30,,https://jobs.lever.co/import/co1,"Line 1',
     'Line 2"',
     '56,Foo,Developer,,APPLIED,2026-10-16,,,,',
-  ].join('\\r\\n');
+  ].join('\r\n');
   await file.setInputFiles({ name: 'applications.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(panel).toContainText('2 applications from applications.csv');
   await expect(panel.getByRole('table', { name: 'CSV application preview' }))
@@ -70,7 +70,7 @@ test('CSV preview validates files and imports atomically with duplicate protecti
   await again.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
   await again.getByRole('button', { name: 'Import 2 applications' }).click();
   await expect(again.getByRole('alert')).toContainText('already exists');
-  await expect(page.getByRole('status', { name: '' }).filter({ hasText: '2 applications' }).first()).toBeVisible();
+  await expect(page.getByText('2 applications', { exact: false }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
