@@ -20,12 +20,14 @@ public class JobApplicationController {
     private final JobApplicationService service;
     private final ApplicationActivityService activity;
     private final AccountService accounts;
+    private final ApplicationImportService importer;
 
     public JobApplicationController(JobApplicationService service, ApplicationActivityService activity,
-                                    AccountService accounts) {
+                                    AccountService accounts, ApplicationImportService importer) {
         this.service = service;
         this.activity = activity;
         this.accounts = accounts;
+        this.importer = importer;
     }
 
     @PostMapping
@@ -61,6 +63,13 @@ public class JobApplicationController {
             return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
         }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(match);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<ApplicationImportService.ImportResult> importApplications(
+            Principal principal, @RequestBody ApplicationImportService.ImportRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(importer.importRows(accounts.currentUser(principal), request));
     }
 
     @GetMapping("/export.csv")
