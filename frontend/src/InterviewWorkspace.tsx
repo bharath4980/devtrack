@@ -1,12 +1,12 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import {
-  createInterviewRound, deleteInterviewRound, getInterviewRounds, updateInterviewRound,
+  createInterviewRound, deleteInterviewRound, getInterviewRounds, updateInterviewRound, downloadInterviewCalendar,
   type InterviewRound, type InterviewRoundInput,
 } from './interviewApi';
 import { errorMessage } from './apiError';
 
 const blank: InterviewRoundInput = {
-  roundName: '', scheduledDate: null, format: 'VIDEO', contactName: '',
+  roundName: '', scheduledDate: null, scheduledTime: null, timeZone: null, format: 'VIDEO', contactName: '',
   contactEmail: '', preparationNotes: '', followUpNotes: '', outcome: 'PLANNED',
 };
 const formats: InterviewRoundInput['format'][] = ['PHONE', 'VIDEO', 'ONSITE', 'TAKE_HOME', 'OTHER'];
@@ -23,6 +23,7 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<InterviewRoundInput>({ ...blank });
@@ -56,6 +57,7 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
   function startEdit(round: InterviewRound) {
     setDraft({
       roundName: round.roundName, scheduledDate: round.scheduledDate,
+      scheduledTime: round.scheduledTime, timeZone: round.timeZone,
       format: round.format, contactName: round.contactName ?? '',
       contactEmail: round.contactEmail ?? '', preparationNotes: round.preparationNotes ?? '',
       followUpNotes: round.followUpNotes ?? '', outcome: round.outcome,
@@ -88,6 +90,19 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
       setError(errorMessage(reason, 'Could not save interview round.'));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function exportCalendar(round: InterviewRound) {
+    if (downloadingId !== null || busy) return;
+    setDownloadingId(round.id);
+    setError('');
+    try {
+      await downloadInterviewCalendar(applicationId, round.id);
+    } catch (reason) {
+      setError(errorMessage(reason, 'Could not download the calendar event.'));
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -130,9 +145,16 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
         <article className="interview-round" aria-label={round.roundName}>
           <div className="interview-round-header">
             <div><strong>{round.roundName}</strong>
-              <p>{labelFor(round.format)} · {round.scheduledDate || 'Date not set'} · {labelFor(round.outcome)}</p>
+              <p>{labelFor(round.format)} · {round.scheduledDate || 'Date not set'}
+                {round.scheduledTime && round.timeZone ? ' at ' + round.scheduledTime + ' (' + round.timeZone + ')' : ''}
+                {' · '}{labelFor(round.outcome)}</p>
             </div>
             <div className="interview-round-actions">
+              {round.scheduledDate && round.scheduledTime && round.timeZone &&
+                <button type="button" className="secondary-button" disabled={busy || saving || downloadingId !== null}
+                  onClick={() => void exportCalendar(round)}>
+                  {downloadingId === round.id ? 'Preparing calendar…' : 'Add to calendar (.ics)'}
+                </button>}
               <button type="button" className="secondary-button" disabled={busy || saving}
                 onClick={() => startEdit(round)}>Edit round</button>
               <button type="button" className="danger-button" disabled={busy || saving}
@@ -159,8 +181,28 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
           <div className="form-field">
             <label htmlFor={id + '-date'}>Scheduled date</label>
             <input id={id + '-date'} type="date" value={draft.scheduledDate ?? ''}
-              onChange={event => setField('scheduledDate', event.target.value || null)} />
+              required={Boolean(draft.scheduledTime)}
+              onChange={event => setDraft(current => ({
+                ...current, scheduledDate: event.target.value || null,
+                ...(!event.target.value ? { scheduledTime: null, timeZone: null } : {}),
+              }))} />
           </div>
+          <div className="form-field">
+            <label htmlFor={id + '-time'}>Start time (optional)</label>
+            <input id={id + '-time'} type="time" value={draft.scheduledTime ?? ''}
+              disabled={!draft.scheduledDate} onChange={event => {
+                const time = event.target.value || null;
+                const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+                setDraft(current => ({ ...current, scheduledTime: time,
+                  timeZone: time ? (current.timeZone || localZone) : null }));
+              }} />
+          </div>
+          {draft.scheduledTime && <div className="form-field">
+            <label htmlFor={id + '-zone'}>Time zone (IANA)</label>
+            <input id={id + '-zone'} required maxLength={64} value={draft.timeZone ?? ''}
+              placeholder="America/Chicago"
+              onChange={event => setField('timeZone', event.target.value)} />
+          </div>}
           <div className="form-field">
             <label htmlFor={id + '-format'}>Format</label>
             <select id={id + '-format'} value={draft.format}
@@ -202,6 +244,8 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
             Cancel
           </button>
         </div>
+        <p className="form-help">When a time and time zone are set, you can download a one-hour calendar placeholder.
+          Importing the file does not notify interviewers. Confirm the actual interview duration separately.</p>
       </fieldset>
     </form>}
   </section>;
