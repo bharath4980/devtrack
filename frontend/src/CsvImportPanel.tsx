@@ -12,6 +12,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
   const [checked, setChecked] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importPending = useRef(false);
 
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -28,7 +29,8 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
   }
 
   async function save() {
-    if (disabled || saving || !checked || rows.length === 0) return;
+    if (disabled || saving || importPending.current || !checked || rows.length === 0) return;
+    importPending.current = true;
     setSaving(true);
     setError('');
     try {
@@ -41,6 +43,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
     } catch (reason) {
       setError(errorMessage(reason, 'Could not import the CSV. No applications were added.'));
     } finally {
+      importPending.current = false;
       setSaving(false);
     }
   }
