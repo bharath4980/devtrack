@@ -64,7 +64,7 @@ class InterviewRoundEndpointTest {
         mvc.perform(get("/api/applications/" + ownId + "/interviews")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/applications/" + ownId + "/interviews")
                 .contentType(MediaType.APPLICATION_JSON).content(payload("Phone screen")))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
         mvc.perform(post("/api/applications/" + ownId + "/interviews").session(a.session())
                 .contentType(MediaType.APPLICATION_JSON).content(payload("Phone screen")))
                 .andExpect(status().isForbidden());
