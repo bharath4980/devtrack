@@ -567,6 +567,42 @@ test('CSV export downloads every owned application independent of list paginatio
   await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
 });
 
+test('completing an overdue follow-up clears date and records history without changing status', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Follow-up Finishing Co');
+  await form.getByLabel('Job title').fill('Backend Developer');
+  await form.getByLabel('Follow-up date').fill('2020-01-01');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  const due = page.locator('.due-follow-up').filter({ hasText: 'Follow-up Finishing Co' });
+  await expect(due).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Follow-up priorities' })).toContainText('1 overdue');
+
+  // Cancel in the native confirmation: no change is made.
+  page.once('dialog', dialog => dialog.dismiss());
+  await due.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(due).toBeVisible();
+
+  page.once('dialog', dialog => dialog.accept());
+  await due.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(due).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Follow-up priorities' })).toContainText('0 overdue');
+  await expect(page.getByText('Follow-up completed. Its due date was cleared and the completion was recorded.')).toBeVisible();
+
+  const card = page.getByRole('article', { name: 'Follow-up Finishing Co — Backend Developer' });
+  await expect(card).toContainText('Saved');
+  await expect(card.locator('.application-details')).not.toContainText('Follow up');
+  await page.reload();
+  await expect(page.locator('.due-follow-up').filter({ hasText: 'Follow-up Finishing Co' })).toHaveCount(0);
+  await card.getByRole('button', { name: 'View history' }).click();
+  const history = card.locator('.timeline-content');
+  await expect(history).toContainText('Follow-up completed');
+  await expect(history).toContainText('Application saved');
+  await expect(history).not.toContainText('Status changed');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('follow-up dates show due work and can be rescheduled', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
