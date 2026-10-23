@@ -9,6 +9,7 @@ import ApplicationCard from './ApplicationCard';
 import Dashboard from './Dashboard';
 import PipelineBoard from './PipelineBoard';
 import CsvImportPanel from './CsvImportPanel';
+import GettingStarted from './GettingStarted';
 
 const initialQuery: ApplicationQuery = { search: '', status: '', sort: 'NEWEST', page: 0 };
 
@@ -49,6 +50,24 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const addButton = useRef<HTMLButtonElement>(null);
   const refresh = () => setRevision(value => value + 1);
   const refreshDashboard = () => setDashboardRevision(value => value + 1);
+  const isEmptyAccount = !dashboardLoading && !dashboardError && summary?.total === 0;
+
+  function startFirstApplication() {
+    setCreating(true);
+    setEditingId(null);
+  }
+
+  function startCsvImport() {
+    setShowCsvImport(true);
+    setView('list');
+    setEditingId(null);
+    document.getElementById('applications')?.focus();
+  }
+
+  // Bring the newly opened form into view, including for keyboard users.
+  useEffect(() => {
+    if (creating) document.getElementById('new-application')?.focus();
+  }, [creating]);
 
   // A page change must never silently include applications from another page.
   useEffect(() => {
@@ -223,13 +242,16 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <h1>Make every application count.</h1>
           <p className="intro">Stay on top of opportunities, upcoming interviews, and the next step in your search.</p>
         </div>
-        <button className="add-button" ref={addButton} disabled={blocked || creating} onClick={() => { setCreating(true); setEditingId(null); }}>
+        <button className="add-button" ref={addButton} disabled={blocked || creating} onClick={startFirstApplication}>
           <span aria-hidden="true" className="button-plus">+</span> Add application
         </button>
       </div>
-      <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />
+      {isEmptyAccount
+        ? <GettingStarted disabled={blocked} onAddApplication={startFirstApplication}
+            onImportCsv={startCsvImport} />
+        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />}
       <p className="save-notice" role="status">{notice}</p>
-      {creating && <section className="editor-section" aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
+      {creating && <section className="editor-section" id="new-application" tabIndex={-1} aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
       </section>}
       <section className="next-step" id="applications" tabIndex={-1} aria-labelledby="applications-heading">

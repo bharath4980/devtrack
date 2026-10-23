@@ -25,6 +25,52 @@ async function seed(page: Page, company: string) {
   return result.json();
 }
 
+test('first-time guide shows only on an empty account and leads to the first real application', async ({ page }) => {
+  await registerAndLogin(page);
+  const gettingStarted = page.getByRole('region', { name: 'Welcome to your job search workspace' });
+  await expect(gettingStarted).toBeVisible();
+  await expect(gettingStarted).toContainText('Nothing is added to your account until you save or import it.');
+  await expect(page.getByRole('heading', { name: 'Your search, at a glance' })).toHaveCount(0);
+  const before = await (await page.request.get('/api/applications')).json();
+  expect(before.totalElements).toBe(0);
+
+  await gettingStarted.getByRole('button', { name: 'Add your first application' }).click();
+  const editor = page.getByRole('region', { name: 'Add application' });
+  await expect(editor).toBeVisible();
+  await expect(editor).toBeFocused();
+  const form = editor.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Company', { exact: true }).fill('Onboarding Labs');
+  await form.getByLabel('Job title').fill('Software Engineer');
+  await form.getByRole('button', { name: 'Save application' }).click();
+
+  await expect(gettingStarted).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Your search, at a glance' })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Onboarding Labs — Software Engineer' })).toBeVisible();
+  await page.getByLabel('Search', { exact: true }).fill('no-results-expected');
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.getByText('No matches. Try another search or clear your filters.')).toBeVisible();
+  await expect(gettingStarted).toHaveCount(0);
+  await page.reload();
+  await expect(gettingStarted).toHaveCount(0);
+});
+
+test('first-time guide opens the CSV importer without creating sample data', async ({ page }) => {
+  await registerAndLogin(page);
+  const gettingStarted = page.getByRole('region', { name: 'Welcome to your job search workspace' });
+  await expect(gettingStarted).toBeVisible();
+  await gettingStarted.getByRole('button', { name: 'Import an existing CSV' }).click();
+  const importer = page.getByRole('region', { name: 'Import applications from CSV' });
+  await expect(importer).toBeVisible();
+  await expect(page.locator('#applications')).toBeFocused();
+  const response = await (await page.request.get('/api/applications')).json();
+  expect(response.totalElements).toBe(0);
+  await importer.getByRole('button', { name: 'Close import' }).click();
+  await expect(importer).toHaveCount(0);
+  await expect(gettingStarted).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('CSV preview validates files and imports atomically with duplicate protection', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
