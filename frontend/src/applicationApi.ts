@@ -171,3 +171,14 @@ export async function deleteApplication(
       );
   }
 }
+
+export async function importApplications(rows: import('./csvImport').ImportApplicationRow[]): Promise<number> {
+  const response = await apiFetch('/api/applications/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows }),
+  });
+  if (!response.ok) throw await readApiError(response, 'Could not import applications.');
+  const result: { imported: number } = await response.json();
+  return result.imported;
+}
