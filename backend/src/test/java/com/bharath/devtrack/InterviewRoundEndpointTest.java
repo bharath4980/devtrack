@@ -179,13 +179,27 @@ class InterviewRoundEndpointTest {
                 "scheduledTime", "14:30", "timeZone", "America/Chicago",
                 "format", "VIDEO", "outcome", "PLANNED",
                 "preparationNotes", "Private preparation notes"));
-        long id = json.readTree(mvc.perform(post("/api/applications/" + ownId + "/interviews")
+        JsonNode created = json.readTree(mvc.perform(post("/api/applications/" + ownId + "/interviews")
                 .session(a.session()).header(a.header(), a.token())
                 .contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.scheduledTime").value("14:30"))
                 .andExpect(jsonPath("$.timeZone").value("America/Chicago"))
-                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+                .andReturn().getResponse().getContentAsString());
+        long id = created.get("id").asLong();
+        String google = created.get("googleCalendarUrl").asText();
+        String outlook = created.get("outlookCalendarUrl").asText();
+        assertThat(google).startsWith("https://calendar.google.com/calendar/render?action=TEMPLATE")
+                .contains("dates=20261102T203000Z%2F20261102T213000Z")
+                .contains("stz=America%2FChicago")
+                .contains("text=System+design+-+Acme+Team");
+        assertThat(outlook).startsWith("https://outlook.office.com/calendar/deeplink/compose?")
+                .contains("startdt=2026-11-02T20%3A30%3A00Z")
+                .contains("enddt=2026-11-02T21%3A30%3A00Z");
+        assertThat(google).doesNotContain("Private preparation notes");
+        assertThat(outlook).doesNotContain("Private preparation notes");
+        assertThat(google).doesNotContain("recruiter@example.com");
+        assertThat(outlook).doesNotContain("recruiter@example.com");
         String endpoint = "/api/applications/" + ownId + "/interviews/" + id + "/calendar.ics";
         mvc.perform(get(endpoint)).andExpect(status().isUnauthorized());
         mvc.perform(get(endpoint).session(b.session())).andExpect(status().isNotFound());
@@ -222,6 +236,8 @@ class InterviewRoundEndpointTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.scheduledTime").isEmpty())
                 .andExpect(jsonPath("$.timeZone").isEmpty())
+                .andExpect(jsonPath("$.googleCalendarUrl").isEmpty())
+                .andExpect(jsonPath("$.outlookCalendarUrl").isEmpty())
                 .andReturn().getResponse().getContentAsString()).get("id").asLong();
         mvc.perform(get(base + "/" + dateOnlyId + "/calendar.ics").session(a.session()))
                 .andExpect(status().isConflict());
