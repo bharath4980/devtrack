@@ -84,6 +84,11 @@ public class JobApplicationController {
                 .body(content);
     }
 
+    @PatchMapping("/{id}/follow-up/complete")
+    public JobApplication completeFollowUp(Principal principal, @PathVariable Long id) {
+        return service.completeFollowUp(accounts.currentUser(principal).getId(), id);
+    }
+
     public record RescheduleFollowUpRequest(@NotNull LocalDate followUpDate) {}
 
     @PatchMapping("/{id}/follow-up")
