@@ -282,6 +282,9 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                   <div><h4>{round.roundName}</h4>
                     <p>{round.company} · {round.title}</p>
                     <p className="form-help">{round.format.replaceAll('_', ' ').toLowerCase()}</p>
+                    {round.scheduledTime && round.timeZone && <p className="form-help">
+                      {round.scheduledTime} · {round.timeZone}
+                    </p>}
                     <button type="button" className="secondary-button quick-view-open"
                       onClick={() => setQuickViewId(round.applicationId)}>Open application</button>
                   </div>
