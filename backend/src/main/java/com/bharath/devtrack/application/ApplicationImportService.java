@@ -79,7 +79,7 @@ public class ApplicationImportService {
             } else {
                 // Conservative no-URL identity, scoped to owner and application day.
                 duplicateKey = "manual:" + company.toLowerCase(Locale.ROOT) + "|"
-                        + title.toLowerCase(Locale.ROOT) + "\u0000" + applicationDate;
+                        + title.toLowerCase(Locale.ROOT) + "|" + applicationDate;
                 if (repository.existsByOwner_IdAndCompanyIgnoreCaseAndTitleIgnoreCaseAndApplicationDate(
                         owner.getId(), company, title, applicationDate)) {
                     fail(number, "This company, job title and application date already exist");
