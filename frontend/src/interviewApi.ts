@@ -6,6 +6,8 @@ export type InterviewOutcome = 'PLANNED' | 'COMPLETED' | 'CANCELLED';
 export type InterviewRoundInput = {
   roundName: string;
   scheduledDate: string | null;
+  scheduledTime: string | null;
+  timeZone: string | null;
   format: InterviewFormat;
   contactName: string | null;
   contactEmail: string | null;
@@ -43,4 +45,20 @@ export async function updateInterviewRound(applicationId: number, roundId: numbe
 export async function deleteInterviewRound(applicationId: number, roundId: number): Promise<void> {
   const response = await apiFetch('/api/applications/' + applicationId + '/interviews/' + roundId, { method: 'DELETE' });
   if (!response.ok) throw await readApiError(response, 'Could not delete interview round.');
+}
+
+export async function downloadInterviewCalendar(applicationId: number, roundId: number): Promise<void> {
+  const response = await apiFetch(
+    '/api/applications/' + applicationId + '/interviews/' + roundId + '/calendar.ics',
+    { cache: 'no-store' },
+  );
+  if (!response.ok) throw await readApiError(response, 'Could not export the interview calendar event.');
+  const file = await response.blob();
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'devtrack-interview-' + roundId + '.ics';
+  document.body.appendChild(link);
+  try { link.click(); }
+  finally { link.remove(); URL.revokeObjectURL(url); }
 }
