@@ -25,6 +25,55 @@ async function seed(page: Page, company: string) {
   return result.json();
 }
 
+test('CSV preview validates files and imports atomically with duplicate protection', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Import applications from CSV' });
+  // Native section also exposes aria-label as region.
+  const file = panel.getByLabel('CSV file (up to 100 applications, 500 KB)');
+  await file.setInputFiles({
+    name: 'invalid.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('company,title,application_date\\nBadCo,Engineer,2026-02-31\\n'),
+  });
+  await expect(panel.getByRole('alert')).toContainText('invalid application date');
+  expect((await page.request.get('/api/applications')).status()).toBe(200);
+
+  const csv = [
+    'id,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes',
+    '55,"Import, Inc.","Platform ""Engineer""",Remote,INTERVIEW,2026-10-15,2026-10-30,,https://jobs.lever.co/import/co1,"Line 1',
+    'Line 2"',
+    '56,Foo,Developer,,APPLIED,2026-10-16,,,,',
+  ].join('\\r\\n');
+  await file.setInputFiles({ name: 'applications.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(panel).toContainText('2 applications from applications.csv');
+  await expect(panel.getByRole('table', { name: 'CSV application preview' }))
+    .toContainText('Platform "Engineer"');
+  const confirm = panel.getByRole('checkbox', { name: /I reviewed the CSV/ });
+  const submit = panel.getByRole('button', { name: 'Import 2 applications' });
+  await expect(submit).toBeDisabled();
+  await confirm.check();
+  await submit.click();
+  await expect(page.getByText('2 applications imported.')).toBeVisible();
+  const list = page.locator('.applications-list');
+  await expect(list).toContainText('Import, Inc.');
+  await expect(list).toContainText('Foo');
+  await page.reload();
+  await expect(page.locator('.applications-list')).toContainText('Platform "Engineer"');
+  await expect(page.locator('.applications-list')).toContainText('Line 1');
+
+  // Re-importing the same file is rejected; existing records remain unchanged.
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const again = page.getByRole('region', { name: 'Import applications from CSV' });
+  await again.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
+    name: 'applications.csv', mimeType: 'text/csv', buffer: Buffer.from(csv),
+  });
+  await again.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
+  await again.getByRole('button', { name: 'Import 2 applications' }).click();
+  await expect(again.getByRole('alert')).toContainText('already exists');
+  await expect(page.getByRole('status', { name: '' }).filter({ hasText: '2 applications' }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('register, create, edit, interview, filter, persist, delete and logout', async ({ page }) => {
   const account = await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
