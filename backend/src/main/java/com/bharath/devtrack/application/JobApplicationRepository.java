@@ -21,6 +21,9 @@ public interface JobApplicationRepository
 
     long countByOwner_Id(Long ownerId);
 
+    boolean existsByOwner_IdAndCompanyIgnoreCaseAndTitleIgnoreCaseAndApplicationDate(
+            Long ownerId, String company, String title, LocalDate applicationDate);
+
     // Only consider URLs from the signed-in owner's applications on the same host.
     @Query("""
             SELECT application FROM JobApplication application

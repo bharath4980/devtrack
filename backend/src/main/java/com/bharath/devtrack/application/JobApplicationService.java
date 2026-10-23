@@ -93,9 +93,9 @@ public class JobApplicationService {
         return null;
     }
 
-    private record PostingKey(String host, String value) {}
+    static record PostingKey(String host, String value) {}
 
-    private static PostingKey postingKey(String url) {
+    static PostingKey postingKey(String url) {
         if (url == null || url.isBlank() || url.length() > 255) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid job posting URL.");
         }
