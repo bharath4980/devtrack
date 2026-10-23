@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.DateTimeException;
 import java.time.format.DateTimeFormatter;
 import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,25 +30,65 @@ public class InterviewRoundService {
     }
 
     public record RoundDetails(Long id, String roundName, LocalDate scheduledDate,
-                               String scheduledTime, String timeZone, InterviewRound.Format format, String contactName, String contactEmail,
-                               String preparationNotes, String followUpNotes, InterviewRound.Outcome outcome) {
-        static RoundDetails from(InterviewRound round) {
+                               String scheduledTime, String timeZone, InterviewRound.Format format,
+                               String contactName, String contactEmail, String preparationNotes,
+                               String followUpNotes, InterviewRound.Outcome outcome,
+                               String googleCalendarUrl, String outlookCalendarUrl) {
+        static RoundDetails from(InterviewRound round, String company, String roleTitle) {
+            CalendarLinks links = calendarLinks(round, company, roleTitle);
             return new RoundDetails(round.getId(), round.getRoundName(), round.getScheduledDate(),
                     round.getScheduledTime() == null ? null : round.getScheduledTime().toString(),
                     round.getTimeZone(), round.getFormat(), round.getContactName(), round.getContactEmail(),
-                    round.getPreparationNotes(), round.getFollowUpNotes(), round.getOutcome());
+                    round.getPreparationNotes(), round.getFollowUpNotes(), round.getOutcome(),
+                    links.google(), links.outlook());
         }
+    }
+
+    private record CalendarLinks(String google, String outlook) {}
+
+    // Links only pre-fill calendar editors. Users must review and save each external event.
+    // Do not send recruiter contacts, preparation notes, or follow-up notes in URLs.
+    private static CalendarLinks calendarLinks(InterviewRound round, String company, String roleTitle) {
+        if (round.getScheduledDate() == null || round.getScheduledTime() == null || round.getTimeZone() == null) {
+            return new CalendarLinks(null, null);
+        }
+        ZoneId zone = validateZone(round.getTimeZone(), round.getScheduledDate(), round.getScheduledTime());
+        Instant start = LocalDateTime.of(round.getScheduledDate(), round.getScheduledTime())
+                .atZone(zone).toInstant();
+        Instant end = start.plusSeconds(3600);
+        DateTimeFormatter googleUtc = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
+                .withZone(ZoneOffset.UTC);
+        String title = round.getRoundName() + " - " + company;
+        String details = "Role: " + roleTitle
+                + "\nOne-hour placeholder; confirm the actual duration with your interviewer.";
+        String google = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+                + "&text=" + urlEncode(title)
+                + "&dates=" + urlEncode(googleUtc.format(start) + "/" + googleUtc.format(end))
+                + "&stz=" + urlEncode(zone.getId()) + "&etz=" + urlEncode(zone.getId())
+                + "&details=" + urlEncode(details);
+        String outlook = "https://outlook.office.com/calendar/deeplink/compose"
+                + "?path=" + urlEncode("/calendar/action/compose") + "&rru=addevent"
+                + "&subject=" + urlEncode(title)
+                + "&startdt=" + urlEncode(DateTimeFormatter.ISO_INSTANT.format(start))
+                + "&enddt=" + urlEncode(DateTimeFormatter.ISO_INSTANT.format(end))
+                + "&body=" + urlEncode(details);
+        return new CalendarLinks(google, outlook);
+    }
+
+    private static String urlEncode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     @Transactional(readOnly = true)
     public List<RoundDetails> list(Long ownerId, Long applicationId) {
-        applications.getForOwner(ownerId, applicationId);
+        var application = applications.getForOwner(ownerId, applicationId);
         return rounds.findByApplicationIdAndOwnerIdOrderByIdAsc(applicationId, ownerId).stream()
-                .map(RoundDetails::from).toList();
+                .map(round -> RoundDetails.from(round, application.getCompany(), application.getTitle()))
+                .toList();
     }
 
     public RoundDetails create(Long ownerId, Long applicationId, InterviewRoundRequest request) {
-        applications.getForOwner(ownerId, applicationId);
+        var application = applications.getForOwner(ownerId, applicationId);
         if (rounds.countByApplicationIdAndOwnerId(applicationId, ownerId) >= MAX_ROUNDS_PER_APPLICATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limit of 30 interview rounds per application");
         }
@@ -55,14 +96,14 @@ public class InterviewRoundService {
         round.setApplicationId(applicationId);
         round.setOwnerId(ownerId);
         copy(request, round);
-        return RoundDetails.from(rounds.save(round));
+        return RoundDetails.from(rounds.save(round), application.getCompany(), application.getTitle());
     }
 
     public RoundDetails update(Long ownerId, Long applicationId, Long roundId, InterviewRoundRequest request) {
-        applications.getForOwner(ownerId, applicationId);
+        var application = applications.getForOwner(ownerId, applicationId);
         InterviewRound round = findOwned(ownerId, applicationId, roundId);
         copy(request, round);
-        return RoundDetails.from(rounds.save(round));
+        return RoundDetails.from(rounds.save(round), application.getCompany(), application.getTitle());
     }
 
     public void delete(Long ownerId, Long applicationId, Long roundId) {
