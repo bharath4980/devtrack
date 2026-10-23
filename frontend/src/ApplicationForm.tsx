@@ -87,6 +87,19 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     }
   }
   const prefix = application ? `edit-${application.id}` : 'create';
+  const initialValues: UpdateJobApplicationRequest = {
+    company: application?.company ?? '', title: application?.title ?? '',
+    location: application?.location ?? '', postingUrl: application?.postingUrl ?? '',
+    notes: application?.notes ?? '', applicationDate: application?.applicationDate ?? today(),
+    followUpDate: application?.followUpDate ?? '', interviewDate: application?.interviewDate ?? '',
+  };
+  const hasUnsavedChanges = (Object.keys(initialValues) as (keyof UpdateJobApplicationRequest)[])
+    .some(key => values[key] !== initialValues[key]);
+
+  function cancelEditing() {
+    if (hasUnsavedChanges && !window.confirm('Discard your unsaved application changes?')) return;
+    onCancel();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -189,7 +202,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
       {error && <p className="form-error form-field-full" role="alert">{error}</p>}
       <div className="form-actions form-field-full">
         <button type="submit">{submitting || busy ? 'Saving…' : application ? 'Save changes' : 'Save application'}</button>
-        <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>
+        <button type="button" className="secondary-button" onClick={cancelEditing}>Cancel</button>
       </div>
     </fieldset>
   </form>;
