@@ -8,6 +8,7 @@ export default function AuthForm({ onAuthenticated }: {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -39,6 +40,7 @@ export default function AuthForm({ onAuthenticated }: {
   function changeMode() {
     setMode(mode === 'login' ? 'register' : 'login');
     setPassword('');
+    setShowPassword(false);
     setError('');
     setNotice('');
   }
@@ -56,12 +58,17 @@ export default function AuthForm({ onAuthenticated }: {
             maxLength={254} required value={email}
             onChange={(event) => setEmail(event.target.value)} disabled={busy} />
           <label htmlFor="auth-password">Password</label>
-          <input id="auth-password" type="password"
+          <input id="auth-password" type={showPassword ? "text" : "password"}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             minLength={mode === 'register' ? 12 : undefined}
             maxLength={72} required value={password}
             onChange={(event) => setPassword(event.target.value)} disabled={busy}
             aria-describedby={mode === 'register' ? 'password-help' : undefined} />
+          <button type="button" className="text-button" disabled={busy}
+            aria-pressed={showPassword} aria-controls="auth-password"
+            onClick={() => setShowPassword(current => !current)}>
+            {showPassword ? 'Hide password' : 'Show password'}
+          </button>
           {mode === 'register' && <p id="password-help" className="form-help">
             Use 12–72 characters. Some characters use more than one byte; the limit is 72 bytes.
           </p>}

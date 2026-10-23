@@ -25,6 +25,22 @@ async function seed(page: Page, company: string) {
   return result.json();
 }
 
+test('password visibility toggle preserves input across account modes', async ({ page }) => {
+  await page.goto('/');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill('example-password-123');
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await expect(password).toHaveValue('example-password-123');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+
+  await page.getByRole('button', { name: 'New here? Create an account' }).click();
+  await expect(password).toHaveValue('');
+  await expect(password).toHaveAttribute('type', 'password');
+});
+
 test('repeated form submission creates only one application', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
