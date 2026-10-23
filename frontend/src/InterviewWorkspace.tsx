@@ -176,10 +176,20 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
                 {' · '}{labelFor(round.outcome)}</p>
             </div>
             <div className="interview-round-actions">
+              {round.googleCalendarUrl && <a className="secondary-button interview-calendar-link"
+                href={round.googleCalendarUrl} target="_blank" rel="noopener noreferrer"
+                aria-label={'Open ' + round.roundName + ' in Google Calendar'}>
+                Google Calendar ↗
+              </a>}
+              {round.outlookCalendarUrl && <a className="secondary-button interview-calendar-link"
+                href={round.outlookCalendarUrl} target="_blank" rel="noopener noreferrer"
+                aria-label={'Open ' + round.roundName + ' in Outlook Calendar'}>
+                Outlook Calendar ↗
+              </a>}
               {round.scheduledDate && round.scheduledTime && round.timeZone &&
                 <button type="button" className="secondary-button" disabled={busy || saving || downloadingId !== null}
                   onClick={() => void exportCalendar(round)}>
-                  {downloadingId === round.id ? 'Preparing calendar…' : 'Add to calendar (.ics)'}
+                  {downloadingId === round.id ? 'Preparing calendar…' : 'Apple / other (.ics)'}
                 </button>}
               <button type="button" className="secondary-button" disabled={busy || saving}
                 onClick={() => startEdit(round)}>Edit round</button>
@@ -285,8 +295,9 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
             Cancel
           </button>
         </div>
-        <p className="form-help">When a time and time zone are set, you can download a one-hour calendar placeholder.
-          Importing the file does not notify interviewers. Confirm the actual interview duration separately.</p>
+        <p className="form-help">When date, time and time zone are set, open a prefilled Google or Outlook
+          event and click Save there, or download an .ics file for Apple and other calendars.
+          Calendar times use a one-hour placeholder; confirm the actual duration with your interviewer.</p>
       </fieldset>
     </form>}
   </section>;

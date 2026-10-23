@@ -100,9 +100,28 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   await expect(round).toContainText('Practice APIs and SQL');
   await expect(round).toContainText('jordan@example.com');
   await expect(round).toContainText('14:30 (America/Chicago)');
+  // Direct links open prefilled calendar editors with UTC-correct dates; no .ics download needed.
+  const googleLink = round.getByRole('link', { name: 'Open Technical screen in Google Calendar' });
+  await expect(googleLink).toHaveAttribute('target', '_blank');
+  await expect(googleLink).toHaveAttribute('rel', 'noopener noreferrer');
+  const googleUrl = new URL(await googleLink.getAttribute('href') || '');
+  expect(googleUrl.origin).toBe('https://calendar.google.com');
+  expect(googleUrl.searchParams.get('dates')).toBe('20261102T203000Z/20261102T213000Z');
+  expect(googleUrl.searchParams.get('stz')).toBe('America/Chicago');
+  expect(googleUrl.searchParams.get('text')).toContain('Technical screen');
+  expect(googleUrl.searchParams.get('details')).not.toContain('Practice APIs and SQL');
+
+  const outlookLink = round.getByRole('link', { name: 'Open Technical screen in Outlook Calendar' });
+  await expect(outlookLink).toHaveAttribute('target', '_blank');
+  const outlookUrl = new URL(await outlookLink.getAttribute('href') || '');
+  expect(outlookUrl.origin).toBe('https://outlook.office.com');
+  expect(outlookUrl.searchParams.get('startdt')).toBe('2026-11-02T20:30:00Z');
+  expect(outlookUrl.searchParams.get('enddt')).toBe('2026-11-02T21:30:00Z');
+  expect(outlookUrl.searchParams.get('body')).not.toContain('Practice APIs and SQL');
+
   const [calendarDownload] = await Promise.all([
     page.waitForEvent('download'),
-    round.getByRole('button', { name: 'Add to calendar (.ics)' }).click(),
+    round.getByRole('button', { name: 'Apple / other (.ics)' }).click(),
   ]);
   expect(calendarDownload.suggestedFilename()).toMatch(/devtrack-interview-\d+\.ics/);
 
