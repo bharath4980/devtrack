@@ -24,6 +24,8 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     interviewDate: application?.interviewDate ?? '',
   });
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const submitPending = useRef(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
@@ -88,28 +90,37 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Lock before the asynchronous duplicate check to prevent repeat submissions.
+    if (busy || submitPending.current) return;
+    submitPending.current = true;
+    setSubmitting(true);
     setError('');
     setFieldErrors({});
-    const url = values.postingUrl.trim();
-    if (url && confirmedDuplicateUrl !== url) {
-      try {
-        const match = await findDuplicateApplication(url, application?.id);
-        if (match) {
-          setDuplicate(match);
-          setError('This job is already tracked. Choose Save anyway if you want another entry.');
+    try {
+      const url = values.postingUrl.trim();
+      if (url && confirmedDuplicateUrl !== url) {
+        try {
+          const match = await findDuplicateApplication(url, application?.id);
+          if (match) {
+            setDuplicate(match);
+            setError('This job is already tracked. Choose Save anyway if you want another entry.');
+            return;
+          }
+        } catch (failure) {
+          setError(errorMessage(failure,
+            'Could not check this link for duplicates. Try again or clear the URL to save manually.'));
           return;
         }
-      } catch (failure) {
-        setError(errorMessage(failure,
-          'Could not check this link for duplicates. Try again or clear the URL to save manually.'));
-        return;
       }
-    }
-    try {
-      await onSave({ ...values, company: values.company.trim(), title: values.title.trim(), postingUrl: url });
-    } catch (failure) {
-      setError(errorMessage(failure, 'Could not save the application. Please try again.'));
-      if (failure instanceof ApiError) setFieldErrors(failure.fieldErrors);
+      try {
+        await onSave({ ...values, company: values.company.trim(), title: values.title.trim(), postingUrl: url });
+      } catch (failure) {
+        setError(errorMessage(failure, 'Could not save the application. Please try again.'));
+        if (failure instanceof ApiError) setFieldErrors(failure.fieldErrors);
+      }
+    } finally {
+      submitPending.current = false;
+      setSubmitting(false);
     }
   }
 
@@ -124,7 +135,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   ];
 
   return <form className="application-form" onSubmit={submit} aria-label={application ? 'Edit application' : 'New application'}>
-    <fieldset disabled={busy}>
+    <fieldset disabled={busy || submitting}>
       {fields.map(({ name, label, type, required }) => <div className={`form-field${name === 'postingUrl' ? ' form-field-full' : ''}`} key={name}>
         <label htmlFor={`${prefix}-${name}`}>{label}</label>
         <input id={`${prefix}-${name}`} type={type} autoFocus={name === 'company'} required={required} maxLength={type === 'date' ? undefined : 255}
@@ -177,7 +188,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
       </div>
       {error && <p className="form-error form-field-full" role="alert">{error}</p>}
       <div className="form-actions form-field-full">
-        <button type="submit">{busy ? 'Saving…' : application ? 'Save changes' : 'Save application'}</button>
+        <button type="submit">{submitting || busy ? 'Saving…' : application ? 'Save changes' : 'Save application'}</button>
         <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>
       </div>
     </fieldset>
