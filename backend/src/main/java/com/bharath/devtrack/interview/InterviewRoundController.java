@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +43,19 @@ public class InterviewRoundController {
             @Valid @RequestBody InterviewRoundRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(service.update(accounts.currentUser(principal).getId(), applicationId, roundId, request));
+    }
+
+    @GetMapping(value = "/{roundId}/calendar.ics", produces = "text/calendar")
+    public ResponseEntity<byte[]> calendar(
+            Principal principal, @PathVariable Long applicationId, @PathVariable Long roundId) {
+        byte[] content = service.calendar(accounts.currentUser(principal).getId(), applicationId, roundId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/calendar;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"interview-round-" + roundId + ".ics\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.noStore())
+                .body(content);
     }
 
     @DeleteMapping("/{roundId}")
