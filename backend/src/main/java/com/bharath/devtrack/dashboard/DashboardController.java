@@ -58,6 +58,11 @@ public class DashboardController {
         return dashboardService.getUpcomingFollowUps(accounts.currentUser(principal).getId());
     }
 
+    @GetMapping("/interviews/rounds")
+    public List<UpcomingInterviewRoundResponse> getUpcomingInterviewRounds(Principal principal) {
+        return dashboardService.getUpcomingInterviewRounds(accounts.currentUser(principal).getId());
+    }
+
     @GetMapping("/interviews")
     public List<UpcomingInterviewResponse> getUpcomingInterviews(
             Principal principal
