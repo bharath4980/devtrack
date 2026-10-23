@@ -1,17 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { errorMessage } from './apiError';
 import DashboardQuickView from './DashboardQuickView';
-import type { DashboardSummary, DueFollowUp, UpcomingInterview, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
+import type { DashboardSummary, DueFollowUp, UpcomingInterview, UpcomingInterviewRound, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
 import { activityText, activityTime } from './ApplicationTimeline';
 import { statuses, statusLabel, type UpdateJobApplicationRequest } from './types';
 
 type Props = {
   summary: DashboardSummary | null;
   interviews: UpcomingInterview[];
+  upcomingRounds: UpcomingInterviewRound[];
   followUps: DueFollowUp[];
   upcomingFollowUps: DueFollowUp[];
   onReschedule: (id: number, date: string) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
+  onInterviewChange: () => void;
   revision: number;
   busy: boolean;
   analytics: DashboardAnalytics | null;
@@ -98,7 +100,7 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onOpen }: F
   </div>;
 }
 
-export default function Dashboard({ summary, interviews, followUps, upcomingFollowUps, onReschedule, onEdit, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const pipeline = statuses.map(status => ({
     status,
@@ -119,7 +121,7 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
     </div>
     {quickViewId !== null && <DashboardQuickView key={quickViewId}
       applicationId={quickViewId} revision={revision} busy={busy}
-      onClose={() => setQuickViewId(null)} onSave={onEdit} />}
+      onClose={() => setQuickViewId(null)} onSave={onEdit} onInterviewChange={onInterviewChange} />}
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}
     {!loading && !error && summary && <>
@@ -267,12 +269,37 @@ export default function Dashboard({ summary, interviews, followUps, upcomingFoll
         <section className="schedule-panel" aria-labelledby="interviews-heading">
           <div className="schedule-heading">
             <div className="schedule-icon interview-icon" aria-hidden="true">◎</div>
-            <div><h3 id="interviews-heading">Upcoming interviews</h3><p>Next five · dates in UTC</p></div>
+            <div><h3 id="interviews-heading">Upcoming interviews</h3><p>Scheduled dates in UTC · open an application to prepare</p></div>
+          </div>
+          <div className="upcoming-follow-ups-heading">
+            <h4>Scheduled interview rounds</h4>
+            <p>Next five planned rounds · dates in UTC</p>
+          </div>
+          <div className="schedule-items" role="region" aria-label="Upcoming interview rounds">
+            {upcomingRounds.length === 0
+              ? <p className="form-help upcoming-empty">No planned interview rounds. Add one from an application's Interview prep section.</p>
+              : upcomingRounds.map(round => <div className="upcoming-interview" key={round.roundId}>
+                  <div><h4>{round.roundName}</h4>
+                    <p>{round.company} · {round.title}</p>
+                    <p className="form-help">{round.format.replaceAll('_', ' ').toLowerCase()}</p>
+                    <button type="button" className="secondary-button quick-view-open"
+                      onClick={() => setQuickViewId(round.applicationId)}>Open application</button>
+                  </div>
+                  <div className="interview-date">
+                    <span>{daysUntil(round.scheduledDate, todayUtc) <= 7
+                      ? upcomingLabel(round.scheduledDate, todayUtc) : 'Scheduled'}</span>
+                    <time dateTime={round.scheduledDate}>{round.scheduledDate}</time>
+                  </div>
+                </div>)}
+          </div>
+          <div className="upcoming-follow-ups-heading">
+            <h4>Application interview dates</h4>
+            <p>Next five dates on applications marked Interview</p>
           </div>
           <div className="schedule-items">
             {interviews.length === 0
               ? <div className="schedule-empty"><span className="empty-symbol" aria-hidden="true">◇</span>
-                  <p>No interviews scheduled.</p><small>Add an interview date and set an application's status to Interview.</small>
+                  <p>No application-level interview dates.</p><small>Add an interview date and set an application's status to Interview.</small>
                 </div>
               : interviews.map(item => <div className="upcoming-interview" key={item.id}>
                   <div><h4>{item.title}</h4><p>{item.company}</p>
