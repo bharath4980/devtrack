@@ -23,9 +23,10 @@ type Props = {
   onSave: (values: UpdateJobApplicationRequest) => Promise<void>;
   onStatus: (status: ApplicationStatus) => void;
   onDelete: () => void;
+  onInterviewChange: () => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const link = safeLink(application.postingUrl);
   return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
@@ -68,7 +69,7 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         aria-expanded={showInterviewPrep} onClick={() => setShowInterviewPrep(value => !value)}>
         {showInterviewPrep ? 'Hide interview prep' : 'Interview prep'}
       </button></div>
-      {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy} />}
+      {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />}
       <ApplicationTimeline applicationId={application.id} status={application.status} />
     </>}
   </article>;
