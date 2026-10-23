@@ -100,7 +100,7 @@ test('interview preparation creates, updates, persists and deletes a round', asy
     page.waitForEvent('download'),
     round.getByRole('button', { name: 'Add to calendar (.ics)' }).click(),
   ]);
-  expect(calendarDownload.suggestedFilename()).toMatch(/devtrack-interview-\\d+\\.ics/);
+  expect(calendarDownload.suggestedFilename()).toMatch(/devtrack-interview-\d+\.ics/);
 
   await page.reload();
   const reopened = page.getByRole('article', { name: 'Interview Studio — Software Engineer' });
