@@ -14,9 +14,9 @@ const outcomes: InterviewRoundInput['outcome'][] = ['PLANNED', 'COMPLETED', 'CAN
 const labelFor = (value: string) => value.replaceAll('_', ' ').toLowerCase()
   .replace(/^./, letter => letter.toUpperCase());
 
-type Props = { applicationId: number; busy?: boolean };
+type Props = { applicationId: number; busy?: boolean; onChanged?: () => void };
 
-export default function InterviewWorkspace({ applicationId, busy = false }: Props) {
+export default function InterviewWorkspace({ applicationId, busy = false, onChanged }: Props) {
   const id = useId();
   const [rounds, setRounds] = useState<InterviewRound[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +83,7 @@ export default function InterviewWorkspace({ applicationId, busy = false }: Prop
       setEditingId(null);
       setDraft({ ...blank });
       setNotice('Interview round saved.');
+      onChanged?.();
     } catch (reason) {
       setError(errorMessage(reason, 'Could not save interview round.'));
     } finally {
@@ -100,6 +101,7 @@ export default function InterviewWorkspace({ applicationId, busy = false }: Prop
       setRounds(current => current.filter(item => item.id !== round.id));
       if (editingId === round.id) { setShowForm(false); setEditingId(null); }
       setNotice('Interview round deleted.');
+      onChanged?.();
     } catch (reason) {
       setError(errorMessage(reason, 'Could not delete interview round.'));
     } finally {
