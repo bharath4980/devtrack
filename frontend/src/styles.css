@@ -1354,3 +1354,42 @@ footer { border-color: var(--line); color: #94a0b3; }
   .csv-import-head { flex-direction: column; }
   .csv-action-buttons { justify-content: flex-start; }
 }
+
+/* First-time guidance replaces empty analytics, and leaves existing accounts untouched. */
+.getting-started {
+  margin: 18px 0 27px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid #dbe4f4;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f7f9ff 0%, #f1f7f5 100%);
+  color: #273a56;
+}
+.getting-started-intro { max-width: 760px; }
+.getting-started-intro h2 {
+  margin: 4px 0 10px; font-size: clamp(21px, 3vw, 30px); line-height: 1.24; letter-spacing: -.025em;
+}
+.getting-started-intro > p:not(.eyebrow) { margin: 0; color: #586a83; line-height: 1.6; }
+.getting-started-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 25px; }
+.getting-started-actions button { min-height: 42px; }
+.getting-started-steps {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.getting-started-step {
+  display: flex; align-items: flex-start; gap: 11px;
+  border: 1px solid #e0e7f0; border-radius: 11px;
+  background: #fff; padding: 16px; min-width: 0;
+}
+.getting-started-number {
+  display: inline-flex; justify-content: center; align-items: center;
+  flex: 0 0 27px; height: 27px; border-radius: 50%;
+  background: #e9eeff; color: #364da4; font-size: 13px; font-weight: 750;
+}
+.getting-started-step h3 { margin: 2px 0 8px; font-size: 14px; }
+.getting-started-step p { margin: 0; font-size: 13px; line-height: 1.55; color: #64758e; }
+.getting-started-footer { margin: 17px 0 0; font-size: 12px; color: #586a83; }
+@media (max-width: 750px) {
+  .getting-started-steps { grid-template-columns: 1fr; }
+  .getting-started-actions button { flex: 1 1 180px; }
+  .getting-started-step { padding: 12px; }
+}
