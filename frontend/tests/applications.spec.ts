@@ -100,7 +100,7 @@ test('repeated CSV import clicks send only one batch', async ({ page }) => {
   const panel = page.getByRole('region', { name: 'Import applications from CSV' });
   await panel.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
     name: 'single.csv', mimeType: 'text/csv',
-    buffer: Buffer.from('company,title,application_date\\nImport Once,Backend Engineer,2026-10-23\\n'),
+    buffer: Buffer.from('company,title,application_date\nImport Once,Backend Engineer,2026-10-23\n'),
   });
   await panel.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
 
