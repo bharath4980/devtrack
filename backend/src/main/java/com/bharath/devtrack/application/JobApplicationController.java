@@ -99,6 +99,19 @@ public class JobApplicationController {
         return service.rescheduleFollowUp(accounts.currentUser(principal).getId(), id, request.followUpDate());
     }
 
+    public record BulkStatusRequest(java.util.List<Long> ids,
+                                    @NotNull ApplicationStatus status) {}
+
+    public record BulkStatusResponse(int updated) {}
+
+    @PatchMapping("/bulk/status")
+    public BulkStatusResponse bulkUpdateStatus(
+            Principal principal, @Valid @RequestBody BulkStatusRequest request
+    ) {
+        return new BulkStatusResponse(service.updateStatuses(
+                accounts.currentUser(principal).getId(), request.ids(), request.status()));
+    }
+
     @PatchMapping("/{id}/status")
     public JobApplication updateStatus(
             Principal principal,

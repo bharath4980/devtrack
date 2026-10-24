@@ -530,6 +530,12 @@ test('bulk status change confirms before moving selected applications and record
   await expect(toolbar).toContainText('2 selected on this page');
   await toolbar.getByLabel('Move selected to').selectOption('APPLIED');
 
+  let bulkRequests = 0;
+  await page.route('**/api/applications/bulk/status', async route => {
+    bulkRequests++;
+    await route.continue();
+  });
+
   page.once('dialog', dialog => dialog.dismiss());
   await toolbar.getByRole('button', { name: 'Move selected' }).click();
   await expect(alpha.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
@@ -542,6 +548,7 @@ test('bulk status change confirms before moving selected applications and record
   await expect(gamma.getByLabel('Status', { exact: true })).toHaveValue('SAVED');
   await expect(toolbar).toContainText('0 selected on this page');
   await expect(page.getByText('2 applications moved to Applied.')).toBeVisible();
+  expect(bulkRequests).toBe(1);
   await page.reload();
   await expect(alpha.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');
   await expect(beta.getByLabel('Status', { exact: true })).toHaveValue('APPLIED');

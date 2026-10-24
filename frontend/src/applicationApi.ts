@@ -119,6 +119,19 @@ export async function rescheduleFollowUp(id: number, followUpDate: string): Prom
   return response.json();
 }
 
+export async function updateBulkApplicationStatus(
+  ids: number[], status: ApplicationStatus,
+): Promise<number> {
+  const response = await apiFetch('/api/applications/bulk/status', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, status }),
+  });
+  if (!response.ok) throw await readApiError(response, 'Could not update selected applications.');
+  const result: { updated: number } = await response.json();
+  return result.updated;
+}
+
 export async function updateApplicationStatus(
   id: number,
   status: ApplicationStatus,
