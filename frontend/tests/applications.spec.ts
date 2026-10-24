@@ -191,6 +191,47 @@ test('first-time guide opens the CSV importer without creating sample data', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('CSV import ignores a slower read from a previously selected file', async ({ page }) => {
+  await page.addInitScript(() => {
+    const read = File.prototype.text;
+    File.prototype.text = function () {
+      if (this.name !== 'delayed.csv') return read.call(this);
+      return new Promise<string>(resolve => {
+        (window as Window & { releaseDelayedCsv?: () => void }).releaseDelayedCsv = () => {
+          void read.call(this).then(resolve);
+        };
+      });
+    };
+  });
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Import applications from CSV' });
+  const file = panel.getByLabel('CSV file (up to 100 applications, 500 KB)');
+  await file.setInputFiles({
+    name: 'delayed.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('company,title,application_date\\nOlder File,Engineer,2026-10-20\\n'),
+  });
+  await expect(panel.getByText('Reading selected CSV…')).toBeVisible();
+  await file.setInputFiles({
+    name: 'latest.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('company,title,application_date\\nCorrect File,Engineer,2026-10-20\\n'),
+  });
+  await expect(panel).toContainText('1 application from latest.csv');
+  await page.evaluate(async () => {
+    (window as Window & { releaseDelayedCsv?: () => void }).releaseDelayedCsv?.();
+    await new Promise<void>(resolve => window.setTimeout(resolve, 150));
+  });
+  await expect(panel).toContainText('1 application from latest.csv');
+  await expect(panel).toContainText('Correct File');
+  await expect(panel).not.toContainText('Older File');
+  await panel.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
+  await panel.getByRole('button', { name: 'Import 1 application' }).click();
+  await expect(page.getByText('1 application imported.')).toBeVisible();
+  const saved = await (await page.request.get('/api/applications')).json();
+  expect(saved.totalElements).toBe(1);
+  expect(saved.items[0].company).toBe('Correct File');
+});
+
 test('repeated CSV import clicks send only one batch', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
