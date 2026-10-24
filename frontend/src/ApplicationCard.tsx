@@ -49,6 +49,9 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         {application.applicationDate && <p><span>Application date</span>{application.applicationDate}</p>}
         {application.interviewDate && <p><span>Interview</span>{application.interviewDate}</p>}
         {application.followUpDate && <p><span>Follow up</span><time dateTime={application.followUpDate}>{application.followUpDate}</time></p>}
+        {application.recruiterName && <p><span>Recruiter</span>{application.recruiterName}</p>}
+        {application.recruiterEmail && <p><span>Recruiter email</span>{application.recruiterEmail}</p>}
+        {application.resumeVersion && <p><span>Resume used</span>{application.resumeVersion}</p>}
       </div>
       {application.notes && <p className="application-notes">{application.notes}</p>}
       {link && <a className="job-link" href={link} target="_blank" rel="noopener noreferrer">View job posting <span aria-hidden="true">↗</span></a>}
