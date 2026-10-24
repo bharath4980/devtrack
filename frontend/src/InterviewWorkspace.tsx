@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import {
   createInterviewRound, deleteInterviewRound, getInterviewRounds, updateInterviewRound, downloadInterviewCalendar,
   type InterviewRound, type InterviewRoundInput,
@@ -54,7 +54,11 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<InterviewRoundInput>({ ...blank });
+  const [draftBaseline, setDraftBaseline] = useState<InterviewRoundInput>({ ...blank });
   const [retry, setRetry] = useState(0);
+  const savePending = useRef(false);
+  const hasUnsavedChanges = (Object.keys(blank) as (keyof InterviewRoundInput)[])
+    .some(key => draft[key] !== draftBaseline[key]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,12 +73,35 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
     return () => controller.abort();
   }, [applicationId, retry]);
 
+  // Protect a partially completed interview form from accidental tab closure.
+  useEffect(() => {
+    if (!showForm || !hasUnsavedChanges) return;
+    function warnBeforeLeaving(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [showForm, hasUnsavedChanges]);
+
+  function cancelForm() {
+    if (saving || busy) return;
+    if (hasUnsavedChanges && !window.confirm('Discard your unsaved interview round changes?')) return;
+    setShowForm(false);
+    setEditingId(null);
+    setDraft({ ...blank });
+    setDraftBaseline({ ...blank });
+  }
+
   function setField<K extends keyof InterviewRoundInput>(key: K, value: InterviewRoundInput[K]) {
     setDraft(current => ({ ...current, [key]: value }));
   }
 
   function startNew() {
-    setDraft({ ...blank });
+    if (saving || busy) return;
+    const empty = { ...blank };
+    setDraft(empty);
+    setDraftBaseline(empty);
     setEditingId(null);
     setShowForm(true);
     setError('');
@@ -82,13 +109,18 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
   }
 
   function startEdit(round: InterviewRound) {
-    setDraft({
+    if (saving || busy) return;
+    if (showForm && hasUnsavedChanges &&
+        !window.confirm('Discard unsaved changes and edit another interview round?')) return;
+    const nextDraft: InterviewRoundInput = {
       roundName: round.roundName, scheduledDate: round.scheduledDate,
       scheduledTime: round.scheduledTime, timeZone: round.timeZone,
       format: round.format, contactName: round.contactName ?? '',
       contactEmail: round.contactEmail ?? '', preparationNotes: round.preparationNotes ?? '',
       followUpNotes: round.followUpNotes ?? '', outcome: round.outcome,
-    });
+    };
+    setDraft(nextDraft);
+    setDraftBaseline(nextDraft);
     setEditingId(round.id);
     setShowForm(true);
     setError('');
@@ -97,7 +129,8 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || busy) return;
+    if (saving || busy || savePending.current) return;
+    savePending.current = true;
     setSaving(true);
     setError('');
     setNotice('');
@@ -111,11 +144,13 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
       setShowForm(false);
       setEditingId(null);
       setDraft({ ...blank });
+      setDraftBaseline({ ...blank });
       setNotice('Interview round saved.');
       onChanged?.();
     } catch (reason) {
       setError(errorMessage(reason, 'Could not save interview round.'));
     } finally {
+      savePending.current = false;
       setSaving(false);
     }
   }
@@ -294,7 +329,7 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
         </div>
         <div className="interview-round-actions">
           <button type="submit">{saving ? 'Saving…' : 'Save interview round'}</button>
-          <button type="button" className="secondary-button" onClick={() => { setShowForm(false); setEditingId(null); }}>
+          <button type="button" className="secondary-button" onClick={cancelForm}>
             Cancel
           </button>
         </div>
