@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # Branch changes are verified by pull requests; verify the merged result on main.
+  # Avoid running the same resource-intensive browser suite for both events.
   push:
+    branches: [main]
   pull_request:
 
 permissions:
