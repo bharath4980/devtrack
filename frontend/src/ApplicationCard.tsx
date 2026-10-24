@@ -28,6 +28,7 @@ type Props = {
 
 export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
+  const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
   const link = safeLink(application.postingUrl);
   return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
     aria-label={`${application.company} — ${application.title}`}>
@@ -69,10 +70,15 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         </div>
       </div>
       <div className="interview-toggle-wrap"><button type="button" className="secondary-button" disabled={busy}
-        aria-expanded={showInterviewPrep} onClick={() => setShowInterviewPrep(value => !value)}>
+        aria-expanded={showInterviewPrep} onClick={() => {
+          if (showInterviewPrep && interviewDraftDirty &&
+              !window.confirm('Discard your unsaved interview round changes and close interview prep?')) return;
+          setShowInterviewPrep(value => !value);
+        }}>
         {showInterviewPrep ? 'Hide interview prep' : 'Interview prep'}
       </button></div>
-      {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />}
+      {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy}
+        onChanged={onInterviewChange} onDirtyChange={setInterviewDraftDirty} />}
       <ApplicationTimeline applicationId={application.id} status={application.status} />
     </>}
   </article>;
