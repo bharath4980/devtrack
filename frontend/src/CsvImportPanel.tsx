@@ -53,7 +53,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
       <div>
         <h3>Import applications from CSV</h3>
         <p className="form-help">Choose a DevTrack export or a CSV with company and title columns.
-          Optional columns: location, status, application_date, interview_date, follow_up_date, posting_url and notes.
+          Optional columns: location, status, application_date, interview_date, follow_up_date, posting_url, notes, recruiter_name, recruiter_email, and resume_version.
           Saved IDs from exported files are ignored; new account-owned IDs are generated.</p>
       </div>
       <button type="button" className="secondary-button" disabled={saving} onClick={onCancel}>Close import</button>
