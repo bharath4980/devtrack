@@ -1032,14 +1032,40 @@ footer { border-color: var(--line); color: #94a0b3; }
 .history-snapshot .form-help { margin: 0; line-height: 1.55; }
 
 /* In-app action center: reminders are visible while signed in (not push notifications). */
-.action-nudge {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
-  gap: 14px; margin: 0 0 18px; padding: 17px 20px;
-  border: 1px solid #f1d6b3; background: #fffaf0; border-radius: 14px;
+.next-actions-panel {
+  margin: 0 0 18px; padding: 20px;
+  border: 1px solid #d8e1f3; background: #fff; border-radius: 15px;
 }
-.action-nudge strong { color: #8a5524; font-size: 14px; }
-.action-nudge p { margin: 5px 0 0; color: #806b4f; font-size: 12px; line-height: 1.55; }
-.action-nudge a { color: #3949a2; font-size: 12px; font-weight: 750; text-decoration: underline; }
+.next-actions-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.next-actions-heading .eyebrow { margin: 0 0 6px; }
+.next-actions-heading h3 { margin: 0 0 5px; font-size: 18px; color: #263755; }
+.next-actions-heading p:not(.eyebrow) { margin: 0; font-size: 12px; color: #65758e; line-height: 1.55; }
+.next-actions-heading a { color: #435ac0; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.next-actions-list {
+  list-style: none; margin: 16px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+}
+.next-actions-list li {
+  min-width: 0; padding: 13px; border: 1px solid #e5eaf4; border-radius: 11px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  background: #f8faff;
+}
+.next-action-copy { min-width: 0; }
+.next-action-copy strong { display: block; color: #2d3c58; font-size: 13px; overflow-wrap: anywhere; }
+.next-action-copy p { margin: 5px 0 0; font-size: 12px; color: #64728a; overflow-wrap: anywhere; }
+.next-action-timing {
+  display: inline-block; padding: 4px 7px; border-radius: 7px;
+  margin-bottom: 8px; background: #fff0dc; color: #875d20;
+  font-size: 11px; font-weight: 750;
+}
+.next-action-overdue { background: #ffeaed; color: #a83c4e; }
+.next-actions-list button { align-self: flex-end; }
+.next-actions-empty { margin: 16px 0 0; color: #52647d; font-size: 13px; }
+.next-actions-note { margin-top: 12px; font-size: 11px; }
+@media (max-width: 700px) {
+  .next-actions-panel { padding: 15px; }
+  .next-actions-list { grid-template-columns: minmax(0, 1fr); }
+}
 #follow-ups-heading, #interviews-heading { scroll-margin-top: 24px; }
 .follow-up-task { flex-wrap: wrap; align-items: start; }
 .follow-up-job { flex: 1 1 140px; min-width: 0; }

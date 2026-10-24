@@ -40,6 +40,71 @@ function upcomingLabel(date: string, todayUtc: string) {
     days > 1 && days <= 7 ? 'In ' + days + ' days' : date;
 }
 
+type NextAction = {
+  key: string;
+  applicationId: number;
+  company: string;
+  title: string;
+  description: string;
+  date: string;
+  timing: string;
+  priority: number;
+};
+
+function nextActions(
+  due: DueFollowUp[],
+  upcoming: DueFollowUp[],
+  rounds: UpcomingInterviewRound[],
+  interviews: UpcomingInterview[],
+  today: string,
+): NextAction[] {
+  const actions: NextAction[] = [];
+
+  for (const item of due) {
+    const overdue = item.followUpDate < today;
+    actions.push({
+      key: 'due-' + item.id, applicationId: item.id, company: item.company,
+      title: item.title, description: 'Follow up', date: item.followUpDate,
+      timing: overdue ? overdueLabel(item.followUpDate, today) : 'Due today',
+      priority: overdue ? 0 : 1,
+    });
+  }
+  for (const round of rounds) {
+    const days = daysUntil(round.scheduledDate, today);
+    if (days < 0 || days > 7) continue;
+    actions.push({
+      key: 'round-' + round.roundId, applicationId: round.applicationId,
+      company: round.company, title: round.title,
+      description: 'Interview round · ' + round.roundName, date: round.scheduledDate,
+      timing: upcomingLabel(round.scheduledDate, today),
+      priority: days === 0 ? 2 : days === 1 ? 3 : 5,
+    });
+  }
+  for (const item of interviews) {
+    const days = daysUntil(item.interviewDate, today);
+    if (days < 0 || days > 7) continue;
+    actions.push({
+      key: 'interview-' + item.id, applicationId: item.id, company: item.company,
+      title: item.title, description: 'Application interview',
+      date: item.interviewDate, timing: upcomingLabel(item.interviewDate, today),
+      priority: days === 0 ? 2 : days === 1 ? 3 : 5,
+    });
+  }
+  for (const item of upcoming) {
+    const days = daysUntil(item.followUpDate, today);
+    if (days < 1 || days > 7) continue;
+    actions.push({
+      key: 'upcoming-' + item.id, applicationId: item.id, company: item.company,
+      title: item.title, description: 'Follow up', date: item.followUpDate,
+      timing: upcomingLabel(item.followUpDate, today),
+      priority: days === 1 ? 4 : 6,
+    });
+  }
+
+  return actions.sort((a, b) => a.priority - b.priority ||
+    a.date.localeCompare(b.date) || a.company.localeCompare(b.company)).slice(0, 5);
+}
+
 type FollowUpRowProps = {
   item: DueFollowUp;
   todayUtc: string;
@@ -132,6 +197,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
   const now = new Date();
   const todayUtc = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0')].join('-');
+  const actions = nextActions(followUps, upcomingFollowUps, upcomingRounds, interviews, todayUtc);
 
   return <section className="overview" id="overview" aria-label="Dashboard">
     <div className="section-heading">
@@ -148,14 +214,33 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}
     {!loading && !error && summary && <>
-      {(summary.overdueFollowUps > 0 || summary.dueTodayFollowUps > 0) && <div className="action-nudge" role="status">
-        <div>
-          <strong>Follow-ups need attention</strong>
-          <p>{summary.overdueFollowUps} overdue · {summary.dueTodayFollowUps} due today.
-            Complete or reschedule them directly from the dashboard.</p>
+      <section className="next-actions-panel" aria-labelledby="next-actions-heading">
+        <div className="next-actions-heading">
+          <div>
+            <p className="eyebrow">Your priorities</p>
+            <h3 id="next-actions-heading">Next actions</h3>
+            <p>Follow-ups and interviews that need attention in the next seven days.</p>
+          </div>
+          <a href="#follow-ups-heading">Full schedule ↓</a>
         </div>
-        <a href="#follow-ups-heading">Review follow-ups ↓</a>
-      </div>}
+        {actions.length === 0
+          ? <p className="next-actions-empty">No follow-ups or interviews need attention this week.</p>
+          : <ol className="next-actions-list">
+              {actions.map(item => <li key={item.key}>
+                <div className="next-action-copy">
+                  <span className={item.priority === 0 ? 'next-action-timing next-action-overdue' :
+                    'next-action-timing'}>{item.timing}</span>
+                  <strong>{item.description}</strong>
+                  <p>{item.company} · {item.title}</p>
+                </div>
+                <button type="button" className="secondary-button quick-view-open"
+                  onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+              </li>)}
+            </ol>}
+        <p className="form-help next-actions-note">
+          Showing up to five priorities from the dashboard's scheduled items. More follow-ups and interviews appear below.
+        </p>
+      </section>
       <div className="kpi-grid">
         <div className="kpi-card kpi-primary"><span>Total applications</span><strong>{summary.total}</strong><small>Across your pipeline</small></div>
         <div className="kpi-card"><span>Applied</span><strong>{summary.applied}</strong><small>Applications submitted</small></div>
