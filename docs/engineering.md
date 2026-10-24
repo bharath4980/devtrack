@@ -41,7 +41,7 @@ H2 gives quick local integration feedback. CI repeats endpoint tests on PostgreS
 
 Sessions and throttle counters live in memory. Restarting the app signs users out. Fixed windows are easy to explain but allow bursts around window boundaries, and shared budgets can temporarily affect legitimate users. These limits suit a small demo, not a high-traffic public identity service.
 
-Search uses substring matching; no full-text index is warranted for this workload. Concurrent edits use last-write-wins; there is no collaborative editing or revision history. Interview dates have day precision and use UTC for the upcoming list. Email delivery, reminders, password reset, and verified email would require a separate, justified feature phase.
+Search uses substring matching; no full-text index is warranted for this workload. Concurrent edits use last-write-wins; there is no collaborative editing or revision history. Application-level interview dates have day precision, while scheduled interview rounds can also store a time and IANA time zone. The dashboard uses the browser's time-zone header for scheduling boundaries; analytics weeks remain UTC-based. Automated email/push notifications, password reset, and verified email would require a separate, justified feature phase.
 
 
 ## Application activity and analytics
@@ -56,11 +56,13 @@ When an existing application has no recorded events, the frontend shows its curr
 
 ## Public job-board preview integrations
 
-The authenticated preview endpoint accepts recognized HTTPS posting links for Greenhouse, Lever, Ashby, and SmartRecruiters. The service validates hostnames and path segments, builds requests against fixed provider API hosts, and never fetches arbitrary user-provided URLs or follows redirects. Responses have strict byte caps and timeouts. A provider error or missing posting returns a manual-entry fallback; imported fields remain editable before saving.
+The authenticated preview endpoint accepts recognized HTTPS posting links for Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR. The service validates hostnames and path segments, builds requests against fixed provider API hosts, and never fetches arbitrary user-provided URLs or follows redirects. Responses have strict byte caps and timeouts. A provider error or missing posting returns a manual-entry fallback; imported fields remain editable before saving.
 
 Ashby's public board endpoint returns an array of postings rather than one job. The importer matches the requested posting by its ID or canonical job URL and never substitutes the first job on a board. It permits up to 2 MiB of public-board JSON; unusually large boards can require manual entry. This is an application preview only, not general-purpose crawling or scraping.
 
 SmartRecruiters posting links use a company identifier and a numeric posting ID. The importer accepts only the exact `jobs.smartrecruiters.com` or `www.smartrecruiters.com` hostnames and a bounded path pattern, then constructs `https://api.smartrecruiters.com/v1/companies/{company}/postings/{id}`. Tracking query strings are never sent to the provider API. The public posting-detail response supplies the title (`name`), company name, and location fields. The returned posting ID and any supplied company identifier are checked against the requested link; empty or inconsistent data produces a manual-entry fallback. No tokens, scraping, or new database fields are required. This integration supports individual public posting links, not general job search.
+
+Workday URLs are accepted only on validated `*.wdN.myworkdayjobs.com` hostnames with bounded job paths, and preview requests use that validated host's `/wday/cxs/` endpoint. BambooHR previews accept validated `*.bamboohr.com/careers/{id}` links and check returned share URLs against the same host and posting. Unsupported links and unsuccessful previews require manual entry.
 
 ## Recorded weekly activity
 
@@ -70,13 +72,13 @@ Unlike the monthly application chart, which uses user-entered application dates,
 
 ## Follow-up priorities
 
-The dashboard's summary response includes `overdueFollowUps` and `dueTodayFollowUps`, computed from all owner-scoped applications whose status is **Saved, Applied, or Interview** and whose explicit follow-up date is earlier than or equal to the current UTC date. Overdue uses dates strictly before today; due today uses equality. Future dates, missing dates, terminal Offer/Rejected statuses, and other accounts never contribute.
+The dashboard's summary response includes `overdueFollowUps` and `dueTodayFollowUps`, computed from all owner-scoped applications whose status is **Saved, Applied, or Interview** and whose explicit follow-up date is earlier than or equal to today in the time zone supplied by the browser. Overdue uses dates strictly before today; due today uses equality. Future dates, missing dates, terminal Offer/Rejected statuses, and other accounts never contribute.
 
-The existing `GET /api/dashboard/follow-ups` endpoint still returns the **earliest five** due applications. Counts deliberately come from the full eligible set, not this limited list. Each visible overdue card shows days since its follow-up date in UTC; a date is a user-entered reminder, not evidence that a follow-up was sent or completed. Changing a date or status refreshes the dashboard counts. No notification, reminder automation, new table, or migration is introduced.
+The existing `GET /api/dashboard/follow-ups` endpoint still returns the **earliest five** due applications. Counts deliberately come from the full eligible set, not this limited list. Each visible overdue card shows calendar days since its follow-up date in the browser's time zone; a date is a user-entered reminder, not evidence that a follow-up was sent or completed. Changing a date or status refreshes the dashboard counts. A separate **Next actions** section above the analytics selects up to five priorities from the existing five-item due, upcoming-follow-up, scheduled-round, and application-interview lists. It sorts overdue and due-today follow-ups ahead of imminent interviews and later reminders, opening the existing authenticated application quick view rather than creating another task store. The queue cannot claim to include every eligible application because its source lists are bounded. No notification, reminder automation, new table, or migration is introduced.
 
 ## Read-only CSV export
 
-`GET /api/applications/export.csv` returns a UTF-8 (BOM) CSV attachment for the authenticated account. This export **always includes all of that account's applications**, irrespective of search, filters, or list pagination, ordered by stable application ID. It contains `id`, company, job title, location, current status, application/interview/follow-up dates, posting URL, and notes; it does **not** include passwords, account identifiers, internal ownership metadata, or invented historical events.
+`GET /api/applications/export.csv` returns a UTF-8 (BOM) CSV attachment for the authenticated account. This export **always includes all of that account's applications**, irrespective of search, filters, or list pagination, ordered by stable application ID. It contains `id`, company, job title, location, current status, application/interview/follow-up dates, posting URL, notes, recruiter name, recruiter email, and resume version; it does **not** include passwords, account identifiers, internal ownership metadata, or invented historical events.
 
 Text fields are RFC-style quoted with embedded quotes doubled. Leading spreadsheet formula operators (`=`, `+`, `-`, `@`, including after leading whitespace) and control prefixes are neutralized with an apostrophe before quoting, preventing untrusted notes or job titles from executing as spreadsheet formulas. Dates use `YYYY-MM-DD`; absent optional fields are empty cells. The response uses `text/csv;charset=UTF-8`, attachment disposition, and `Cache-Control: no-store`. The export is a read-only snapshot, not an import/restore mechanism.
 
