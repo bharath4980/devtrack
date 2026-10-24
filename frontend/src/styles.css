@@ -1243,8 +1243,16 @@ footer { border-color: var(--line); color: #94a0b3; }
 .quick-view-details > div { background: #f6f8fc; border-radius: 10px; padding: 12px; min-width: 0; }
 .quick-view-details dt { color: #748299; font-weight: 750; font-size: 11px; margin-bottom: 5px; }
 .quick-view-details dd { margin: 0; color: #253653; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
-.quick-view-notes { margin-top: 17px; color: #334564; font-size: 13px; }
+.quick-view-contact, .quick-view-notes, .quick-view-workspace, .quick-view-history {
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid #e8edf7;
+}
+.quick-view-contact h4, .quick-view-notes h4, .quick-view-workspace h4, .quick-view-history h4 {
+  margin: 0; color: #293958; font-size: 14px; font-weight: 750;
+}
+.quick-view-contact-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; }
+.quick-view-notes { color: #334564; font-size: 13px; }
 .quick-view-notes p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quick-view-workspace > :not(h4), .quick-view-history > :not(h4) { margin-top: 12px; }
 .quick-view-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin: 18px 0; }
 .quick-view-actions a { font-size: 12px; font-weight: 750; color: #435ac0; }
 .quick-view-panel .application-form { margin-top: 16px; }
@@ -1253,6 +1261,7 @@ footer { border-color: var(--line); color: #94a0b3; }
 @media (max-width: 700px) {
   .quick-view-panel { padding: 15px; }
   .quick-view-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-view-contact-fields { grid-template-columns: minmax(0, 1fr); }
   .quick-view-panel .application-form fieldset { grid-template-columns: minmax(0, 1fr); }
 }
 
