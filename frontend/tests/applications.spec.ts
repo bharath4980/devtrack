@@ -1473,3 +1473,79 @@ test('a superseded search is cancelled while the newer filter wins', async ({ pa
   release();
   await expect(page.getByRole('article')).toContainText('Current result');
 });
+
+test('interview draft survives cancelled discard and requires confirmation when switching rounds', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Draft Guard Studio');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Draft Guard Studio — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Unfinished round');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form.getByLabel('Round name')).toHaveValue('Unfinished round');
+
+  page.once('dialog', dialog => dialog.accept());
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form).toHaveCount(0);
+  await expect(workspace.getByText('No rounds yet.', { exact: false })).toBeVisible();
+
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  await form.getByLabel('Round name').fill('Saved screen');
+  await form.getByRole('button', { name: 'Save interview round' }).click();
+  const round = workspace.getByRole('article', { name: 'Saved screen' });
+  await expect(round).toBeVisible();
+  await round.getByRole('button', { name: 'Edit round' }).click();
+  await form.getByLabel('Preparation notes').fill('A draft that should not disappear');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await round.getByRole('button', { name: 'Edit round' }).click();
+  await expect(form.getByLabel('Preparation notes')).toHaveValue('A draft that should not disappear');
+
+  page.once('dialog', dialog => dialog.accept());
+  await round.getByRole('button', { name: 'Edit round' }).click();
+  await expect(form.getByLabel('Preparation notes')).toHaveValue('');
+  await form.getByRole('button', { name: 'Cancel' }).click();
+  await expect(form).toHaveCount(0);
+  await expect(round).not.toContainText('A draft that should not disappear');
+});
+
+test('interview form warns before leaving and sends one request for rapid double submit', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Submission Guard Studio');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Submission Guard Studio — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+
+  const exitBlocked = () => page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(await exitBlocked()).toBe(false);
+  await form.getByLabel('Round name').fill('Only one interview');
+  await expect.poll(exitBlocked).toBe(true);
+
+  let submissions = 0;
+  await page.route('**/api/applications/*/interviews', async route => {
+    if (route.request().method() === 'POST') {
+      submissions++;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    await route.continue();
+  });
+  await form.evaluate(element => {
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  await expect(workspace.getByRole('article', { name: 'Only one interview' })).toHaveCount(1);
+  expect(submissions).toBe(1);
+  await expect.poll(exitBlocked).toBe(false);
+});
