@@ -635,6 +635,49 @@ test('board searches full account data and can filter stages independently of li
   await expect(page.getByRole('article')).toHaveCount(10);
 });
 
+test.describe('board calendar boundaries', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('shows follow-ups and interviews relative to the browser date, not UTC', async ({ page }) => {
+    await registerAndLogin(page);
+    // In Los Angeles it is still October 23, although UTC is already October 24.
+    await page.clock.setFixedTime(new Date('2026-10-24T01:30:00Z'));
+
+    const csrf = await (await page.request.get('/api/auth/csrf')).json();
+    const headers = { [csrf.headerName]: csrf.token };
+    const created = await page.request.post('/api/applications', {
+      headers,
+      data: {
+        company: 'Local Clock Works', title: 'Backend Engineer',
+        applicationDate: '2026-10-20', followUpDate: '2026-10-23',
+        postingUrl: '', notes: '',
+      },
+    });
+    expect(created.status()).toBe(201);
+    const id = (await created.json()).id;
+    const scheduled = await page.request.put('/api/applications/' + id, {
+      headers,
+      data: {
+        company: 'Local Clock Works', title: 'Backend Engineer',
+        applicationDate: '2026-10-20', followUpDate: '2026-10-23',
+        interviewDate: '2026-10-24', location: '', postingUrl: '', notes: '',
+      },
+    });
+    expect(scheduled.ok()).toBe(true);
+    const moved = await page.request.patch('/api/applications/' + id + '/status', {
+      headers, data: { status: 'INTERVIEW' },
+    });
+    expect(moved.ok()).toBe(true);
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Board view' }).click();
+    const card = page.getByRole('region', { name: 'Application pipeline board' })
+      .getByRole('article', { name: 'Local Clock Works — Backend Engineer' });
+    await expect(card).toContainText('Follow-up today');
+    await expect(card).toContainText('Interview tomorrow');
+  });
+});
+
 test('board highlights actionable dates and stacks columns on mobile', async ({ page }, testInfo) => {
   await registerAndLogin(page);
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
