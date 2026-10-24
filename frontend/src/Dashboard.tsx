@@ -42,6 +42,7 @@ function upcomingLabel(date: string, todayUtc: string) {
 
 type NextAction = {
   key: string;
+  kind: 'follow-up' | 'interview';
   applicationId: number;
   company: string;
   title: string;
@@ -63,7 +64,7 @@ function nextActions(
   for (const item of due) {
     const overdue = item.followUpDate < today;
     actions.push({
-      key: 'due-' + item.id, applicationId: item.id, company: item.company,
+      key: 'due-' + item.id, kind: 'follow-up', applicationId: item.id, company: item.company,
       title: item.title, description: 'Follow up', date: item.followUpDate,
       timing: overdue ? overdueLabel(item.followUpDate, today) : 'Due today',
       priority: overdue ? 0 : 1,
@@ -73,7 +74,7 @@ function nextActions(
     const days = daysUntil(round.scheduledDate, today);
     if (days < 0 || days > 7) continue;
     actions.push({
-      key: 'round-' + round.roundId, applicationId: round.applicationId,
+      key: 'round-' + round.roundId, kind: 'interview', applicationId: round.applicationId,
       company: round.company, title: round.title,
       description: 'Interview round · ' + round.roundName, date: round.scheduledDate,
       timing: upcomingLabel(round.scheduledDate, today),
@@ -84,7 +85,7 @@ function nextActions(
     const days = daysUntil(item.interviewDate, today);
     if (days < 0 || days > 7) continue;
     actions.push({
-      key: 'interview-' + item.id, applicationId: item.id, company: item.company,
+      key: 'interview-' + item.id, kind: 'interview', applicationId: item.id, company: item.company,
       title: item.title, description: 'Application interview',
       date: item.interviewDate, timing: upcomingLabel(item.interviewDate, today),
       priority: days === 0 ? 2 : days === 1 ? 3 : 5,
@@ -94,7 +95,7 @@ function nextActions(
     const days = daysUntil(item.followUpDate, today);
     if (days < 1 || days > 7) continue;
     actions.push({
-      key: 'upcoming-' + item.id, applicationId: item.id, company: item.company,
+      key: 'upcoming-' + item.id, kind: 'follow-up', applicationId: item.id, company: item.company,
       title: item.title, description: 'Follow up', date: item.followUpDate,
       timing: upcomingLabel(item.followUpDate, today),
       priority: days === 1 ? 4 : 6,
@@ -188,6 +189,8 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onComplete,
 
 export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [completionError, setCompletionError] = useState<{ id: number; message: string } | null>(null);
   const pipeline = statuses.map(status => ({
     status,
     count: summary?.[status.toLowerCase() as keyof DashboardSummary] ?? 0,
@@ -198,6 +201,24 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
   const todayUtc = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0')].join('-');
   const actions = nextActions(followUps, upcomingFollowUps, upcomingRounds, interviews, todayUtc);
+
+  async function completeNextAction(id: number, company: string) {
+    if (busy || completingId !== null || !window.confirm(
+      'Complete the follow-up for ' + company +
+      '? This clears its due date and records the completion in application history.'
+    )) return;
+    setCompletingId(id);
+    setCompletionError(null);
+    try {
+      await onCompleteFollowUp(id);
+    } catch (failure) {
+      setCompletionError({ id, message: errorMessage(failure, 'Could not complete follow-up.') });
+    } finally {
+      setCompletingId(null);
+    }
+  }
+
+
 
   return <section className="overview" id="overview" aria-label="Dashboard">
     <div className="section-heading">
@@ -233,8 +254,19 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                   <strong>{item.description}</strong>
                   <p>{item.company} · {item.title}</p>
                 </div>
-                <button type="button" className="secondary-button quick-view-open"
-                  onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+                <div className="next-action-controls">
+                  <button type="button" className="secondary-button quick-view-open"
+                    disabled={busy || completingId !== null}
+                    onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+                  {item.kind === 'follow-up' && <button type="button"
+                    disabled={busy || completingId !== null}
+                    onClick={() => void completeNextAction(item.applicationId, item.company)}>
+                    {completingId === item.applicationId ? 'Completing…' : 'Complete follow-up'}
+                  </button>}
+                </div>
+                {completionError?.id === item.applicationId && <p className="form-error" role="alert">
+                  {completionError.message}
+                </p>}
               </li>)}
             </ol>}
         <p className="form-help next-actions-note">
