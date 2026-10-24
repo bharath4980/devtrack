@@ -273,10 +273,9 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
           </div>
         </>}
         {!editing && <>
-          <section className="board-detail-workspace" aria-label="Interview preparation">
-            <h4>Interview preparation</h4>
+          <div className="board-detail-workspace">
             <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} onChanged={onInterviewChange} />
-          </section>
+          </div>
           <section className="board-detail-history" aria-label="Application history">
             <h4>Application history</h4>
             <ApplicationTimeline key={selected.id} applicationId={selected.id} status={selected.status} />
