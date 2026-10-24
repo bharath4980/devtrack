@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
-import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, completeFollowUp, updateApplication, updateApplicationStatus } from './applicationApi';
+import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, completeFollowUp, updateApplication, updateApplicationStatus, updateBulkApplicationStatus } from './applicationApi';
 import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getUpcomingInterviewRounds, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type UpcomingInterviewRound, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
 import { statuses, statusLabel, type ApplicationPage, type ApplicationQuery, type ApplicationSort, type ApplicationStatus, type JobApplication, type UpdateJobApplicationRequest } from './types';
@@ -184,30 +184,18 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     setBusy(true);
     setActionError('');
     setNotice('');
-    let updated = 0;
-    let failure: unknown = null;
+    setBulkProgress('Updating selected applications…');
     try {
-      for (const application of affected) {
-        setBulkProgress(`Updating ${updated + 1} of ${affected.length}…`);
-        try {
-          await updateApplicationStatus(application.id, bulkTarget);
-          updated++;
-        } catch (error) {
-          failure = error;
-          break; // Preserve prior successful changes; never claim an atomic batch.
-        }
-      }
-      if (failure) {
-        setActionError(`Updated ${updated} of ${affected.length} applications. Remaining updates were not applied. ${errorMessage(failure, 'Could not update status.')}`);
-      } else {
-        setNotice(`${updated} ${updated === 1 ? 'application' : 'applications'} moved to ${statusLabel(bulkTarget)}.`);
-      }
+      const updated = await updateBulkApplicationStatus(affected.map(item => item.id), bulkTarget);
+      setNotice(`${updated} ${updated === 1 ? 'application' : 'applications'} moved to ${statusLabel(bulkTarget)}.`);
+      setSelectedIds([]);
+      setBulkTarget('');
+    } catch (error) {
+      setActionError(errorMessage(error, 'No selected applications were changed. Please try again.'));
     } finally {
       mutationPending.current = false;
       setBulkProgress('');
       setBusy(false);
-      setSelectedIds([]);
-      setBulkTarget('');
       refresh();
     }
   }
