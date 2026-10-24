@@ -4,6 +4,7 @@ import {
   type InterviewRound, type InterviewRoundInput,
 } from './interviewApi';
 import { errorMessage } from './apiError';
+import { interviewTimeInBrowser } from './interviewLocalTime';
 
 const blank: InterviewRoundInput = {
   roundName: '', scheduledDate: null, scheduledTime: null, timeZone: null, format: 'VIDEO', contactName: '',
@@ -174,6 +175,8 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
               <p>{labelFor(round.format)} · {round.scheduledDate || 'Date not set'}
                 {round.scheduledTime && round.timeZone ? ' at ' + round.scheduledTime + ' (' + round.timeZone + ')' : ''}
                 {' · '}{labelFor(round.outcome)}</p>
+              {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone) &&
+                <p className="form-help">Your local time: {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone)}</p>}
             </div>
             <div className="interview-round-actions">
               {round.googleCalendarUrl && <a className="secondary-button interview-calendar-link"
