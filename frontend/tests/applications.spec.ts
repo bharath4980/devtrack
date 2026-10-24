@@ -685,7 +685,7 @@ test('next actions prioritize overdue follow-ups and open scheduled applications
     headers,
     data: {
       company: 'Upcoming Interview', title: 'Backend Engineer',
-      applicationDate: '2026-10-20', interviewDate: tomorrow,
+      applicationDate: '2026-10-20',
       postingUrl: '', notes: '',
     },
   });
