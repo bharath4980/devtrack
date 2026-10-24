@@ -11,6 +11,11 @@ import PipelineBoard from './PipelineBoard';
 import CsvImportPanel from './CsvImportPanel';
 import GettingStarted from './GettingStarted';
 
+function localCalendarDay(date = new Date()): string {
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')].join('-');
+}
+
 const initialQuery: ApplicationQuery = { search: '', status: '', sort: 'NEWEST', page: 0 };
 
 type Props = { user: CurrentUser; onLogout: () => void; signingOut: boolean; logoutError: string };
@@ -68,6 +73,26 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   useEffect(() => {
     if (creating) document.getElementById('new-application')?.focus();
   }, [creating]);
+
+  // Date-based reminders need fresh results if this tab remains open overnight.
+  // The focus check also covers suspended tabs where interval timers were throttled.
+  useEffect(() => {
+    let observedDay = localCalendarDay();
+    const checkDay = () => {
+      const today = localCalendarDay();
+      if (today === observedDay) return;
+      observedDay = today;
+      setRevision(value => value + 1);
+    };
+    const interval = window.setInterval(checkDay, 60_000);
+    window.addEventListener('focus', checkDay);
+    document.addEventListener('visibilitychange', checkDay);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', checkDay);
+      document.removeEventListener('visibilitychange', checkDay);
+    };
+  }, []);
 
   // A page change must never silently include applications from another page.
   useEffect(() => {
