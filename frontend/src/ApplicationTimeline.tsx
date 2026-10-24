@@ -12,7 +12,7 @@ export function activityText(item: ApplicationActivity): string {
 }
 
 export function activityTime(isoDate: string): string {
-  return new Date(isoDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
+  return new Date(isoDate).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
 
 export default function ApplicationTimeline({ applicationId, status }: Props) {
