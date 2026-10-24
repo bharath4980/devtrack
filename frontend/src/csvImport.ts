@@ -109,7 +109,7 @@ export function parseApplicationsCsv(input: string): ImportApplicationRow[] {
           throw new Error('Invalid URL');
       } catch { throw new Error('Row ' + row + ': enter a valid http or https posting URL.'); }
     }
-    if (raw.recruiterEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw.recruiterEmail)) {
+    if (raw.recruiterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.recruiterEmail)) {
       throw new Error('Row ' + row + ': enter a valid recruiter email.');
     }
     return {
