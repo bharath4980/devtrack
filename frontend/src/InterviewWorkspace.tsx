@@ -41,9 +41,9 @@ const otherTimeZones = (typeof Intl.supportedValuesOf === 'function'
   .sort((a, b) => a.localeCompare(b));
 const selectableZoneIds = new Set([...commonZoneIds, ...otherTimeZones]);
 
-type Props = { applicationId: number; busy?: boolean; onChanged?: () => void };
+type Props = { applicationId: number; busy?: boolean; onChanged?: () => void; onDirtyChange?: (dirty: boolean) => void };
 
-export default function InterviewWorkspace({ applicationId, busy = false, onChanged }: Props) {
+export default function InterviewWorkspace({ applicationId, busy = false, onChanged, onDirtyChange }: Props) {
   const id = useId();
   const [rounds, setRounds] = useState<InterviewRound[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +72,11 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [applicationId, retry]);
+
+  useEffect(() => {
+    onDirtyChange?.(showForm && hasUnsavedChanges);
+    return () => onDirtyChange?.(false);
+  }, [showForm, hasUnsavedChanges, onDirtyChange]);
 
   // Protect a partially completed interview form from accidental tab closure.
   useEffect(() => {
