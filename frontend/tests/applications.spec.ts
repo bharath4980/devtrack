@@ -675,7 +675,9 @@ test('dashboard actions open the exact application for editing and history', asy
     headers,
     data: { company: 'Quick Access Labs', title: 'Platform Engineer',
       applicationDate: '2026-10-20', followUpDate: yesterday,
-      postingUrl: '', notes: 'Email hiring manager after the application.' },
+      postingUrl: '', notes: 'Email hiring manager after the application.',
+      recruiterName: 'Alex Rivera', recruiterEmail: 'alex@example.com',
+      resumeVersion: 'Platform v2' },
   });
   expect(dueResponse.status()).toBe(201);
   const dueId = (await dueResponse.json()).id;
@@ -706,6 +708,10 @@ test('dashboard actions open the exact application for editing and history', asy
   const view = page.getByRole('region', { name: 'Application quick view' });
   await expect(view).toContainText('Platform Engineer');
   await expect(view).toContainText('Email hiring manager after the application.');
+  const contact = view.getByRole('region', { name: 'Recruiter and resume details' });
+  await expect(contact).toContainText('Alex Rivera');
+  await expect(contact).toContainText('alex@example.com');
+  await expect(contact).toContainText('Platform v2');
   await view.getByRole('button', { name: 'View history' }).click();
   await expect(view.getByLabel('Application activity')).toContainText('Application saved');
   await view.getByRole('button', { name: 'Edit application' }).click();
