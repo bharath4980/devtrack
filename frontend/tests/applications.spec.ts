@@ -432,6 +432,49 @@ test('interview preparation creates, updates, persists and deletes a round', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test.describe('interview time-zone context', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('shows the viewer date and time without changing the interview slot', async ({ page }) => {
+    await registerAndLogin(page);
+    await seed(page, 'Cross-zone Interview');
+    await page.reload();
+
+    const card = page.getByRole('article', { name: 'Cross-zone Interview — Software Engineer' });
+    await card.getByRole('button', { name: 'Interview prep' }).click();
+    const prep = card.getByRole('region', { name: 'Interview preparation' });
+    await prep.getByRole('button', { name: 'Add interview round' }).click();
+    const form = prep.getByRole('form', { name: 'Interview round form' });
+    const date = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    await form.getByLabel('Round name').fill('Eastern time screen');
+    await form.getByLabel('Scheduled date').fill(date);
+    await form.getByLabel('Start time (optional)').fill('00:30');
+    await form.getByLabel('Time zone', { exact: true }).selectOption('America/New_York');
+    await form.getByRole('button', { name: 'Save interview round' }).click();
+
+    const round = prep.getByRole('article', { name: 'Eastern time screen' });
+    await expect(round).toContainText('00:30 (America/New_York)');
+    const dayBefore = new Intl.DateTimeFormat('en-US', {
+      month: 'short', day: 'numeric', timeZone: 'UTC',
+    }).format(new Date(Date.parse(date + 'T00:00:00Z') - 86400000));
+    const local = round.getByText(/Your local time:/);
+    await expect(local).toContainText(dayBefore);
+    await expect(local).toContainText('9:30 PM');
+
+    const dashboard = page.getByRole('region', { name: 'Upcoming interview rounds' });
+    await expect(dashboard).toContainText('Eastern time screen');
+    await expect(dashboard.getByText(/Your local time:/)).toContainText(dayBefore);
+    await expect(dashboard.getByText(/Your local time:/)).toContainText('9:30 PM');
+
+    await page.reload();
+    const restored = page.getByRole('article', { name: 'Cross-zone Interview — Software Engineer' });
+    await restored.getByRole('button', { name: 'Interview prep' }).click();
+    const saved = restored.getByRole('article', { name: 'Eastern time screen' });
+    await expect(saved).toContainText('00:30 (America/New_York)');
+    await expect(saved.getByText(/Your local time:/)).toContainText('9:30 PM');
+  });
+});
+
 test('dashboard shows newly scheduled interview rounds and opens the application', async ({ page }) => {
   await registerAndLogin(page);
   await seed(page, 'Scheduled Studio');
