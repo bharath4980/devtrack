@@ -216,6 +216,31 @@ public class JobApplicationService {
         return repository.save(application);
     }
 
+    /**
+     * Update one bounded owner-scoped batch in a single transaction. Validate
+     * ownership for all IDs before changing any status or writing activity.
+     */
+    public int updateStatuses(Long ownerId, List<Long> ids, ApplicationStatus status) {
+        if (ids == null || ids.isEmpty() || ids.size() > 100 || status == null
+                || new java.util.HashSet<>(ids).size() != ids.size()
+                || ids.stream().anyMatch(id -> id == null || id < 1)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select 1 to 100 distinct applications.");
+        }
+        List<JobApplication> selected = new ArrayList<>();
+        for (Long id : ids) selected.add(findById(id, ownerId));
+
+        int updated = 0;
+        for (JobApplication application : selected) {
+            if (application.getStatus() == status) continue;
+            ApplicationStatus previous = application.getStatus();
+            application.setStatus(status);
+            JobApplication saved = repository.save(application);
+            activity.recordStatusChange(saved, saved.getOwner(), previous);
+            updated++;
+        }
+        return updated;
+    }
+
     public JobApplication updateStatus(
             Long ownerId,
             Long id,
