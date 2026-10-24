@@ -22,9 +22,10 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 - **Update multiple applications safely:** in List view, select cards on the current page and move them to another status after confirmation. Each change uses the same authenticated status endpoint and activity history, with progress and explicit partial-failure reporting; updates stop on the first error and are not atomic.
 - **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
 - **Bring applications back safely:** preview and import up to 100 applications from a DevTrack-exported CSV or a CSV with recognized headers. The client validates structure and displays a sample; the authenticated server revalidates every row, checks job-link or company/title/date duplicates, and either commits the entire batch or rejects it without partial changes. Exported IDs are ignored, current statuses and dates are preserved, and existing applications are never overwritten.
+- **Keep application context together:** recruiter name, recruiter email, resume version, and notes appear alongside the application in the list, Pipeline Board details, and dashboard quick view. These fields are preserved in CSV export/import without adding recruiter accounts or sending messages.
 - **Prepare for interviews:** keep up to 30 interview rounds per application with optional local start times and a browser-detected, selectable time zone (common US and international regions plus the browser's full IANA list), recruiter/interviewer contacts, notes, outcomes and follow-ups. Open prefilled event editors in Google Calendar or Outlook without downloading a file, or download a private `.ics` event for Apple Calendar and other apps. The user must review and save each prefilled event; no external account access or automatic invites are involved. Events have a one-hour placeholder duration. Existing date-only rounds remain valid.
 - **See planned interview rounds:** the dashboard shows the next five scheduled rounds for active applications, with direct access to each application's interview preparation. Only the round name, date and format appear in the dashboard; contact details and notes stay in the authenticated application view.
-- **Act on next steps:** track overdue and due-today follow-ups, see the next seven days of upcoming follow-ups, and reschedule or complete follow-ups directly from the dashboard. Completing a follow-up clears its due date and writes a real activity event without changing the application's stage. Upcoming interviews show clear relative-date labels (UTC). Dashboard reminders, interviews, and recent activity now open an owner-scoped application quick view with notes, edit controls, and recorded history.
+- **Act on next steps:** a **Next actions** queue near the top of the dashboard highlights up to five items from the already-bounded lists of overdue/due-today follow-ups, imminent interviews, and the next seven days of follow-ups. Open the right application directly from each item. The full schedule below still supports rescheduling and completing follow-ups; completion clears the date and records activity without changing stage. Dashboard due dates use the browser's local calendar day. No notifications are sent in the background.
 - **In-app reminders only:** reminders appear when you open the signed-in dashboard; they are not email, push, or background notifications.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
 - **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, or BambooHR links. Unsupported providers fall back to manual entry.
@@ -46,7 +47,7 @@ In production, the React app and Spring Boot API share one origin. Spring Securi
 | Isolation | Session-authenticated ownership checks in repository and mutation paths | One account cannot access another account's applications |
 | Validation | Backend validation, structured errors, frontend field feedback | Invalid input fails predictably |
 | History | Transactional creation/status events; explicit legacy snapshots | No invented events or timestamps |
-| External imports | Constrained Greenhouse/Lever/Ashby/SmartRecruiters handling and editable results | Avoids arbitrary URL fetching and unsafe scraping |
+| External imports | Constrained Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR previews with editable results | Avoids arbitrary URL fetching and unsafe scraping |
 | Consistency | Flyway migrations, Hibernate validation, PostgreSQL tests | Keeps schema changes deliberate and testable |
 | Delivery | Multi-stage non-root Docker runtime; GitHub Actions with H2, PostgreSQL and Playwright | Checks the built artifact and browser workflows before release |
 
@@ -163,7 +164,7 @@ cd frontend
 npm run build
 ```
 
-GitHub Actions verifies the project in two layers:
+GitHub Actions verifies the project in two layers for pull requests and for pushes to `main` (without duplicate branch-push runs for open PRs):
 
 1. Runs the backend suite with H2.
 2. Re-runs backend tests against a disposable PostgreSQL database, builds the frontend and production Docker image, starts that image, then executes Playwright browser workflows on desktop and mobile Chromium.
@@ -201,7 +202,7 @@ The deployed service uses:
 - `SESSION_COOKIE_SECURE=true`
 - `PORT=8080`
 
-Secrets stay in the hosting environment and are not committed to the repository. The application supports graceful shutdown and exposes anonymous, non-detailed `/api/health` readiness checks (including database health). Render currently uses default port checks because its **HTTP health-check path is not configured**; see the [operations and recovery runbook](docs/operations.md) for validation and a separately approved path change.
+Secrets stay in the hosting environment and are not committed to the repository. The application supports graceful shutdown and exposes anonymous, non-detailed `/api/health` readiness checks (including database health). The existing Render service probes **`/api/health/liveness`**, a process-only HTTP liveness check chosen to avoid repeated database wake-ups on an idle Free instance; it is **not** a database readiness assertion. See the [operations and recovery runbook](docs/operations.md) for verification and limitations.
 
 ## Design tradeoffs
 
@@ -211,7 +212,7 @@ Current tradeoffs:
 
 - Sessions and authentication throttle counters are in memory and reset on restart.
 - Password reset and email verification are not implemented.
-- Upcoming interviews use day-level dates and UTC; reminders and time-of-day scheduling are out of scope.
+- Application-level interview dates have day precision; individual interview rounds can store a scheduled time and IANA time zone. Dashboard due-date boundaries use the browser's time zone. Automated email/push reminders remain out of scope.
 - Search uses relational substring matching instead of a dedicated full-text search service.
 - Concurrent edits use last-write-wins.
 - Job posting autofill supports public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR links; other job boards require manual entry.
