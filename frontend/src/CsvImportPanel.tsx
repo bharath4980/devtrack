@@ -11,25 +11,32 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
   const [error, setError] = useState('');
   const [checked, setChecked] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reading, setReading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const importPending = useRef(false);
+  const readSequence = useRef(0);
 
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const selected = ++readSequence.current;
     const file = event.target.files?.[0];
     setRows([]); setChecked(false); setError(''); setFileName('');
+    setReading(Boolean(file));
     if (!file) return;
     try {
       if (file.size > 512_000) throw new Error('Choose a CSV file under 500 KB (100 applications maximum).');
       const result = parseApplicationsCsv(await file.text());
+      if (selected !== readSequence.current) return;
       setRows(result);
       setFileName(file.name);
     } catch (reason) {
-      setError(errorMessage(reason, 'Could not read this CSV.'));
+      if (selected === readSequence.current) setError(errorMessage(reason, 'Could not read this CSV.'));
+    } finally {
+      if (selected === readSequence.current) setReading(false);
     }
   }
 
   async function save() {
-    if (disabled || saving || importPending.current || !checked || rows.length === 0) return;
+    if (disabled || saving || reading || importPending.current || !checked || rows.length === 0) return;
     importPending.current = true;
     setSaving(true);
     setError('');
@@ -63,6 +70,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
       <input ref={fileRef} id="import-csv-file" type="file" accept=".csv,text/csv"
         disabled={disabled || saving} onChange={event => void chooseFile(event)} />
     </div>
+    {reading && <p role="status" className="form-help">Reading selected CSV…</p>}
     {error && <p role="alert" className="form-error">{error} No changes were made if the import was rejected.</p>}
     {rows.length > 0 && <div className="csv-import-preview">
       <p role="status"><strong>Preview:</strong> {rows.length} {rows.length === 1 ? 'application' : 'applications'} from {fileName}.
@@ -85,7 +93,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
           onChange={event => setChecked(event.target.checked)} />
         <span>I reviewed the CSV and want to add these applications to my account.</span>
       </label>
-      <button type="button" disabled={disabled || saving || !checked} onClick={() => void save()}>
+      <button type="button" disabled={disabled || saving || reading || !checked} onClick={() => void save()}>
         {saving ? 'Importing applications…' : 'Import ' + rows.length + ' applications'}
       </button>
     </div>}
