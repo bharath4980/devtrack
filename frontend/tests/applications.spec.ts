@@ -678,6 +678,40 @@ test.describe('board calendar boundaries', () => {
   });
 });
 
+test.describe('refresh after local midnight', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('updates board date labels without reloading the page', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-24T05:00:00Z'));
+    await registerAndLogin(page);
+
+    const csrf = await (await page.request.get('/api/auth/csrf')).json();
+    const response = await page.request.post('/api/applications', {
+      headers: { [csrf.headerName]: csrf.token },
+      data: {
+        company: 'Midnight Reminder', title: 'Developer',
+        applicationDate: '2026-10-20', followUpDate: '2026-10-24',
+        postingUrl: '', notes: '',
+      },
+    });
+    expect(response.status()).toBe(201);
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Board view' }).click();
+    const card = page.getByRole('region', { name: 'Application pipeline board' })
+      .getByRole('article', { name: 'Midnight Reminder — Developer' });
+    await expect(card).toContainText('Follow-up in 1 day');
+
+    const refreshed = page.waitForResponse(response =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/dashboard/summary');
+    await page.clock.setFixedTime(new Date('2026-10-24T08:00:00Z'));
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await refreshed;
+    await expect(card).toContainText('Follow-up today');
+  });
+});
+
 test('board highlights actionable dates and stacks columns on mobile', async ({ page }, testInfo) => {
   await registerAndLogin(page);
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
