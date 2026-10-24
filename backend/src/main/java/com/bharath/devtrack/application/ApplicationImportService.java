@@ -34,7 +34,8 @@ public class ApplicationImportService {
     public record ImportRequest(List<ImportRow> rows) {}
     public record ImportRow(String company, String title, String location, String status,
                             String applicationDate, String interviewDate, String followUpDate,
-                            String postingUrl, String notes) {}
+                            String postingUrl, String notes, String recruiterName,
+                            String recruiterEmail, String resumeVersion) {}
     public record ImportResult(int imported) {}
 
     @Transactional
@@ -56,6 +57,12 @@ public class ApplicationImportService {
             String location = optional(row.location(), 255, number, "location");
             String url = optional(row.postingUrl(), 255, number, "posting URL");
             String notes = optional(row.notes(), 2000, number, "notes");
+            String recruiterName = optional(row.recruiterName(), 255, number, "recruiter name");
+            String recruiterEmail = optional(row.recruiterEmail(), 254, number, "recruiter email");
+            String resumeVersion = optional(row.resumeVersion(), 255, number, "resume version");
+            if (recruiterEmail != null && !recruiterEmail.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) {
+                fail(number, "recruiter email is invalid");
+            }
             ApplicationStatus status;
             try {
                 status = row.status() == null || row.status().isBlank()
@@ -96,6 +103,9 @@ public class ApplicationImportService {
             application.setLocation(location);
             application.setPostingUrl(url);
             application.setNotes(notes);
+            application.setRecruiterName(recruiterName);
+            application.setRecruiterEmail(recruiterEmail);
+            application.setResumeVersion(resumeVersion);
             application.setStatus(status);
             application.setApplicationDate(applicationDate);
             application.setInterviewDate(interviewDate);

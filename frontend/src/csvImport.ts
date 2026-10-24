@@ -9,6 +9,9 @@ export type ImportApplicationRow = {
   interviewDate: string;
   followUpDate: string;
   postingUrl: string;
+  recruiterName: string;
+  recruiterEmail: string;
+  resumeVersion: string;
   notes: string;
 };
 
@@ -19,6 +22,8 @@ const ALIASES: Record<string, string> = {
   application_date: 'applicationDate', applied_date: 'applicationDate',
   interview_date: 'interviewDate', follow_up_date: 'followUpDate',
   posting_url: 'postingUrl', job_url: 'postingUrl', url: 'postingUrl',
+  recruiter_name: 'recruiterName', recruiter_email: 'recruiterEmail',
+  resume_version: 'resumeVersion',
   notes: 'notes',
 };
 const validStatuses = new Set(['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED']);
@@ -90,7 +95,8 @@ export function parseApplicationsCsv(input: string): ImportApplicationRow[] {
     const company = raw.company || '';
     const title = raw.title || '';
     if (!company || !title) throw new Error('Row ' + row + ': company and title are required.');
-    for (const [field, max] of [['company', 255], ['title', 255], ['location', 255], ['postingUrl', 255], ['notes', 2000]] as const) {
+    for (const [field, max] of [['company', 255], ['title', 255], ['location', 255], ['postingUrl', 255], ['notes', 2000],
+      ['recruiterName', 255], ['recruiterEmail', 254], ['resumeVersion', 255]] as const) {
       if ((raw[field] ?? '').length > max) throw new Error('Row ' + row + ': ' + field + ' is too long.');
     }
     const status = (raw.status || 'SAVED').toUpperCase();
@@ -103,12 +109,17 @@ export function parseApplicationsCsv(input: string): ImportApplicationRow[] {
           throw new Error('Invalid URL');
       } catch { throw new Error('Row ' + row + ': enter a valid http or https posting URL.'); }
     }
+    if (raw.recruiterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.recruiterEmail)) {
+      throw new Error('Row ' + row + ': enter a valid recruiter email.');
+    }
     return {
       company, title, location: raw.location || '', status: status as ApplicationStatus,
       applicationDate: date(raw.applicationDate || '', 'application date', row),
       interviewDate: date(raw.interviewDate || '', 'interview date', row),
       followUpDate: date(raw.followUpDate || '', 'follow-up date', row),
       postingUrl: url, notes: raw.notes || '',
+      recruiterName: raw.recruiterName || '', recruiterEmail: raw.recruiterEmail || '',
+      resumeVersion: raw.resumeVersion || '',
     };
   });
 }

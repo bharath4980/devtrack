@@ -1,5 +1,6 @@
 package com.bharath.devtrack.application;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,6 +23,16 @@ public record CreateJobApplicationRequest(
         @Size(max = 255)
         @URL(regexp = "(?i)(|https?://.*)", message = "Use a complete http:// or https:// URL")
         String postingUrl,
+
+        @Size(max = 255)
+        String recruiterName,
+
+        @Email
+        @Size(max = 254)
+        String recruiterEmail,
+
+        @Size(max = 255)
+        String resumeVersion,
 
         @Size(max = 2000)
         String notes,

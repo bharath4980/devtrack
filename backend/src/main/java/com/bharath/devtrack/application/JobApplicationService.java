@@ -21,7 +21,7 @@ public class JobApplicationService {
 
     private static final int MAX_EXPORT_ROWS = 10_000;
     private static final String CSV_HEADER =
-            "id,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes";
+            "id,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes,recruiter_name,recruiter_email,resume_version";
 
     private final JobApplicationRepository repository;
     private final ApplicationActivityService activity;
@@ -42,6 +42,9 @@ public class JobApplicationService {
         application.setTitle(request.title().trim());
         application.setLocation(request.location());
         application.setPostingUrl(request.postingUrl());
+        application.setRecruiterName(optional(request.recruiterName()));
+        application.setRecruiterEmail(optional(request.recruiterEmail()));
+        application.setResumeVersion(optional(request.resumeVersion()));
         application.setNotes(request.notes());
         application.setApplicationDate(request.applicationDate());
         application.setFollowUpDate(request.followUpDate());
@@ -163,9 +166,16 @@ public class JobApplicationService {
                     .append(csvCell(csvDate(application.getInterviewDate()))).append(',')
                     .append(csvCell(csvDate(application.getFollowUpDate()))).append(',')
                     .append(csvCell(application.getPostingUrl())).append(',')
-                    .append(csvCell(application.getNotes())).append("\r\n");
+                    .append(csvCell(application.getNotes())).append(',')
+                    .append(csvCell(application.getRecruiterName())).append(',')
+                    .append(csvCell(application.getRecruiterEmail())).append(',')
+                    .append(csvCell(application.getResumeVersion())).append("\r\n");
         }
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String optional(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static String csvDate(LocalDate value) {
@@ -236,6 +246,9 @@ public class JobApplicationService {
         application.setTitle(request.title().trim());
         application.setLocation(request.location());
         application.setPostingUrl(request.postingUrl());
+        application.setRecruiterName(optional(request.recruiterName()));
+        application.setRecruiterEmail(optional(request.recruiterEmail()));
+        application.setResumeVersion(optional(request.resumeVersion()));
         application.setNotes(request.notes());
         application.setApplicationDate(request.applicationDate());
         application.setInterviewDate(request.interviewDate());

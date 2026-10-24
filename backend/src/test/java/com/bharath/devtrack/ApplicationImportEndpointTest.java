@@ -160,14 +160,33 @@ class ApplicationImportEndpointTest {
         row.put("notes", "First line\nSecond line");
         row.put("interviewDate", "2026-10-03");
         row.put("followUpDate", "2026-10-04");
+        row.put("recruiterName", "Taylor Morgan");
+        row.put("recruiterEmail", "taylor@example.com");
+        row.put("resumeVersion", "Java backend v2");
         mvc.perform(post("/api/applications/import").session(a.session()).header(a.header(), a.token())
                 .contentType(MediaType.APPLICATION_JSON).content(batch(List.of(row))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.imported").value(1));
         String csv = mvc.perform(get("/api/applications/export.csv").session(a.session()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(csv).contains("Commas, Quotes", "API \"\"Engineer\"\"", "New York, NY",
-                "OFFER", "2026-10-03", "2026-10-04", "First line\nSecond line");
+                "OFFER", "2026-10-03", "2026-10-04", "First line\nSecond line",
+                "Taylor Morgan", "taylor@example.com", "Java backend v2");
         assertThat(activities.count()).isEqualTo(1);
+    }
+
+    @Test
+    void invalidRecruiterEmailRejectsCsvWithoutWriting() throws Exception {
+        SessionCredentials a = login(alice.getEmail());
+        Map<String, String> invalid = new java.util.LinkedHashMap<>(
+                row("Invalid Contact", "Engineer", "", "SAVED", "2026-10-01"));
+        invalid.put("recruiterEmail", "not-an-email");
+        mvc.perform(post("/api/applications/import").session(a.session())
+                        .header(a.header(), a.token()).contentType(MediaType.APPLICATION_JSON)
+                        .content(batch(List.of(invalid))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("recruiter email")));
+        assertThat(applications.count()).isZero();
     }
 
     private Map<String, String> row(String company, String title, String url, String status, String date) {

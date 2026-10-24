@@ -19,6 +19,8 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   const [values, setValues] = useState<UpdateJobApplicationRequest>({
     company: application?.company ?? '', title: application?.title ?? '',
     location: application?.location ?? '', postingUrl: application?.postingUrl ?? '',
+    recruiterName: application?.recruiterName ?? '', recruiterEmail: application?.recruiterEmail ?? '',
+    resumeVersion: application?.resumeVersion ?? '',
     notes: application?.notes ?? '', applicationDate: application?.applicationDate ?? today(),
     followUpDate: application?.followUpDate ?? '',
     interviewDate: application?.interviewDate ?? '',
@@ -90,6 +92,8 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   const initialValues: UpdateJobApplicationRequest = {
     company: application?.company ?? '', title: application?.title ?? '',
     location: application?.location ?? '', postingUrl: application?.postingUrl ?? '',
+    recruiterName: application?.recruiterName ?? '', recruiterEmail: application?.recruiterEmail ?? '',
+    resumeVersion: application?.resumeVersion ?? '',
     notes: application?.notes ?? '', applicationDate: application?.applicationDate ?? today(),
     followUpDate: application?.followUpDate ?? '', interviewDate: application?.interviewDate ?? '',
   };
@@ -152,6 +156,9 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     { name: 'company', label: 'Company', type: 'text', required: true },
     { name: 'title', label: 'Job title', type: 'text', required: true },
     { name: 'location', label: 'Location', type: 'text' },
+    { name: 'recruiterName', label: 'Recruiter name (optional)', type: 'text' },
+    { name: 'recruiterEmail', label: 'Recruiter email (optional)', type: 'email' },
+    { name: 'resumeVersion', label: 'Resume version used (optional)', type: 'text' },
     { name: 'applicationDate', label: 'Application date', type: 'date', required: true },
     { name: 'followUpDate', label: 'Follow-up date', type: 'date' },
     ...(application ? [{ name: 'interviewDate', label: 'Interview date', type: 'date' }] : []),
@@ -161,7 +168,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
     <fieldset disabled={busy || submitting}>
       {fields.map(({ name, label, type, required }) => <div className={`form-field${name === 'postingUrl' ? ' form-field-full' : ''}`} key={name}>
         <label htmlFor={`${prefix}-${name}`}>{label}</label>
-        <input id={`${prefix}-${name}`} type={type} autoFocus={name === 'company'} required={required} maxLength={type === 'date' ? undefined : 255}
+        <input id={`${prefix}-${name}`} type={type} autoFocus={name === 'company'} required={required} maxLength={type === 'date' ? undefined : type === 'email' ? 254 : 255}
           pattern={name === 'postingUrl' ? '[hH][tT][tT][pP][sS]?://.*' : undefined}
           value={values[name as keyof UpdateJobApplicationRequest]}
           aria-invalid={!!fieldErrors[name]} aria-describedby={fieldErrors[name] ? `${prefix}-${name}-error` : undefined}
@@ -202,6 +209,7 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
         {fieldErrors[name] && <span className="form-error" id={`${prefix}-${name}-error`}>{fieldErrors[name]}</span>}
       </div>)}
       {application && <p className="form-help form-field-full">Upcoming interviews includes applications with Interview status and a date today or later.</p>}
+      <p className="form-help form-field-full">Recruiter details and the resume version are private tracking notes. No resume file is uploaded.</p>
       <div className="form-field form-field-full">
         <label htmlFor={`${prefix}-notes`}>Notes</label>
         <textarea id={`${prefix}-notes`} rows={4} maxLength={2000} value={values.notes}

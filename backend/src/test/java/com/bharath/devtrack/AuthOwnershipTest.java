@@ -80,6 +80,52 @@ class AuthOwnershipTest {
     }
 
     @Test
+    void recruiterAndResumeDetailsRemainOwnedAndEditable() throws Exception {
+        MockHttpSession aliceSession = login(alice.getEmail());
+        Csrf aliceCsrf = csrf(aliceSession);
+        var payload = (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(applicationBody());
+        payload.put("recruiterName", "  Jordan Lee  ");
+        payload.put("recruiterEmail", "jordan@example.com");
+        payload.put("resumeVersion", "Backend resume v3");
+
+        MvcResult created = mvc.perform(post("/api/applications").session(aliceSession)
+                        .header(aliceCsrf.header(), aliceCsrf.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(payload)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.recruiterName").value("Jordan Lee"))
+                .andExpect(jsonPath("$.recruiterEmail").value("jordan@example.com"))
+                .andExpect(jsonPath("$.resumeVersion").value("Backend resume v3"))
+                .andReturn();
+        long id = json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(get("/api/applications/" + id).session(login(bob.getEmail())))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/applications/" + id).session(aliceSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resumeVersion").value("Backend resume v3"));
+
+        payload.put("recruiterName", "Casey Smith");
+        payload.put("resumeVersion", "Full stack v2");
+        mvc.perform(put("/api/applications/" + id).session(aliceSession)
+                        .header(aliceCsrf.header(), aliceCsrf.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recruiterName").value("Casey Smith"))
+                .andExpect(jsonPath("$.resumeVersion").value("Full stack v2"));
+
+        String csv = mvc.perform(get("/api/applications/export.csv").session(aliceSession))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(csv).contains("Casey Smith", "jordan@example.com", "Full stack v2");
+
+        payload.put("recruiterEmail", "invalid-email");
+        mvc.perform(put("/api/applications/" + id).session(aliceSession)
+                        .header(aliceCsrf.header(), aliceCsrf.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/applications/" + id).session(aliceSession))
+                .andExpect(jsonPath("$.recruiterEmail").value("jordan@example.com"));
+    }
+
+    @Test
     void csvExportRequiresAuthenticationAndOnlyReturnsAllOwnedRows() throws Exception {
         mvc.perform(get("/api/applications/export.csv")).andExpect(status().isUnauthorized());
 
@@ -99,7 +145,7 @@ class AuthOwnershipTest {
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andReturn();
         String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-        assertThat(csv).startsWith("\uFEFFid,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes\r\n");
+        assertThat(csv).startsWith("\uFEFFid,company,title,location,status,application_date,interview_date,follow_up_date,posting_url,notes,recruiter_name,recruiter_email,resume_version\r\n");
         assertThat(csv.split("\r\n")).hasSize(13);
         assertThat(csv).contains("Owned 0", "Owned 11");
         assertThat(csv).doesNotContain("Someone Else", "Unassigned Legacy", "alice@example.com");

@@ -11,6 +11,9 @@ export type JobApplication = {
   title: string;
   location: string | null;
   postingUrl: string | null;
+  recruiterName: string | null;
+  recruiterEmail: string | null;
+  resumeVersion: string | null;
   notes: string | null;
   status: ApplicationStatus;
   applicationDate: string | null;
@@ -23,6 +26,9 @@ export type CreateJobApplicationRequest = {
   title: string;
   location: string;
   postingUrl: string;
+  recruiterName: string;
+  recruiterEmail: string;
+  resumeVersion: string;
   notes: string;
   applicationDate: string;
   followUpDate: string;
@@ -33,6 +39,9 @@ export type UpdateJobApplicationRequest = {
   title: string;
   location: string;
   postingUrl: string;
+  recruiterName: string;
+  recruiterEmail: string;
+  resumeVersion: string;
   notes: string;
   applicationDate: string;
   interviewDate: string;

@@ -38,6 +38,15 @@ public class JobApplication {
 
     private String postingUrl;
 
+    @Column(length = 255)
+    private String recruiterName;
+
+    @Column(length = 254)
+    private String recruiterEmail;
+
+    @Column(length = 255)
+    private String resumeVersion;
+
     @Column(length = 2000)
     private String notes;
 
@@ -89,6 +98,18 @@ public class JobApplication {
     public void setPostingUrl(String postingUrl) {
         this.postingUrl = postingUrl;
     }
+
+    public String getRecruiterName() { return recruiterName; }
+
+    public void setRecruiterName(String recruiterName) { this.recruiterName = recruiterName; }
+
+    public String getRecruiterEmail() { return recruiterEmail; }
+
+    public void setRecruiterEmail(String recruiterEmail) { this.recruiterEmail = recruiterEmail; }
+
+    public String getResumeVersion() { return resumeVersion; }
+
+    public void setResumeVersion(String resumeVersion) { this.resumeVersion = resumeVersion; }
 
     public String getNotes() {
         return notes;
