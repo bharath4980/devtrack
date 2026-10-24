@@ -1486,6 +1486,10 @@ test('interview draft survives cancelled discard and requires confirmation when 
   await form.getByLabel('Round name').fill('Unfinished round');
 
   page.once('dialog', dialog => dialog.dismiss());
+  await card.getByRole('button', { name: 'Hide interview prep' }).click();
+  await expect(form.getByLabel('Round name')).toHaveValue('Unfinished round');
+
+  page.once('dialog', dialog => dialog.dismiss());
   await form.getByRole('button', { name: 'Cancel' }).click();
   await expect(form.getByLabel('Round name')).toHaveValue('Unfinished round');
 
