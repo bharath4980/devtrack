@@ -102,10 +102,9 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
             <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
             {link && <a href={link} target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
-          <section className="quick-view-workspace" aria-label="Interview preparation">
-            <h4>Interview preparation</h4>
+          <div className="quick-view-workspace">
             <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />
-          </section>
+          </div>
           <section className="quick-view-history" aria-label="Application history">
             <h4>Application history</h4>
             <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
