@@ -571,6 +571,47 @@ test('board application details open and edit without switching to the list', as
     .toContainText('Confirm team structure and responsibilities.');
 });
 
+test('board details show recruiter, resume, notes and recorded history', async ({ page }) => {
+  await registerAndLogin(page);
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  const created = await page.request.post('/api/applications', {
+    headers: { [csrf.headerName]: csrf.token },
+    data: {
+      company: 'Contact Board', title: 'Platform Engineer',
+      applicationDate: '2026-10-23', postingUrl: '',
+      recruiterName: 'Jordan Lee', recruiterEmail: 'jordan@example.com',
+      resumeVersion: 'Platform v3', notes: 'Ask about team ownership.',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  const status = await page.request.patch(`/api/applications/${id}/status`, {
+    headers: { [csrf.headerName]: csrf.token },
+    data: { status: 'APPLIED' },
+  });
+  expect(status.ok()).toBe(true);
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const applied = page.getByRole('region', { name: 'Applied stage' });
+  const card = applied.getByRole('article', { name: 'Contact Board — Platform Engineer' });
+  await card.getByRole('button', { name: 'View details' }).click();
+
+  const details = page.getByRole('region', { name: 'Application details' });
+  const contact = details.getByRole('region', { name: 'Recruiter and resume details' });
+  await expect(contact).toContainText('Jordan Lee');
+  await expect(contact).toContainText('jordan@example.com');
+  await expect(contact).toContainText('Platform v3');
+  await expect(details.getByRole('region', { name: 'Application notes' }))
+    .toContainText('Ask about team ownership.');
+  await expect(details.getByRole('region', { name: 'Interview preparation' })).toBeVisible();
+  const history = details.getByRole('region', { name: 'Application history' });
+  await history.getByRole('button', { name: 'View history' }).click();
+  await expect(history.getByLabel('Application activity'))
+    .toContainText('Status changed: Saved → Applied');
+  await details.getByRole('button', { name: 'Close details' }).click();
+  await expect(details).toHaveCount(0);
+});
+
 test('board searches full account data and can filter stages independently of list', async ({ page }) => {
   await registerAndLogin(page);
   for (let i = 0; i < 22; i++) await seed(page, 'Searchable Company ' + i);
@@ -634,7 +675,9 @@ test('dashboard actions open the exact application for editing and history', asy
     headers,
     data: { company: 'Quick Access Labs', title: 'Platform Engineer',
       applicationDate: '2026-10-20', followUpDate: yesterday,
-      postingUrl: '', notes: 'Email hiring manager after the application.' },
+      postingUrl: '', notes: 'Email hiring manager after the application.',
+      recruiterName: 'Alex Rivera', recruiterEmail: 'alex@example.com',
+      resumeVersion: 'Platform v2' },
   });
   expect(dueResponse.status()).toBe(201);
   const dueId = (await dueResponse.json()).id;
@@ -665,6 +708,10 @@ test('dashboard actions open the exact application for editing and history', asy
   const view = page.getByRole('region', { name: 'Application quick view' });
   await expect(view).toContainText('Platform Engineer');
   await expect(view).toContainText('Email hiring manager after the application.');
+  const contact = view.getByRole('region', { name: 'Recruiter and resume details' });
+  await expect(contact).toContainText('Alex Rivera');
+  await expect(contact).toContainText('alex@example.com');
+  await expect(contact).toContainText('Platform v2');
   await view.getByRole('button', { name: 'View history' }).click();
   await expect(view.getByLabel('Application activity')).toContainText('Application saved');
   await view.getByRole('button', { name: 'Edit application' }).click();

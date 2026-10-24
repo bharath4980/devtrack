@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { getApplications } from './applicationApi';
 import ApplicationForm from './ApplicationForm';
+import ApplicationTimeline from './ApplicationTimeline';
 import InterviewWorkspace from './InterviewWorkspace';
 import { errorMessage } from './apiError';
 import {
@@ -253,14 +254,33 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
             <div><dt>Interview</dt><dd>{selected.interviewDate || 'Not scheduled'}</dd></div>
             <div><dt>Follow-up</dt><dd>{selected.followUpDate || 'Not scheduled'}</dd></div>
           </dl>
-          {selected.notes && <div className="board-detail-notes"><strong>Notes</strong><p>{selected.notes}</p></div>}
+          <section className="board-detail-contact" aria-label="Recruiter and resume details">
+            <h4>Recruiter &amp; resume</h4>
+            <dl className="board-detail-fields board-contact-fields">
+              <div><dt>Recruiter</dt><dd>{selected.recruiterName || 'Not added'}</dd></div>
+              <div><dt>Recruiter email</dt><dd>{selected.recruiterEmail || 'Not added'}</dd></div>
+              <div><dt>Resume used</dt><dd>{selected.resumeVersion || 'Not added'}</dd></div>
+            </dl>
+          </section>
+          <section className="board-detail-notes" aria-label="Application notes">
+            <h4>Notes</h4>
+            <p>{selected.notes || 'No notes yet.'}</p>
+          </section>
           <div className="board-detail-actions">
             <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
             {postingLink(selected.postingUrl) && <a href={postingLink(selected.postingUrl)!}
               target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
         </>}
-        {!editing && <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} onChanged={onInterviewChange} />}
+        {!editing && <>
+          <div className="board-detail-workspace">
+            <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} onChanged={onInterviewChange} />
+          </div>
+          <section className="board-detail-history" aria-label="Application history">
+            <h4>Application history</h4>
+            <ApplicationTimeline key={selected.id} applicationId={selected.id} status={selected.status} />
+          </section>
+        </>}
       </section>}
       {moreError && <p className="form-error" role="alert">{moreError}</p>}
       <div className="pipeline-board-scroll" tabIndex={0} aria-label="Scrollable pipeline columns">

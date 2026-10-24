@@ -87,13 +87,28 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
             <div><dt>Interview</dt><dd>{application.interviewDate || 'Not scheduled'}</dd></div>
             <div><dt>Follow-up</dt><dd>{application.followUpDate || 'Not scheduled'}</dd></div>
           </dl>
-          {application.notes && <div className="quick-view-notes"><strong>Notes</strong><p>{application.notes}</p></div>}
+          <section className="quick-view-contact" aria-label="Recruiter and resume details">
+            <h4>Recruiter &amp; resume</h4>
+            <dl className="quick-view-details quick-view-contact-fields">
+              <div><dt>Recruiter</dt><dd>{application.recruiterName || 'Not added'}</dd></div>
+              <div><dt>Recruiter email</dt><dd>{application.recruiterEmail || 'Not added'}</dd></div>
+              <div><dt>Resume used</dt><dd>{application.resumeVersion || 'Not added'}</dd></div>
+            </dl>
+          </section>
+          <section className="quick-view-notes" aria-label="Application notes">
+            <h4>Notes</h4><p>{application.notes || 'No notes yet.'}</p>
+          </section>
           <div className="quick-view-actions">
             <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
             {link && <a href={link} target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
-          <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />
-          <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
+          <div className="quick-view-workspace">
+            <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />
+          </div>
+          <section className="quick-view-history" aria-label="Application history">
+            <h4>Application history</h4>
+            <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
+          </section>
         </>}
     </>}
   </section>;
