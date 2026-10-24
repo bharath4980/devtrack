@@ -61,6 +61,32 @@ test('password visibility toggle preserves input across account modes', async ({
   await expect(password).toHaveAttribute('type', 'password');
 });
 
+test('recruiter contact and resume version persist when an application is edited', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const create = page.getByRole('form', { name: 'New application' });
+  await create.getByLabel('Company', { exact: true }).fill('Contact Example');
+  await create.getByLabel('Job title').fill('Backend Engineer');
+  await create.getByLabel('Recruiter name (optional)').fill('Jordan Lee');
+  await create.getByLabel('Recruiter email (optional)').fill('jordan@example.com');
+  await create.getByLabel('Resume version used (optional)').fill('Backend v2');
+  await create.getByRole('button', { name: 'Save application' }).click();
+
+  const card = page.getByRole('article', { name: 'Contact Example — Backend Engineer' });
+  await expect(card).toContainText('Jordan Lee');
+  await expect(card).toContainText('jordan@example.com');
+  await expect(card).toContainText('Backend v2');
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const edit = card.getByRole('form', { name: 'Edit application' });
+  await expect(edit.getByLabel('Recruiter email (optional)')).toHaveValue('jordan@example.com');
+  await edit.getByLabel('Resume version used (optional)').fill('Backend v3');
+  await edit.getByRole('button', { name: 'Save changes' }).click();
+  await expect(card).toContainText('Backend v3');
+  await page.reload();
+  await expect(page.getByRole('article', { name: 'Contact Example — Backend Engineer' }))
+    .toContainText('Backend v3');
+});
+
 test('repeated form submission creates only one application', async ({ page }) => {
   await registerAndLogin(page);
   await page.getByRole('button', { name: 'Add application', exact: true }).click();
