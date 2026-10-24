@@ -209,12 +209,12 @@ test('CSV import ignores a slower read from a previously selected file', async (
   const file = panel.getByLabel('CSV file (up to 100 applications, 500 KB)');
   await file.setInputFiles({
     name: 'delayed.csv', mimeType: 'text/csv',
-    buffer: Buffer.from('company,title,application_date\\nOlder File,Engineer,2026-10-20\\n'),
+    buffer: Buffer.from('company,title,application_date\nOlder File,Engineer,2026-10-20\n'),
   });
   await expect(panel.getByText('Reading selected CSV…')).toBeVisible();
   await file.setInputFiles({
     name: 'latest.csv', mimeType: 'text/csv',
-    buffer: Buffer.from('company,title,application_date\\nCorrect File,Engineer,2026-10-20\\n'),
+    buffer: Buffer.from('company,title,application_date\nCorrect File,Engineer,2026-10-20\n'),
   });
   await expect(panel).toContainText('1 application from latest.csv');
   await page.evaluate(async () => {
