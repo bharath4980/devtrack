@@ -665,6 +665,50 @@ test('board highlights actionable dates and stacks columns on mobile', async ({ 
   }
 });
 
+test('next actions prioritize overdue follow-ups and open scheduled applications', async ({ page }) => {
+  await registerAndLogin(page);
+  const csrf = await (await page.request.get('/api/auth/csrf')).json();
+  const headers = { [csrf.headerName]: csrf.token };
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  const overdue = await page.request.post('/api/applications', {
+    headers,
+    data: {
+      company: 'Overdue Priority', title: 'Software Engineer',
+      applicationDate: '2026-10-20', followUpDate: '2020-01-01',
+      postingUrl: '', notes: 'Ask about next steps.',
+    },
+  });
+  expect(overdue.status()).toBe(201);
+
+  const interview = await page.request.post('/api/applications', {
+    headers,
+    data: {
+      company: 'Upcoming Interview', title: 'Backend Engineer',
+      applicationDate: '2026-10-20', interviewDate: tomorrow,
+      postingUrl: '', notes: '',
+    },
+  });
+  expect(interview.status()).toBe(201);
+  const interviewId = (await interview.json()).id;
+  const applied = await page.request.patch('/api/applications/' + interviewId + '/status', {
+    headers, data: { status: 'INTERVIEW' },
+  });
+  expect(applied.ok()).toBe(true);
+
+  await page.reload();
+  const queue = page.getByRole('region', { name: 'Next actions' });
+  await expect(queue.getByRole('listitem').first()).toContainText('Overdue Priority');
+  await expect(queue).toContainText('Upcoming Interview');
+
+  await queue.getByRole('listitem').filter({ hasText: 'Overdue Priority' })
+    .getByRole('button', { name: 'Open application' }).click();
+  const detail = page.getByRole('region', { name: 'Application quick view' });
+  await expect(detail).toContainText('Ask about next steps.');
+  await detail.getByRole('button', { name: 'Close quick view' }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('dashboard actions open the exact application for editing and history', async ({ page }) => {
   await registerAndLogin(page);
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
