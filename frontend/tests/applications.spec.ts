@@ -723,6 +723,7 @@ test('next actions prioritize overdue follow-ups and open scheduled applications
     },
   });
   expect(overdue.status()).toBe(201);
+  const overdueId = (await overdue.json()).id;
 
   const interview = await page.request.post('/api/applications', {
     headers,
@@ -758,6 +759,21 @@ test('next actions prioritize overdue follow-ups and open scheduled applications
   const detail = page.getByRole('region', { name: 'Application quick view' });
   await expect(detail).toContainText('Ask about next steps.');
   await detail.getByRole('button', { name: 'Close quick view' }).click();
+  const overdueAction = queue.getByRole('listitem').filter({ hasText: 'Overdue Priority' });
+  page.once('dialog', dialog => dialog.dismiss());
+  await overdueAction.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(overdueAction).toBeVisible();
+
+  page.once('dialog', dialog => dialog.accept());
+  await overdueAction.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(queue).not.toContainText('Overdue Priority');
+  await expect(queue).toContainText('Upcoming Interview');
+
+  const saved = await (await page.request.get('/api/applications/' + overdueId)).json();
+  expect(saved.followUpDate).toBeNull();
+  expect(saved.status).toBe('SAVED');
+  const history = await (await page.request.get('/api/applications/' + overdueId + '/activity')).json();
+  expect(history.some((event: { type: string }) => event.type === 'FOLLOW_UP_COMPLETED')).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
