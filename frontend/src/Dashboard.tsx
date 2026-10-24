@@ -3,6 +3,7 @@ import { errorMessage } from './apiError';
 import DashboardQuickView from './DashboardQuickView';
 import type { DashboardSummary, DueFollowUp, UpcomingInterview, UpcomingInterviewRound, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
 import { activityText, activityTime } from './ApplicationTimeline';
+import { interviewTimeInBrowser } from './interviewLocalTime';
 import { statuses, statusLabel, type UpdateJobApplicationRequest } from './types';
 
 type Props = {
@@ -426,6 +427,8 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                     {round.scheduledTime && round.timeZone && <p className="form-help">
                       {round.scheduledTime} · {round.timeZone}
                     </p>}
+                    {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone) &&
+                      <p className="form-help">Your local time: {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone)}</p>}
                     <button type="button" className="secondary-button quick-view-open"
                       onClick={() => setQuickViewId(round.applicationId)}>Open application</button>
                   </div>
