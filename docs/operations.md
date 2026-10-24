@@ -2,7 +2,7 @@
 
 This runbook describes DevTrack's **existing** Render web service and Spring Boot/PostgreSQL deployment. Its purpose is to distinguish verified application readiness from an open port, and to offer a safe investigation path after deployment trouble.
 
-**Scope:** The runbook and its companion CI improvement do not change Render settings, trigger a production rollout, alter credentials, connect to the production database, or manipulate user records.
+**Scope:** This runbook documents the existing service and safe checks. Reading it does not change Render settings, credentials, database contents, or user records.
 
 ## Current deployment and health behavior
 
@@ -10,7 +10,7 @@ This runbook describes DevTrack's **existing** Render web service and Spring Boo
 - The service listens on `0.0.0.0` and the `PORT` environment variable (currently `8080`); the Java 21 runtime uses `-XX:TieredStopAtLevel=1` to reduce warm-up work on limited CPU.
 - Public `GET /api/health` is provided by Spring Boot Actuator and permitted without an account. On a healthy instance it returns HTTP 200 with `{"status":"UP"}`. Health details are deliberately hidden.
 - The standard Spring Boot database health contributor checks PostgreSQL, so an open TCP port is not sufficient for application readiness.
-- **At the time of this runbook, Render's `healthCheckPath` is blank.** Render therefore uses its default TCP port probe, which cannot independently confirm `/api/health`. A Render deployment marked **live** is meaningful, but does not by itself prove the authenticated application workflow or record preservation.
+- **Current Render HTTP health-check path: `/api/health/liveness`** (verified on the existing service). This checks only the running application process, not PostgreSQL. It is intentionally lightweight so routine probes do not repeatedly wake a sleeping database on the Free tier. Render marking a deployment **live** therefore does not independently prove database readiness, authenticated user flows, or record preservation.
 
 ## Safe checks before changing Render
 
@@ -30,18 +30,14 @@ HEALTH_ATTEMPTS=60 HEALTH_DELAY_SECONDS=5 bash scripts/check-health.sh https://d
 
 A failed probe can mean DNS or network restrictions, a sleeping or starting service, an application health failure, or a database connectivity issue. If the checker cannot reach the host, **report HTTP health as unverified**, even when Render says live. Do not treat client-side DNS failures as evidence of a broken deployment.
 
-## Proposed Render HTTP health check (separate approval required)
+## Liveness versus readiness
 
-The desired setting is **`/api/health`**, not `/` and not an authenticated application route. After reviewing this runbook and confirming the endpoint responds with `UP` in a suitable environment:
+The existing configuration deliberately separates two concerns:
 
-1. Open the existing Render web service in the Render dashboard.
-2. Go to **Settings → Health Checks → Edit** and enter `/api/health`.
-3. Save only after explicit approval for a production service-configuration change.
-4. Watch the service events and logs after the change, check that the health status remains healthy, and confirm at least one authorized user flow. Record the change and any observed restart/deploy effects.
+- **`/api/health/liveness` (Render's configured HTTP probe):** reports process liveness without invoking the database contributor. This reduces routine database wake-ups but is not a guarantee that reads and writes will work.
+- **`/api/health` (readiness investigation):** includes Spring Boot's database health contributor and is appropriate for an explicit read-only diagnostic check when networking permits. A successful response is still not a substitute for an authorized end-to-end user check.
 
-**This repository is not linked to a Render Blueprint for this service.** Adding a `render.yaml` file alone would not update its existing service setting. Do not create a duplicate Render service or change database IP allowlists just to test readiness.
-
-Render requires a 2xx or 3xx response within five seconds for each HTTP health check. The database-aware health endpoint gives a stronger readiness signal than TCP, but a transient database outage or overloaded Free instance can cause health-check failures and instance restarts; weigh that behavior before enabling it. Reference: [Render health checks](https://render.com/docs/health-checks).
+The service is not managed by a Render Blueprint; adding a `render.yaml` file would not automatically change the current health-check path. Any future configuration changes require separate approval and verification. Do not switch the probe to database-aware readiness merely to silence a warning: database outages or free-tier cold starts could instead cause repeated restarts. Reference: [Render health checks](https://render.com/docs/health-checks).
 
 ## Deployment verification
 
@@ -60,7 +56,7 @@ Render requires a 2xx or 3xx response within five seconds for each HTTP health c
 | No listening port or startup timeout | Compare timestamped startup, JVM work, CPU limits, `PORT`, and Tomcat binding. | Preserve the last live version and diagnose first. Do not blindly redeploy or increase limits. |
 | Hikari or Flyway failure | Check database availability, connection errors and migration validation (without printing secrets). | Investigate the actual dependency; avoid resetting Flyway history, schema, or production database. |
 | `/api/health` is DOWN/503 | Check health-check response, database status, recent resource pressure and service logs. | Fix the underlying issue; do not mislabel a TCP-only success as healthy. |
-| Render says live, but user flow fails | Inspect application logs, sessions, browser network behavior, and read-only application state. | Treat as an application incident despite live deployment status. |
+| Render says live, but user flow fails | Remember Render tests process-only liveness. Inspect `/api/health` when possible, application logs, sessions, browser network behavior, and authorized read-only application state. | Treat as an application incident despite live deployment status. |
 | Data appears missing | Verify signed-in account identity and owner scoping, and inspect read-only records if authorized. | **Stop writes, exports, imports, schema resets, and destructive commands.** Do not delete or recreate a database or volume. |
 
 Before a rollback, understand whether the release included a migration and whether the previous code can read the current schema. Get explicit approval before taking rollback, configuration, or database action. A process restart ends in-memory sessions; users might need to sign in again. The downloaded CSV export is **not** a full database backup or a substitute for tested database recovery.
