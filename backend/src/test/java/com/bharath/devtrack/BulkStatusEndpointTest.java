@@ -116,6 +116,13 @@ class BulkStatusEndpointTest {
         String request = body(List.of(mine), "APPLIED");
         mvc.perform(patch("/api/applications/bulk/status")
                 .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isForbidden());
+        MockHttpSession anonymous = new MockHttpSession();
+        JsonNode anonymousCsrf = json.readTree(mvc.perform(get("/api/auth/csrf").session(anonymous))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        mvc.perform(patch("/api/applications/bulk/status").session(anonymous)
+                .header(anonymousCsrf.get("headerName").asText(), anonymousCsrf.get("token").asText())
+                .contentType(MediaType.APPLICATION_JSON).content(request))
                 .andExpect(status().isUnauthorized());
         mvc.perform(patch("/api/applications/bulk/status").session(a.session())
                 .contentType(MediaType.APPLICATION_JSON).content(request))
