@@ -903,7 +903,7 @@ test('in-app reminders show seven-day follow-ups and allow inline rescheduling',
 
   const due = page.locator('.due-follow-up').filter({ hasText: 'Reminder Labs' });
   await expect(due).toContainText('1 day overdue');
-  await expect(page.getByText('Follow-ups need attention')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Next actions' })).toContainText('Reminder Labs');
   await expect(page.getByRole('group', { name: 'Follow-up priorities' })).toContainText('1 overdue');
   await page.reload();
   await expect(page.locator('.due-follow-up').filter({ hasText: 'Reminder Labs' }))
@@ -914,7 +914,7 @@ test('in-app reminders show seven-day follow-ups and allow inline rescheduling',
   await due.getByRole('button', { name: 'Save date' }).click();
   await expect(page.locator('.due-follow-up')).toHaveCount(0);
   await expect(page.locator('.upcoming-follow-up')).toHaveCount(0);
-  await expect(page.getByText('Follow-ups need attention')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Next actions' })).not.toContainText('Reminder Labs');
   await expect(page.getByRole('article', { name: 'Reminder Labs — Backend Engineer' }))
     .toContainText(plusDays(8));
 });
