@@ -6,9 +6,9 @@ This guide is for reviewers who want to explore DevTrack without using anyone's 
 
 1. Open [the deployed application](https://devtrack-3upd.onrender.com). The Render Free instance may need time to wake up.
 2. Create **your own** account with a unique password; never ask for or reuse someone else's credentials. Use fictional job-application data only.
-3. Choose **Add application**. Enter a fictional employer and role (examples below). Use manual entry; job URL autofill is optional and currently supports Greenhouse, Lever, Ashby, and SmartRecruiters.
-4. In **Your applications**, change a status, search or filter, and select **View history** to see recorded events created after the action.
-5. Return to **Your search, at a glance** for pipeline, recent-activity, application-trend, follow-up, and interview sections. Counts reflect the data in **your own account**.
+3. Choose **Add application**. Enter a fictional employer and role (examples below). Use manual entry; optional job-link preview currently supports recognized public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR links. Other links require manual entry.
+4. In **Your applications**, change a status, search or filter, and select **View history** to see recorded events created after the action. Open the **Board** view, select a card, and inspect its recruiter/resume, notes, interview preparation, and history sections. You can leave contact fields empty when using fictional records.
+5. Add a follow-up date to one fictional application, or schedule an interview round using the existing interview preparation form. Return to **Your search, at a glance** to find **Next actions** near the top. Its **Open application** button leads to the same owner-scoped quick view. The full schedule below allows follow-ups to be rescheduled or completed. Counts and reminders reflect only the signed-in account's saved data; no notification is sent to external accounts.
 6. Sign out. These examples do not require exposing personal emails, production database records, or privileged access.
 
 ## Fictional example records
