@@ -72,7 +72,9 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   const generation = useRef(0);
   const pending = useRef<AbortController[]>([]);
   const detailRef = useRef<HTMLHeadingElement>(null);
-  const todayUtc = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayLocal = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')].join('-');
   const visibleStages = filters.stage ? [filters.stage] : statuses;
   const selected = statuses.flatMap(stage => columns[stage]?.items ?? [])
     .find(item => item.id === selectedId);
@@ -329,8 +331,8 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
                       </div>
                     </div>
                     {application.location && <p className="board-card-location">{application.location}</p>}
-                    {attentionLabels(application, todayUtc).length > 0 && <div className="board-attention">
-                      {attentionLabels(application, todayUtc).map(label => <span key={label.kind}
+                    {attentionLabels(application, todayLocal).length > 0 && <div className="board-attention">
+                      {attentionLabels(application, todayLocal).map(label => <span key={label.kind}
                         className={'board-attention-chip attention-' + label.kind}>{label.text}</span>)}
                     </div>}
                     {application.followUpDate && <p className="board-card-date">
