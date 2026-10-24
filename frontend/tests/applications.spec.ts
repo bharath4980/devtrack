@@ -704,7 +704,7 @@ test.describe('refresh after local midnight', () => {
 
     const refreshed = page.waitForResponse(response =>
       response.request().method() === 'GET' &&
-      new URL(response.url()).pathname === '/api/dashboard/summary');
+      new URL(response.url()).pathname === '/api/dashboard');
     await page.clock.setFixedTime(new Date('2026-10-24T08:00:00Z'));
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await refreshed;
