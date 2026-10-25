@@ -1798,3 +1798,59 @@ test('CSV import review displays all rows and keeps wide previews inside the pan
   // Preview alone never imports or modifies any saved application.
   await expect(page.locator('.results-count')).toContainText('0 applications');
 });
+
+test('opening CSV import from board confirms before discarding an unsaved application edit', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Board Import Guard');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  await board.getByRole('article', { name: 'Board Import Guard — Software Engineer' })
+    .getByRole('button', { name: 'View details' }).click();
+  const details = page.getByRole('region', { name: 'Application details' });
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const form = details.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Keep my unfinished board note');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Keep my unfinished board note');
+  await expect(page.getByRole('region', { name: 'Import applications from CSV' })).toHaveCount(0);
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Import applications from CSV' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(details).toHaveCount(0);
+});
+
+test('successful CSV import keeps another unsaved application editor open', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Draft In Progress');
+  await page.reload();
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Import applications from CSV' });
+  const card = page.getByRole('article', { name: 'Draft In Progress — Software Engineer' });
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const editor = card.getByRole('form', { name: 'Edit application' });
+  await editor.getByLabel('Notes').fill('Unfinished application edit');
+
+  await panel.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
+    name: 'another-application.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('company,title,application_date\nImported While Editing,Developer,2026-10-20\n'),
+  });
+  await panel.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
+  await panel.getByRole('button', { name: 'Import 1 application' }).click();
+  await expect(page.getByText('1 application imported.', { exact: false })).toBeVisible();
+  await expect(editor.getByLabel('Notes')).toHaveValue('Unfinished application edit');
+  await expect(page.getByRole('region', { name: 'Import applications from CSV' })).toHaveCount(0);
+
+  const response = await page.request.get('/api/applications');
+  const records = await response.json();
+  expect(records.totalElements).toBe(2);
+  expect(records.items.find((item: { company: string }) => item.company === 'Draft In Progress').notes).toBe('');
+  await editor.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('article', { name: 'Draft In Progress — Software Engineer' }))
+    .toContainText('Unfinished application edit');
+  await expect(page.getByRole('article', { name: 'Imported While Editing — Developer' })).toBeVisible();
+});
