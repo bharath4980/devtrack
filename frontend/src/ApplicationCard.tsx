@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import InterviewWorkspace from './InterviewWorkspace';
 import ApplicationForm from './ApplicationForm';
 import ApplicationTimeline from './ApplicationTimeline';
@@ -24,11 +24,16 @@ type Props = {
   onStatus: (status: ApplicationStatus) => void;
   onDelete: () => void;
   onInterviewChange: () => void;
+  onInterviewDraftChange?: (id: number, dirty: boolean) => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onInterviewDraftChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
+  useEffect(() => {
+    onInterviewDraftChange?.(application.id, showInterviewPrep && interviewDraftDirty);
+    return () => onInterviewDraftChange?.(application.id, false);
+  }, [application.id, showInterviewPrep, interviewDraftDirty, onInterviewDraftChange]);
   const link = safeLink(application.postingUrl);
   return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
     aria-label={`${application.company} — ${application.title}`}>
