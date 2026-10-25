@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { errorMessage } from './apiError';
 import DashboardQuickView from './DashboardQuickView';
 import type { DashboardSummary, DueFollowUp, UpcomingInterview, UpcomingInterviewRound, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
@@ -16,6 +16,7 @@ type Props = {
   onCompleteFollowUp: (id: number) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
+  onDirtyChange: (dirty: boolean) => void;
   revision: number;
   busy: boolean;
   analytics: DashboardAnalytics | null;
@@ -188,9 +189,13 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onComplete,
   </div>;
 }
 
-export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, onDirtyChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const [quickViewDirty, setQuickViewDirty] = useState(false);
+  useEffect(() => {
+    onDirtyChange(quickViewId !== null && quickViewDirty);
+  }, [quickViewId, quickViewDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [completionError, setCompletionError] = useState<{ id: number; message: string } | null>(null);
   const pipeline = statuses.map(status => ({

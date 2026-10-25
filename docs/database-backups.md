@@ -2,7 +2,7 @@
 
 DevTrack runs on Neon PostgreSQL 17. The **Encrypted database backup** GitHub Actions workflow takes a custom-format logical backup of the public schema each day, encrypts it using an age public key, and uploads **only ciphertext** to GitHub Actions artifacts.
 
-**Status:** Not active until this PR is merged into main, both configuration values are set, and a successful manual backup and restore check have been completed. An untested workflow is not a working backup.
+**Status (October 24, 2026):** The scheduled workflow is active. The [October 24 scheduled run](https://github.com/bharath4980/devtrack/actions/runs/40092525973) completed successfully, which verifies that the configured job ran its dump, archive-inventory check, encryption, and encrypted-artifact upload steps. **Decryption and restoration into a disposable database have not been independently verified here.** A successful backup job alone is not proof that the data can be restored.
 
 ## Security considerations
 
@@ -13,7 +13,9 @@ DevTrack runs on Neon PostgreSQL 17. The **Encrypted database backup** GitHub Ac
 - Initially the workflow uses the Neon database owner login. This credential is more privileged than a dedicated read-only backup login. Restrict access to workflow edits and secrets; review changes to the workflow before merging.
 - Archives contain password hashes and personal application records. Only encrypted artifacts are retained.
 
-## Initial setup on the owner's Mac
+## Initial setup or credential recovery on the owner's Mac
+
+The steps below are for initial configuration or deliberate key rotation. An active encrypted backup is already scheduled; do not overwrite the existing recipient, password, or private identity solely to repeat setup.
 
 1. If Homebrew is available, install age with: **brew install age**.
 2. Create a new private encryption identity and output its corresponding public recipient:
@@ -29,8 +31,8 @@ The final command prints **only the public recipient**. Do not share the private
 
 3. Under **GitHub → bharath4980/devtrack → Settings → Secrets and variables → Actions → Variables**, create DEVTRACK_BACKUP_AGE_RECIPIENT with the printed **public** recipient.
 4. Under **Secrets**, create DEVTRACK_BACKUP_DB_PASSWORD with the current production Neon **neondb_owner** password from branch **devtrack-production-cutover-20261021**. Store it as a secret, not a variable.
-5. Review and merge this PR **only after** both settings are configured and the private identity is safely backed up.
-6. Go to **Actions → Encrypted database backup → Run workflow** on main. Confirm a successful run and an artifact ending in **.dump.age**. Do not print passwords or database rows into logs.
+5. Before changing the workflow, credentials, or encryption recipient, review the impact on existing archives and retain the matching private identity. Old backups must remain decryptable after any rotation.
+6. To perform a manual verification, go to **Actions → Encrypted database backup → Run workflow** on main. Confirm a successful run and an artifact ending in **.dump.age**. Do not print passwords or database rows into logs. Then perform a separate, disposable restore practice as described below.
 
 ## Decryption and restore practice
 
