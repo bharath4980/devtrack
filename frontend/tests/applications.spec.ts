@@ -2024,3 +2024,14 @@ test('application results show applied filters rather than unsent search edits',
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(applied).toHaveCount(0);
 });
+
+test('application results show the visible range on each page', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 11; i++) await seed(page, 'Range Company ' + i);
+  await page.reload();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing 1–10 of 11 applications' })).toBeVisible();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing 11–11 of 11 applications' })).toBeVisible();
+  await page.getByRole('button', { name: 'Previous', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing 1–10 of 11 applications' })).toBeVisible();
+});
