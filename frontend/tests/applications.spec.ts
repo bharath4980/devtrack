@@ -1776,7 +1776,7 @@ test('CSV import review displays all rows and keeps wide previews inside the pan
     'company,title,location,status,application_date',
     ...Array.from({ length: 15 }, (_, index) =>
       `Company ${index + 1},Engineer ${index + 1},Remote,APPLIED,2026-10-20`),
-  ].join('\\n');
+  ].join('\n');
   await panel.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
     name: 'many-rows.csv', mimeType: 'text/csv', buffer: Buffer.from(csv),
   });
