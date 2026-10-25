@@ -1553,3 +1553,109 @@ test('interview form warns before leaving and sends one request for rapid double
   expect(submissions).toBe(1);
   await expect.poll(exitBlocked).toBe(false);
 });
+
+test('list filters and view switch do not silently discard application edits', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'List Draft Company');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'List Draft Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const form = card.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Important unsaved note');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Important unsaved note');
+
+  await page.getByLabel('Search', { exact: true }).fill('other company');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Important unsaved note');
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.getByText('No matches. Try another search or clear your filters.')).toBeVisible();
+  const saved = await (await page.request.get('/api/applications')).json();
+  expect(saved.items[0].notes).not.toBe('Important unsaved note');
+});
+
+test('list view switch protects unfinished interview round details', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'List Interview Draft');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'List Interview Draft — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Unfinished interview');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await expect(form.getByLabel('Round name')).toHaveValue('Unfinished interview');
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Board view' }).click();
+  await expect(page.getByRole('region', { name: 'Application pipeline board' })).toBeVisible();
+  await page.getByRole('button', { name: 'List view' }).click();
+  const reopened = page.getByRole('article', { name: 'List Interview Draft — Software Engineer' });
+  await reopened.getByRole('button', { name: 'Interview prep' }).click();
+  await expect(reopened.getByText('No rounds yet.', { exact: false })).toBeVisible();
+});
+
+test('pipeline board protects unsaved application details when closing and switching views', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Board Draft Company');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  await board.getByRole('article', { name: 'Board Draft Company — Software Engineer' })
+    .getByRole('button', { name: 'View details' }).click();
+  const details = page.getByRole('region', { name: 'Application details' });
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const form = details.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Unfinished board edit');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await details.getByRole('button', { name: 'Close details' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Unfinished board edit');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'List view' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Unfinished board edit');
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'List view' }).click();
+  await expect(details).toHaveCount(0);
+  await expect(page.getByRole('article', { name: 'Board Draft Company — Software Engineer' }))
+    .not.toContainText('Unfinished board edit');
+});
+
+test('dashboard quick view protects unsaved edits when closing or opening another application', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Quick View One');
+  await seed(page, 'Quick View Two');
+  await page.reload();
+  const openers = page.locator('.recent-panel').getByRole('button', { name: 'Open application' });
+  await expect(openers).toHaveCount(2);
+  await openers.first().click();
+  const quickView = page.getByRole('region', { name: 'Application quick view' });
+  await quickView.getByRole('button', { name: 'Edit application' }).click();
+  const form = quickView.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Private unsaved edit');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await quickView.getByRole('button', { name: 'Close quick view' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Private unsaved edit');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await openers.last().click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Private unsaved edit');
+
+  page.once('dialog', dialog => dialog.accept());
+  await openers.last().click();
+  await expect(quickView).toBeVisible();
+  await expect(quickView.getByRole('form', { name: 'Edit application' })).toHaveCount(0);
+  await expect(quickView).not.toContainText('Private unsaved edit');
+});
