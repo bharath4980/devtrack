@@ -1767,3 +1767,34 @@ test('editing an application preserves a newer location while the job lookup com
   const updated = page.getByRole('article', { name: 'Posting Company — Backend Developer' });
   await expect(updated).toContainText('Houston, TX');
 });
+
+test('CSV import review displays all rows and keeps wide previews inside the panel', async ({ page }) => {
+  await registerAndLogin(page);
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Import applications from CSV' });
+  const csv = [
+    'company,title,location,status,application_date',
+    ...Array.from({ length: 15 }, (_, index) =>
+      `Company ${index + 1},Engineer ${index + 1},Remote,APPLIED,2026-10-20`),
+  ].join('\\n');
+  await panel.getByLabel('CSV file (up to 100 applications, 500 KB)').setInputFiles({
+    name: 'many-rows.csv', mimeType: 'text/csv', buffer: Buffer.from(csv),
+  });
+
+  await expect(panel.getByText('Review all 15 rows below.', { exact: false })).toBeVisible();
+  const preview = panel.getByRole('region', { name: 'Review CSV rows' });
+  const table = preview.getByRole('table', { name: 'CSV application preview' });
+  await expect(table.locator('tbody tr')).toHaveCount(15);
+  await expect(table.locator('tbody tr').last()).toContainText('Company 15');
+  await expect(table.locator('tbody tr').last()).toContainText('15');
+  await expect(table.locator('tbody tr').last()).toContainText('Remote');
+  expect(await preview.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  const submit = panel.getByRole('button', { name: 'Import 15 applications' });
+  await expect(submit).toBeDisabled();
+  await panel.getByRole('checkbox', { name: /I reviewed the CSV/ }).check();
+  await expect(submit).toBeEnabled();
+  // Preview alone never imports or modifies any saved application.
+  await expect(page.locator('.results-count')).toContainText('0 applications');
+});
