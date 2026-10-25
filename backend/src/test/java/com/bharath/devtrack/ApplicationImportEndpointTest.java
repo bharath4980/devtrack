@@ -103,6 +103,27 @@ class ApplicationImportEndpointTest {
     }
 
     @Test
+    void invalidPostingUrlReportsItsDataRowAndRollsBackWholeBatch() throws Exception {
+        SessionCredentials a = login(alice.getEmail());
+        String body = batch(List.of(
+                row("Valid first role", "Engineer", "https://jobs.lever.co/acme/abc123def",
+                        "SAVED", "2026-10-01"),
+                row("Invalid second role", "Engineer", "file:///etc/passwd",
+                        "APPLIED", "2026-10-02")));
+
+        mvc.perform(post("/api/applications/import").session(a.session())
+                        .header(a.header(), a.token()).contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("Row 2: posting URL")))
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/etc/passwd"))));
+        assertThat(applications.count()).isZero();
+        assertThat(activities.count()).isZero();
+    }
+
+    @Test
     void duplicatePostingUrlsAreRejectedAcrossTrackingLinksAndWithinBatch() throws Exception {
         JobApplication owned = new JobApplication();
         owned.setOwner(alice);
