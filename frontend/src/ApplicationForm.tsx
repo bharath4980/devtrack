@@ -8,6 +8,7 @@ type Props = {
   busy: boolean;
   onSave: (values: UpdateJobApplicationRequest) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 function today() {
@@ -15,7 +16,7 @@ function today() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function ApplicationForm({ application, busy, onSave, onCancel }: Props) {
+export default function ApplicationForm({ application, busy, onSave, onCancel, onDirtyChange }: Props) {
   const [values, setValues] = useState<UpdateJobApplicationRequest>({
     company: application?.company ?? '', title: application?.title ?? '',
     location: application?.location ?? '', postingUrl: application?.postingUrl ?? '',
@@ -99,6 +100,9 @@ export default function ApplicationForm({ application, busy, onSave, onCancel }:
   };
   const hasUnsavedChanges = (Object.keys(initialValues) as (keyof UpdateJobApplicationRequest)[])
     .some(key => values[key] !== initialValues[key]);
+
+  // Parent views also need the dirty state before changing filters or details.
+  useEffect(() => { onDirtyChange?.(hasUnsavedChanges); }, [hasUnsavedChanges, onDirtyChange]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
