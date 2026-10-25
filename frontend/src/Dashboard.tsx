@@ -190,6 +190,7 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onComplete,
 
 export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
+  const [quickViewDirty, setQuickViewDirty] = useState(false);
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [completionError, setCompletionError] = useState<{ id: number; message: string } | null>(null);
   const pipeline = statuses.map(status => ({
@@ -202,6 +203,19 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
   const todayUtc = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0')].join('-');
   const actions = nextActions(followUps, upcomingFollowUps, upcomingRounds, interviews, todayUtc);
+
+  function openQuickView(id: number) {
+    if (quickViewId === id) return;
+    if (quickViewDirty && !window.confirm('Discard unsaved changes in the open application?')) return;
+    setQuickViewId(id);
+    setQuickViewDirty(false);
+  }
+
+  function closeQuickView() {
+    if (quickViewDirty && !window.confirm('Discard unsaved changes in the open application?')) return;
+    setQuickViewId(null);
+    setQuickViewDirty(false);
+  }
 
   async function completeNextAction(id: number, company: string) {
     if (busy || completingId !== null || !window.confirm(
@@ -232,7 +246,8 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
     </div>
     {quickViewId !== null && <DashboardQuickView key={quickViewId}
       applicationId={quickViewId} revision={revision} busy={busy}
-      onClose={() => setQuickViewId(null)} onSave={onEdit} onInterviewChange={onInterviewChange} />}
+      onClose={closeQuickView} onSave={onEdit} onInterviewChange={onInterviewChange}
+      onDirtyChange={setQuickViewDirty} />}
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}
     {!loading && !error && summary && <>
@@ -258,7 +273,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                 <div className="next-action-controls">
                   <button type="button" className="secondary-button quick-view-open"
                     disabled={busy || completingId !== null}
-                    onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+                    onClick={() => openQuickView(item.applicationId)}>Open application</button>
                   {item.kind === 'follow-up' && <button type="button"
                     disabled={busy || completingId !== null}
                     onClick={() => void completeNextAction(item.applicationId, item.company)}>
@@ -368,7 +383,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
               <li key={item.id}><span className="timeline-marker" aria-hidden="true" />
                 <div><strong>{activityText(item)}</strong><p>{item.company} · {item.title}</p>
                   <button type="button" className="secondary-button quick-view-open"
-                    onClick={() => setQuickViewId(item.applicationId)}>Open application</button>
+                    onClick={() => openQuickView(item.applicationId)}>Open application</button>
                 </div>
                 <time dateTime={item.occurredAt}>{activityTime(item.occurredAt)}</time>
               </li>)}</ol>}
@@ -393,7 +408,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                   <p>You're all caught up.</p><small>Set a follow-up date on an application to keep it on your radar.</small>
                 </div>
               : followUps.map(item => <FollowUpRow key={item.id} item={item} todayUtc={todayUtc}
-                  onReschedule={onReschedule} onComplete={onCompleteFollowUp} onOpen={setQuickViewId} busy={busy} upcoming={false} />)}
+                  onReschedule={onReschedule} onComplete={onCompleteFollowUp} onOpen={openQuickView} busy={busy} upcoming={false} />)}
           </div>
           <p className="form-help follow-up-count-note">Counts include all due applications, including those outside this five-item list.</p>
           <div className="upcoming-follow-ups-heading">
@@ -405,7 +420,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
               ? <p className="form-help upcoming-empty">No upcoming follow-ups in the next seven days.</p>
               : upcomingFollowUps.map(item => <FollowUpRow key={item.id} item={item}
                   todayUtc={todayUtc} onReschedule={onReschedule} onComplete={onCompleteFollowUp}
-                  onOpen={setQuickViewId} busy={busy} upcoming />)}
+                  onOpen={openQuickView} busy={busy} upcoming />)}
           </div>
         </section>
         <section className="schedule-panel" aria-labelledby="interviews-heading">
@@ -430,7 +445,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
                     {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone) &&
                       <p className="form-help">Your local time: {interviewTimeInBrowser(round.scheduledDate, round.scheduledTime, round.timeZone)}</p>}
                     <button type="button" className="secondary-button quick-view-open"
-                      onClick={() => setQuickViewId(round.applicationId)}>Open application</button>
+                      onClick={() => openQuickView(round.applicationId)}>Open application</button>
                   </div>
                   <div className="interview-date">
                     <span>{daysUntil(round.scheduledDate, todayUtc) <= 7
@@ -451,7 +466,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
               : interviews.map(item => <div className="upcoming-interview" key={item.id}>
                   <div><h4>{item.title}</h4><p>{item.company}</p>
                     <button type="button" className="secondary-button quick-view-open"
-                      onClick={() => setQuickViewId(item.id)}>Open application</button>
+                      onClick={() => openQuickView(item.id)}>Open application</button>
                   </div>
                   <div className="interview-date">
                     <span>{daysUntil(item.interviewDate, todayUtc) <= 7
