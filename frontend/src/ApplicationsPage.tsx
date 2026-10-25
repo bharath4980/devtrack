@@ -250,10 +250,13 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextSearch = search.trim();
+    // Reapplying the current filters should not discard an open edit or reload the same results.
+    if (query.search === nextSearch && query.status === status && query.sort === sort && query.page === 0) return;
     if (!confirmDiscardListDraft()) return;
     setEditingId(null);
     setListEditDirty(false);
-    setQuery({ search: search.trim(), status, sort, page: 0 });
+    setQuery({ search: nextSearch, status, sort, page: 0 });
   }
 
   function clearFilters() {
