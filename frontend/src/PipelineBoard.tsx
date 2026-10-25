@@ -64,6 +64,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [moreError, setMoreError] = useState('');
+  const [refreshError, setRefreshError] = useState('');
   const [loadingMore, setLoadingMore] = useState<ApplicationStatus | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [overStage, setOverStage] = useState<ApplicationStatus | null>(null);
@@ -93,7 +94,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
     const controller = new AbortController();
     pending.current.forEach(request => request.abort());
     pending.current = [];
-    const queryKey = JSON.stringify([filters.search, filters.stage, filters.sort, retry]);
+    const queryKey = JSON.stringify([filters.search, filters.stage, filters.sort]);
     // A revision-only refresh must not unmount the editor or discard unsaved fields.
     // New filters and initial loads still clear stale cards and show the loading state.
     const backgroundRefresh = lastLoadedQuery.current === queryKey;
@@ -103,6 +104,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
     }
     setError('');
     setMoreError('');
+    setRefreshError('');
     setLoadingMore(null);
     const stages = filters.stage ? [filters.stage] : statuses;
     Promise.all(stages.map(async stage => {
@@ -141,7 +143,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
       }
     }).catch(reason => {
       if (!controller.signal.aborted) {
-        if (backgroundRefresh) setMoreError(errorMessage(reason, 'Could not refresh the pipeline.'));
+        if (backgroundRefresh) setRefreshError(errorMessage(reason, 'Could not refresh the pipeline.'));
         else setError(errorMessage(reason, 'Could not load the pipeline.'));
       }
     }).finally(() => {
@@ -347,6 +349,11 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
           </section>
         </>}
       </section>}
+      {refreshError && <div role="alert" className="panel-state">
+        <p className="form-error">{refreshError}</p>
+        <button type="button" className="secondary-button" disabled={busy}
+          onClick={() => setRetry(value => value + 1)}>Retry refresh</button>
+      </div>}
       {moreError && <p className="form-error" role="alert">{moreError}</p>}
       <div className="pipeline-board-scroll" tabIndex={0} aria-label="Scrollable pipeline columns">
         <div className={'pipeline-board' + (visibleStages.length === 1 ? ' pipeline-board-single' : '')}>
