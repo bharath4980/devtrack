@@ -1388,13 +1388,13 @@ footer { border-color: var(--line); color: #94a0b3; }
 .csv-import-panel input[type=file] { max-width: 100%; }
 .csv-import-panel .form-field { max-width: 620px; }
 .csv-import-preview { margin-top: 17px; }
-.csv-preview-scroll { max-width: 100%; overflow-x: auto; background: white; border-radius: 8px; border: 1px solid #e3e9f2; }
+.csv-preview-scroll { max-width: 100%; max-height: 360px; overflow: auto; background: white; border-radius: 8px; border: 1px solid #e3e9f2; }
 .csv-preview-scroll table { border-collapse: collapse; width: 100%; min-width: 510px; font-size: 13px; }
 .csv-preview-scroll th, .csv-preview-scroll td {
   padding: 10px 12px; text-align: left; border-bottom: 1px solid #e6eaf1;
   overflow-wrap: anywhere; max-width: 240px;
 }
-.csv-preview-scroll th { background: #eef3fa; color: #34445b; }
+.csv-preview-scroll thead th { position: sticky; top: 0; z-index: 1; background: #eef3fa; color: #34445b; }
 .csv-import-confirm { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; font-size: 13px; }
 .csv-import-confirm input { margin-top: 3px; flex-shrink: 0; }
 @media (max-width: 650px) {
