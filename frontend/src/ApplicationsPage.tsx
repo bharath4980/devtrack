@@ -279,7 +279,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <span className="account-avatar" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
         <span className="account-email">{user.email}</span>
         <button className="secondary-button" onClick={() => {
-          if ((createDirty || !confirmDiscardActiveDraft()) &&
+          if ((createDirty || (editingId !== null && listEditDirty) ||
+              dirtyInterviewIds.length > 0 || boardDirty) &&
               !window.confirm('Sign out and discard unsaved work?')) return;
           onLogout();
         }} disabled={blocked}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
