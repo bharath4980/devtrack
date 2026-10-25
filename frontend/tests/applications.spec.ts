@@ -1701,3 +1701,69 @@ test('sign-out also protects unfinished interview notes in dashboard quick view'
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
 });
+
+test('job link lookup preserves fields edited manually while the response is pending', async ({ page }) => {
+  await registerAndLogin(page);
+  let releaseLookup!: () => void;
+  const delayed = new Promise<void>(resolve => { releaseLookup = resolve; });
+  await page.route('**/api/job-postings/preview?**', async route => {
+    await delayed;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ company: 'Automatic Company', title: 'Automatic Title', location: 'Remote' }),
+    });
+  });
+  await page.getByRole('button', { name: 'Add application', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New application' });
+  await form.getByLabel('Job posting URL').fill('https://boards.greenhouse.io/auto/jobs/12345');
+  const requestStarted = page.waitForRequest(request => request.url().includes('/api/job-postings/preview?'));
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await requestStarted;
+
+  await form.getByLabel('Company', { exact: true }).fill('My Corrected Company');
+  await form.getByLabel('Job title').fill('My Preferred Title');
+  releaseLookup();
+
+  await expect(form.getByText('Job details loaded.', { exact: false })).toBeVisible();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('My Corrected Company');
+  await expect(form.getByLabel('Job title')).toHaveValue('My Preferred Title');
+  await expect(form.getByLabel('Location')).toHaveValue('Remote');
+  await form.getByRole('button', { name: 'Save application' }).click();
+  await expect(page.getByRole('article', { name: 'My Corrected Company — My Preferred Title' })).toBeVisible();
+});
+
+test('editing an application preserves a newer location while the job lookup completes', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Existing Draft');
+  await page.reload();
+  let releaseLookup!: () => void;
+  const delayed = new Promise<void>(resolve => { releaseLookup = resolve; });
+  await page.route('**/api/job-postings/preview?**', async route => {
+    await delayed;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ company: 'Posting Company', title: 'Backend Developer', location: 'Remote' }),
+    });
+  });
+
+  const card = page.getByRole('article', { name: 'Existing Draft — Software Engineer' });
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const form = card.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Job posting URL').fill('https://boards.greenhouse.io/posting/jobs/67890');
+  const requestStarted = page.waitForRequest(request => request.url().includes('/api/job-postings/preview?'));
+  await form.getByRole('button', { name: 'Fill from job link' }).click();
+  await requestStarted;
+
+  await form.getByLabel('Location').fill('Houston, TX');
+  releaseLookup();
+
+  await expect(form.getByText('Job details loaded.', { exact: false })).toBeVisible();
+  await expect(form.getByLabel('Company', { exact: true })).toHaveValue('Posting Company');
+  await expect(form.getByLabel('Job title')).toHaveValue('Backend Developer');
+  await expect(form.getByLabel('Location')).toHaveValue('Houston, TX');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  const updated = page.getByRole('article', { name: 'Posting Company — Backend Developer' });
+  await expect(updated).toContainText('Houston, TX');
+});
