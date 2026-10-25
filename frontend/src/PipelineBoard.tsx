@@ -73,6 +73,7 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   const [interviewDirty, setInterviewDirty] = useState(false);
   const [retry, setRetry] = useState(0);
   const generation = useRef(0);
+  const lastLoadedQuery = useRef<string | null>(null);
   const pending = useRef<AbortController[]>([]);
   const detailRef = useRef<HTMLHeadingElement>(null);
   const now = new Date();
@@ -92,20 +93,30 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
     const controller = new AbortController();
     pending.current.forEach(request => request.abort());
     pending.current = [];
-    setLoading(true);
+    const queryKey = JSON.stringify([filters.search, filters.stage, filters.sort, retry]);
+    // A revision-only refresh must not unmount the editor or discard unsaved fields.
+    // New filters and initial loads still clear stale cards and show the loading state.
+    const backgroundRefresh = lastLoadedQuery.current === queryKey;
+    if (!backgroundRefresh) {
+      setLoading(true);
+      setColumns({});
+    }
     setError('');
     setMoreError('');
-    setColumns({});
     setLoadingMore(null);
     const stages = filters.stage ? [filters.stage] : statuses;
     Promise.all(stages.map(stage => getApplications({
       page: 0, size: PAGE_SIZE, status: stage, search: filters.search, sort: filters.sort,
     }, controller.signal))).then(pages => {
       if (!controller.signal.aborted && version === generation.current) {
+        lastLoadedQuery.current = queryKey;
         setColumns(Object.fromEntries(stages.map((stage, index) => [stage, pages[index]])) as Columns);
       }
     }).catch(reason => {
-      if (!controller.signal.aborted) setError(errorMessage(reason, 'Could not load the pipeline.'));
+      if (!controller.signal.aborted) {
+        if (backgroundRefresh) setMoreError(errorMessage(reason, 'Could not refresh the pipeline.'));
+        else setError(errorMessage(reason, 'Could not load the pipeline.'));
+      }
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
     });

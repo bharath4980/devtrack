@@ -1854,3 +1854,57 @@ test('successful CSV import keeps another unsaved application editor open', asyn
     .toContainText('Unfinished application edit');
   await expect(page.getByRole('article', { name: 'Imported While Editing — Developer' })).toBeVisible();
 });
+
+test('pipeline background refresh keeps unsaved application details while another card changes stage', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Editing In Progress');
+  await seed(page, 'Unrelated Stage Change');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  const editingCard = board.getByRole('article', { name: 'Editing In Progress — Software Engineer' });
+  await editingCard.getByRole('button', { name: 'View details' }).click();
+  const details = board.getByRole('region', { name: 'Application details' });
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const form = details.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('My note must survive a background refresh');
+
+  await board.getByRole('article', { name: 'Unrelated Stage Change — Software Engineer' })
+    .getByLabel('Move to stage').selectOption('APPLIED');
+  await expect(board.getByRole('region', { name: 'Applied stage' })
+    .getByRole('article', { name: 'Unrelated Stage Change — Software Engineer' })).toBeVisible();
+
+  await expect(form.getByLabel('Notes')).toHaveValue('My note must survive a background refresh');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(details).toContainText('My note must survive a background refresh');
+});
+
+test('pipeline background refresh preserves unfinished interview round notes', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Interview In Progress');
+  await seed(page, 'Another Card To Move');
+  await page.reload();
+  await page.getByRole('button', { name: 'Board view' }).click();
+
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  await board.getByRole('article', { name: 'Interview In Progress — Software Engineer' })
+    .getByRole('button', { name: 'View details' }).click();
+  const details = board.getByRole('region', { name: 'Application details' });
+  const workspace = details.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Important technical interview');
+  await form.getByLabel('Preparation notes').fill('Prepare transaction isolation examples');
+
+  await board.getByRole('article', { name: 'Another Card To Move — Software Engineer' })
+    .getByLabel('Move to stage').selectOption('APPLIED');
+  await expect(board.getByRole('region', { name: 'Applied stage' })
+    .getByRole('article', { name: 'Another Card To Move — Software Engineer' })).toBeVisible();
+
+  await expect(form.getByLabel('Round name')).toHaveValue('Important technical interview');
+  await expect(form.getByLabel('Preparation notes')).toHaveValue('Prepare transaction isolation examples');
+  await form.getByRole('button', { name: 'Save interview round' }).click();
+  await expect(workspace.getByRole('article', { name: 'Important technical interview' }))
+    .toContainText('Prepare transaction isolation examples');
+});
