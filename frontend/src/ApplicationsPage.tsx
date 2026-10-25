@@ -192,6 +192,26 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
     await mutate(() => rescheduleFollowUp(id, date), 'Follow-up rescheduled.');
   }
 
+  async function scheduleInterviewFollowUp(id: number, date: string): Promise<JobApplication> {
+    if (mutationPending.current) throw new Error('Please wait for the current change to finish.');
+    mutationPending.current = true;
+    setBusy(true);
+    setActionError('');
+    try {
+      const updated = await rescheduleFollowUp(id, date);
+      // Update visible cards without unmounting other interview drafts or list editors.
+      setPage(current => current ? {
+        ...current, items: current.items.map(item => item.id === id ? updated : item),
+      } : current);
+      refreshDashboard();
+      setNotice('Follow-up reminder saved.');
+      return updated;
+    } finally {
+      mutationPending.current = false;
+      setBusy(false);
+    }
+  }
+
   async function markFollowUpComplete(id: number) {
     await mutate(() => completeFollowUp(id), 'Follow-up completed. Its due date was cleared and the completion was recorded.');
   }
@@ -312,7 +332,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
       {isEmptyAccount
         ? <GettingStarted disabled={blocked} onAddApplication={startFirstApplication}
             onImportCsv={startCsvImport} />
-        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} onDirtyChange={setDashboardDirty}
+        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onScheduleFollowUp={scheduleInterviewFollowUp} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} onDirtyChange={setDashboardDirty}
           revision={revision} busy={busy || signingOut} />}
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" id="new-application" tabIndex={-1} aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
@@ -393,7 +413,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </div>
         </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} onInterviewChange={refreshDashboard} onDirtyChange={setBoardDirty} />}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} onScheduleFollowUp={scheduleInterviewFollowUp} onInterviewChange={refreshDashboard} onDirtyChange={setBoardDirty} />}
         {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
@@ -447,7 +467,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
               onCancel={() => { setEditingId(null); setListEditDirty(false); }}
               onEditDirtyChange={setListEditDirty} onInterviewDraftChange={recordInterviewDirty}
               onSave={values => edit(application.id, values)}
-              onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} onInterviewChange={refreshDashboard} />)}</div>}
+              onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} onInterviewChange={refreshDashboard}
+              onScheduleFollowUp={async (id, date) => { await scheduleInterviewFollowUp(id, date); }} />)}</div>}
           {page.totalPages > 1 && <nav className="pagination" aria-label="Application pages">
             <button className="secondary-button" disabled={blocked || query.page === 0} onClick={() => {
               if (!confirmDiscardListDraft()) return;
