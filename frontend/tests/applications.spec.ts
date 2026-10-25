@@ -1987,3 +1987,23 @@ test('failed pipeline refresh can be retried without discarding an unsaved edit'
   await expect(board.getByRole('region', { name: 'Applied stage' })
     .getByRole('article', { name: 'Moving Company — Software Engineer' })).toBeVisible();
 });
+
+test('applying unchanged list filters keeps an unfinished application edit', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Unchanged Filter Company');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Unchanged Filter Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Edit' }).click();
+  const editor = card.getByRole('form', { name: 'Edit application' });
+  await editor.getByLabel('Notes').fill('Keep this unfinished edit');
+
+  let requests = 0;
+  await page.route('**/api/applications?**', async route => {
+    requests++;
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+
+  await expect(editor.getByLabel('Notes')).toHaveValue('Keep this unfinished edit');
+  expect(requests).toBe(0);
+});
