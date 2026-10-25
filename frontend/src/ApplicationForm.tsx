@@ -65,6 +65,8 @@ export default function ApplicationForm({ application, busy, onSave, onCancel, o
   async function importDetails() {
     const url = values.postingUrl.trim();
     if (!url || lookupBusy) return;
+    // A slow job-board response must not overwrite fields the user edits while it loads.
+    const original = { company: values.company, title: values.title, location: values.location };
 
     lookupController.current?.abort();
     const controller = new AbortController();
@@ -76,9 +78,15 @@ export default function ApplicationForm({ application, busy, onSave, onCancel, o
       const preview = await previewJobPosting(url, controller.signal);
       if (controller.signal.aborted) return;
       setValues(current => current.postingUrl.trim() === url
-        ? { ...current, company: preview.company, title: preview.title, location: preview.location || current.location }
+        ? {
+            ...current,
+            company: current.company === original.company ? preview.company : current.company,
+            title: current.title === original.title ? preview.title : current.title,
+            location: current.location === original.location
+              ? preview.location || current.location : current.location,
+          }
         : current);
-      setLookupMessage('Details filled in. Review the company, title, and location before saving.');
+      setLookupMessage('Job details loaded. Any fields you edited during lookup were kept. Review before saving.');
     } catch (failure) {
       if (!controller.signal.aborted) setLookupError(
         errorMessage(failure, 'Could not read this job link. Enter the details manually.'));
