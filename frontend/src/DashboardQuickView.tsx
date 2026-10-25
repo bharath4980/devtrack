@@ -13,6 +13,7 @@ type Props = {
   onClose: () => void;
   onSave: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 function safePostingUrl(raw: string | null) {
@@ -23,14 +24,20 @@ function safePostingUrl(raw: string | null) {
   } catch { return null; }
 }
 
-export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange }: Props) {
+export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange, onDirtyChange }: Props) {
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
+  const [interviewDirty, setInterviewDirty] = useState(false);
   const [retry, setRetry] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    onDirtyChange?.((editing && editDirty) || (!editing && interviewDirty));
+  }, [editing, editDirty, interviewDirty, onDirtyChange]);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -51,6 +58,7 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
   async function save(values: UpdateJobApplicationRequest) {
     await onSave(applicationId, values);
     setEditing(false);
+    setEditDirty(false);
   }
 
   const link = safePostingUrl(application?.postingUrl ?? null);
@@ -73,7 +81,8 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
     {!loading && !error && application && <>
       {editing
         ? <ApplicationForm key={application.id} application={application} busy={busy}
-            onSave={save} onCancel={() => setEditing(false)} />
+            onSave={save} onDirtyChange={setEditDirty}
+            onCancel={() => { setEditing(false); setEditDirty(false); }} />
         : <>
           <div className="quick-view-identity">
             <div><h4>{application.title}</h4><p>{application.company}</p></div>
@@ -99,11 +108,15 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
             <h4>Notes</h4><p>{application.notes || 'No notes yet.'}</p>
           </section>
           <div className="quick-view-actions">
-            <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
+            <button type="button" disabled={busy} onClick={() => {
+              if (interviewDirty && !window.confirm('Discard your unsaved interview changes?')) return;
+              setEditing(true); setInterviewDirty(false);
+            }}>Edit application</button>
             {link && <a href={link} target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
           <div className="quick-view-workspace">
-            <InterviewWorkspace applicationId={application.id} busy={busy} onChanged={onInterviewChange} />
+            <InterviewWorkspace applicationId={application.id} busy={busy}
+              onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="quick-view-history" aria-label="Application history">
             <h4>Application history</h4>

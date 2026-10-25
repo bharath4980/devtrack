@@ -21,6 +21,7 @@ type Props = {
   onMove: (id: number, status: ApplicationStatus) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 function postingLink(value: string | null) {
@@ -54,7 +55,7 @@ function attentionLabels(application: JobApplication, today: string) {
   return labels;
 }
 
-export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange }: Props) {
+export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange, onDirtyChange }: Props) {
   const [filters, setFilters] = useState<BoardFilters>(initialFilters);
   const [draftSearch, setDraftSearch] = useState('');
   const [draftStage, setDraftStage] = useState<ApplicationStatus | ''>('');
@@ -68,6 +69,8 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   const [overStage, setOverStage] = useState<ApplicationStatus | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
+  const [interviewDirty, setInterviewDirty] = useState(false);
   const [retry, setRetry] = useState(0);
   const generation = useRef(0);
   const pending = useRef<AbortController[]>([]);
@@ -75,6 +78,11 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   const now = new Date();
   const todayLocal = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0')].join('-');
+  const draftDirty = (editing && editDirty) || (!editing && interviewDirty);
+  useEffect(() => { onDirtyChange?.(draftDirty); }, [draftDirty, onDirtyChange]);
+  function confirmDiscardDraft() {
+    return !draftDirty || window.confirm('Discard unsaved application or interview changes?');
+  }
   const visibleStages = filters.stage ? [filters.stage] : statuses;
   const selected = statuses.flatMap(stage => columns[stage]?.items ?? [])
     .find(item => item.id === selectedId);
@@ -117,12 +125,18 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!confirmDiscardDraft()) return;
     setSelectedId(null);
+    setEditDirty(false);
+    setInterviewDirty(false);
     setEditing(false);
     setFilters({ search: draftSearch.trim(), stage: draftStage, sort: draftSort });
   }
 
   function clearFilters() {
+    if (!confirmDiscardDraft()) return;
+    setEditDirty(false);
+    setInterviewDirty(false);
     setDraftSearch('');
     setDraftStage('');
     setDraftSort('NEWEST');
@@ -162,14 +176,18 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
   }
 
   function openDetails(id: number) {
+    if (!confirmDiscardDraft()) return;
     setSelectedId(current => current === id ? null : id);
     setEditing(false);
+    setEditDirty(false);
+    setInterviewDirty(false);
     if (selectedId !== id) window.requestAnimationFrame(() => detailRef.current?.focus());
   }
 
   async function saveDetails(id: number, values: UpdateJobApplicationRequest) {
     await onEdit(id, values);
     setEditing(false);
+    setEditDirty(false);
   }
 
   function findDragged(id: number): JobApplication | undefined {
@@ -245,11 +263,14 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
             <h3 ref={detailRef} tabIndex={-1}>{selected.title} · {selected.company}</h3>
             <span className={'status-badge status-' + selected.status.toLowerCase()}>{statusLabel(selected.status)}</span>
           </div>
-          <button type="button" className="secondary-button" onClick={() => { setSelectedId(null); setEditing(false); }}>Close details</button>
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => {
+            if (!confirmDiscardDraft()) return;
+            setSelectedId(null); setEditing(false); setEditDirty(false); setInterviewDirty(false);
+          }}>Close details</button>
         </div>
         {editing ? <ApplicationForm key={selected.id} application={selected} busy={busy}
-          onSave={values => saveDetails(selected.id, values)}
-          onCancel={() => setEditing(false)} /> : <>
+          onSave={values => saveDetails(selected.id, values)} onDirtyChange={setEditDirty}
+          onCancel={() => { setEditing(false); setEditDirty(false); }} /> : <>
           <dl className="board-detail-fields">
             <div><dt>Location</dt><dd>{selected.location || 'Not specified'}</dd></div>
             <div><dt>Applied</dt><dd>{selected.applicationDate || 'Not specified'}</dd></div>
@@ -269,14 +290,18 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
             <p>{selected.notes || 'No notes yet.'}</p>
           </section>
           <div className="board-detail-actions">
-            <button type="button" disabled={busy} onClick={() => setEditing(true)}>Edit application</button>
+            <button type="button" disabled={busy} onClick={() => {
+              if (!confirmDiscardDraft()) return;
+              setEditing(true); setInterviewDirty(false);
+            }}>Edit application</button>
             {postingLink(selected.postingUrl) && <a href={postingLink(selected.postingUrl)!}
               target="_blank" rel="noopener noreferrer">View job posting ↗</a>}
           </div>
         </>}
         {!editing && <>
           <div className="board-detail-workspace">
-            <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy} onChanged={onInterviewChange} />
+            <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy}
+              onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="board-detail-history" aria-label="Application history">
             <h4>Application history</h4>

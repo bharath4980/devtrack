@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import InterviewWorkspace from './InterviewWorkspace';
 import ApplicationForm from './ApplicationForm';
 import ApplicationTimeline from './ApplicationTimeline';
@@ -24,11 +24,17 @@ type Props = {
   onStatus: (status: ApplicationStatus) => void;
   onDelete: () => void;
   onInterviewChange: () => void;
+  onInterviewDraftChange?: (id: number, dirty: boolean) => void;
+  onEditDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onInterviewDraftChange, onEditDirtyChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
+  useEffect(() => {
+    onInterviewDraftChange?.(application.id, showInterviewPrep && interviewDraftDirty);
+    return () => onInterviewDraftChange?.(application.id, false);
+  }, [application.id, showInterviewPrep, interviewDraftDirty, onInterviewDraftChange]);
   const link = safeLink(application.postingUrl);
   return <article className={selected ? 'application-card application-card-selected' : 'application-card'}
     aria-label={`${application.company} — ${application.title}`}>
@@ -37,7 +43,8 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         aria-label={`Select ${application.company} — ${application.title}`} />
       <span>Select application</span>
     </label>
-    {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel} /> : <>
+    {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel}
+      onDirtyChange={onEditDirtyChange} /> : <>
       <div className="application-card-header">
         <div className="application-identity">
           <div className="company-monogram" aria-hidden="true">{application.company.trim().charAt(0).toUpperCase()}</div>
