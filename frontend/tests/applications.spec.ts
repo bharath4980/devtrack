@@ -1948,3 +1948,42 @@ test('loaded pipeline pages and unsaved drafts survive a status-change refresh',
   await interviewForm.getByRole('button', { name: 'Save interview round' }).click();
   await expect(interviews.getByRole('article', { name: 'Later page interview' })).toContainText('Keep prep notes');
 });
+
+
+test('failed pipeline refresh can be retried without discarding an unsaved edit', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Draft Company');
+  await seed(page, 'Moving Company');
+  await page.getByRole('button', { name: 'Board view' }).click();
+
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  const saved = board.getByRole('region', { name: 'Saved stage' });
+  await saved.getByRole('article', { name: 'Draft Company — Software Engineer' })
+    .getByRole('button', { name: 'View details' }).click();
+  const details = board.getByRole('region', { name: 'Application details' });
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const editor = details.getByRole('form', { name: 'Edit application' });
+  await editor.getByLabel('Notes').fill('Keep my unfinished notes');
+
+  let failRefresh = true;
+  await page.route('**/api/applications?**', async route => {
+    if (failRefresh && route.request().method() === 'GET') {
+      await route.fulfill({ status: 503, body: 'Service temporarily unavailable' });
+      return;
+    }
+    await route.continue();
+  });
+
+  await saved.getByRole('article', { name: 'Moving Company — Software Engineer' })
+    .getByLabel('Move to stage').selectOption('APPLIED');
+
+  await expect(board.getByRole('button', { name: 'Retry refresh' })).toBeVisible();
+  await expect(editor.getByLabel('Notes')).toHaveValue('Keep my unfinished notes');
+
+  failRefresh = false;
+  await board.getByRole('button', { name: 'Retry refresh' }).click();
+  await expect(board.getByRole('button', { name: 'Retry refresh' })).toHaveCount(0);
+  await expect(editor.getByLabel('Notes')).toHaveValue('Keep my unfinished notes');
+  await expect(board.getByRole('region', { name: 'Applied stage' })
+    .getByRole('article', { name: 'Moving Company — Software Engineer' })).toBeVisible();
+});
