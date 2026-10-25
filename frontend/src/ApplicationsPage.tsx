@@ -399,6 +399,12 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
         {!loading && !loadError && page && <>
           <p className="results-count" role="status">{page.totalElements} {page.totalElements === 1 ? 'application' : 'applications'}{query.search || query.status ? ' matching your filters' : ''}</p>
+          {(query.search || query.status) && <p className="form-help" aria-label="Applied application filters">
+            Applied filters: {[
+              query.search && 'Search: ' + query.search,
+              query.status && 'Status: ' + statusLabel(query.status),
+            ].filter(Boolean).join(' · ')}
+          </p>}
           {page.items.length > 0 && <div className="bulk-toolbar" role="group" aria-label="Bulk status actions">
             <label className="bulk-select-all">
               <input type="checkbox" aria-label="Select all applications on this page"

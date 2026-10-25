@@ -2007,3 +2007,20 @@ test('applying unchanged list filters keeps an unfinished application edit', asy
   await expect(editor.getByLabel('Notes')).toHaveValue('Keep this unfinished edit');
   expect(requests).toBe(0);
 });
+
+test('application results show applied filters rather than unsent search edits', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Applied Filter Example');
+  await page.reload();
+
+  await page.getByRole('searchbox', { name: 'Search' }).fill('Applied Filter');
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  const applied = page.getByLabel('Applied application filters');
+  await expect(applied).toContainText('Search: Applied Filter');
+  await page.getByRole('searchbox', { name: 'Search' }).fill('Unsubmitted term');
+  await expect(applied).toContainText('Search: Applied Filter');
+  await expect(applied).not.toContainText('Unsubmitted term');
+
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(applied).toHaveCount(0);
+});
