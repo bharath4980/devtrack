@@ -398,7 +398,9 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
         {!loading && !loadError && page && <>
-          <p className="results-count" role="status">{page.totalElements} {page.totalElements === 1 ? 'application' : 'applications'}{query.search || query.status ? ' matching your filters' : ''}</p>
+          <p className="results-count" role="status">{page.totalElements > 0
+            ? `Showing ${page.page * 10 + 1}–${page.page * 10 + page.items.length} of ${page.totalElements} applications`
+            : '0 applications'}{query.search || query.status ? ' matching your filters' : ''}</p>
           {(query.search || query.status) && <p className="form-help" aria-label="Applied application filters">
             Applied filters: {[
               query.search && 'Search: ' + query.search,
