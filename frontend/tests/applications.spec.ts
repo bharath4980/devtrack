@@ -1908,3 +1908,43 @@ test('pipeline background refresh preserves unfinished interview round notes', a
   await expect(workspace.getByRole('article', { name: 'Important technical interview' }))
     .toContainText('Prepare transaction isolation examples');
 });
+
+test('loaded pipeline pages and unsaved drafts survive a status-change refresh', async ({ page }) => {
+  await registerAndLogin(page);
+  for (let i = 0; i < 22; i++) await seed(page, 'Refresh Page Company ' + i);
+  await page.getByRole('button', { name: 'Board view' }).click();
+
+  const board = page.getByRole('region', { name: 'Application pipeline board' });
+  const saved = board.getByRole('region', { name: 'Saved stage' });
+  await saved.getByRole('button', { name: 'Load more (20 of 22)' }).click();
+  await expect(saved.getByRole('article')).toHaveCount(22);
+
+  await saved.getByRole('article', { name: 'Refresh Page Company 0 — Software Engineer' })
+    .getByRole('button', { name: 'View details' }).click();
+  const details = board.getByRole('region', { name: 'Application details' });
+  await details.getByRole('button', { name: 'Edit application' }).click();
+  const editor = details.getByRole('form', { name: 'Edit application' });
+  await editor.getByLabel('Notes').fill('Preserve this later-page draft');
+
+  await saved.getByRole('article', { name: 'Refresh Page Company 21 — Software Engineer' })
+    .getByLabel('Move to stage').selectOption('APPLIED');
+  await expect(saved.getByRole('article')).toHaveCount(21);
+  await expect(saved.getByRole('article', { name: 'Refresh Page Company 0 — Software Engineer' })).toBeVisible();
+  await expect(editor.getByLabel('Notes')).toHaveValue('Preserve this later-page draft');
+  await editor.getByRole('button', { name: 'Save changes' }).click();
+  await expect(details).toContainText('Preserve this later-page draft');
+
+  const interviews = details.getByRole('region', { name: 'Interview preparation' });
+  await interviews.getByRole('button', { name: 'Add interview round' }).click();
+  const interviewForm = interviews.getByRole('form', { name: 'Interview round form' });
+  await interviewForm.getByLabel('Round name').fill('Later page interview');
+  await interviewForm.getByLabel('Preparation notes').fill('Keep prep notes');
+
+  await board.getByRole('region', { name: 'Applied stage' })
+    .getByRole('article', { name: 'Refresh Page Company 21 — Software Engineer' })
+    .getByLabel('Move to stage').selectOption('SAVED');
+  await expect(saved.getByRole('article')).toHaveCount(22);
+  await expect(interviewForm.getByLabel('Preparation notes')).toHaveValue('Keep prep notes');
+  await interviewForm.getByRole('button', { name: 'Save interview round' }).click();
+  await expect(interviews.getByRole('article', { name: 'Later page interview' })).toContainText('Keep prep notes');
+});
