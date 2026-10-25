@@ -112,8 +112,18 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
       const lastPage = backgroundRefresh
         ? Math.min(columns[stage]?.page ?? 0, first.totalPages - 1) : 0;
       if (lastPage <= 0) return first;
-      const rest = await Promise.all(Array.from({ length: lastPage }, (_, index) =>
-        getApplications({ ...query, page: index + 1 }, controller.signal)));
+      // Limit simultaneous page requests for stages with large application histories.
+      // Preserve page order and stop starting further batches after cancellation.
+      const rest: ApplicationPage[] = [];
+      const batchSize = 4;
+      for (let page = 1; page <= lastPage; page += batchSize) {
+        if (controller.signal.aborted) break;
+        const batch = await Promise.all(
+          Array.from({ length: Math.min(batchSize, lastPage - page + 1) }, (_, index) =>
+            getApplications({ ...query, page: page + index }, controller.signal)),
+        );
+        rest.push(...batch);
+      }
       const seen = new Set<number>();
       return {
         ...first,
