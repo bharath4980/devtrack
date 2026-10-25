@@ -48,6 +48,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [createDirty, setCreateDirty] = useState(false);
   const [listEditDirty, setListEditDirty] = useState(false);
   const [boardDirty, setBoardDirty] = useState(false);
+  const [dashboardDirty, setDashboardDirty] = useState(false);
   const [dirtyInterviewIds, setDirtyInterviewIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const mutationPending = useRef(false);
@@ -280,7 +281,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <span className="account-email">{user.email}</span>
         <button className="secondary-button" onClick={() => {
           if ((createDirty || (editingId !== null && listEditDirty) ||
-              dirtyInterviewIds.length > 0 || boardDirty) &&
+              dirtyInterviewIds.length > 0 || boardDirty || dashboardDirty) &&
               !window.confirm('Sign out and discard unsaved work?')) return;
           onLogout();
         }} disabled={blocked}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
@@ -301,7 +302,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
       {isEmptyAccount
         ? <GettingStarted disabled={blocked} onAddApplication={startFirstApplication}
             onImportCsv={startCsvImport} />
-        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />}
+        : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} onDirtyChange={setDashboardDirty}
+          revision={revision} busy={busy || signingOut} />}
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" id="new-application" tabIndex={-1} aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
         <ApplicationForm busy={blocked} onSave={create} onDirtyChange={setCreateDirty}
