@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CurrentUser } from './authApi';
 import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, completeFollowUp, updateApplication, updateApplicationStatus, updateBulkApplicationStatus } from './applicationApi';
 import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getUpcomingInterviewRounds, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type UpcomingInterviewRound, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
@@ -45,6 +45,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const [dashboardError, setDashboardError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [createDirty, setCreateDirty] = useState(false);
+  const [listEditDirty, setListEditDirty] = useState(false);
+  const [boardDirty, setBoardDirty] = useState(false);
+  const [dirtyInterviewIds, setDirtyInterviewIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const mutationPending = useRef(false);
   const [actionError, setActionError] = useState('');
@@ -56,16 +60,36 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   const refresh = () => setRevision(value => value + 1);
   const refreshDashboard = () => setDashboardRevision(value => value + 1);
   const isEmptyAccount = !dashboardLoading && !dashboardError && summary?.total === 0;
+  const recordInterviewDirty = useCallback((id: number, dirty: boolean) => {
+    setDirtyInterviewIds(current => dirty
+      ? current.includes(id) ? current : [...current, id]
+      : current.includes(id) ? current.filter(value => value !== id) : current);
+  }, []);
+
+  function confirmDiscardListDraft() {
+    return !(editingId !== null && listEditDirty || dirtyInterviewIds.length > 0) ||
+      window.confirm('Discard unsaved application or interview changes?');
+  }
+
+  function confirmDiscardActiveDraft() {
+    return confirmDiscardListDraft() && (!boardDirty ||
+      window.confirm('Discard unsaved changes in the pipeline board?'));
+  }
 
   function startFirstApplication() {
+    if (!confirmDiscardListDraft()) return;
     setCreating(true);
     setEditingId(null);
+    setListEditDirty(false);
   }
 
   function startCsvImport() {
+    if (!confirmDiscardActiveDraft()) return;
     setShowCsvImport(true);
     setView('list');
     setEditingId(null);
+    setListEditDirty(false);
+    setBoardDirty(false);
     document.getElementById('applications')?.focus();
   }
 
@@ -152,12 +176,14 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
   async function create(values: UpdateJobApplicationRequest) {
     await mutate(() => createApplication(values), 'Application saved.');
     setCreating(false);
+    setCreateDirty(false);
     addButton.current?.focus();
   }
 
   async function edit(id: number, values: UpdateJobApplicationRequest) {
     await mutate(() => updateApplication(id, values), 'Changes saved.');
     setEditingId(null);
+    setListEditDirty(false);
   }
 
   async function changeFollowUpDate(id: number, date: string) {
@@ -223,12 +249,16 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!confirmDiscardListDraft()) return;
     setEditingId(null);
+    setListEditDirty(false);
     setQuery({ search: search.trim(), status, sort, page: 0 });
   }
 
   function clearFilters() {
+    if (!confirmDiscardListDraft()) return;
     setSearch(''); setStatus(''); setSort('NEWEST'); setEditingId(null);
+    setListEditDirty(false);
     setQuery({ ...initialQuery });
   }
 
@@ -248,7 +278,11 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
       <div className="account-menu">
         <span className="account-avatar" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
         <span className="account-email">{user.email}</span>
-        <button className="secondary-button" onClick={onLogout} disabled={blocked}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
+        <button className="secondary-button" onClick={() => {
+          if ((createDirty || !confirmDiscardActiveDraft()) &&
+              !window.confirm('Sign out and discard unsaved work?')) return;
+          onLogout();
+        }} disabled={blocked}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
       </div>
     </header>
     <main className="workspace">
@@ -269,7 +303,8 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         : <Dashboard summary={summary} interviews={interviews} upcomingRounds={upcomingRounds} followUps={followUps} upcomingFollowUps={upcomingFollowUps} analytics={analytics} recentActivity={recentActivity} loading={dashboardLoading} error={dashboardError} onRetry={refresh} onReschedule={changeFollowUpDate} onCompleteFollowUp={markFollowUpComplete} onEdit={edit} onInterviewChange={refreshDashboard} revision={revision} busy={busy || signingOut} />}
       <p className="save-notice" role="status">{notice}</p>
       {creating && <section className="editor-section" id="new-application" tabIndex={-1} aria-label="Add application"><div className="section-heading"><div><p className="eyebrow">New opportunity</p><h2>New application</h2></div></div>
-        <ApplicationForm busy={blocked} onSave={create} onCancel={() => { setCreating(false); addButton.current?.focus(); }} />
+        <ApplicationForm busy={blocked} onSave={create} onDirtyChange={setCreateDirty}
+          onCancel={() => { setCreating(false); setCreateDirty(false); addButton.current?.focus(); }} />
       </section>}
       <section className="next-step" id="applications" tabIndex={-1} aria-labelledby="applications-heading">
         <div className="section-heading export-heading">
@@ -300,10 +335,19 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         <div className="application-view-switch" role="group" aria-label="Application view">
           <button type="button" aria-pressed={view === 'list'} disabled={blocked}
             className={view === 'list' ? 'view-active' : 'secondary-button'}
-            onClick={() => { setView('list'); refresh(); }}>List view</button>
+            onClick={() => {
+              if (view === 'board' && boardDirty &&
+                  !window.confirm('Discard unsaved changes in the pipeline board?')) return;
+              setBoardDirty(false);
+              setView('list'); refresh();
+            }}>List view</button>
           <button type="button" aria-pressed={view === 'board'} disabled={blocked}
             className={view === 'board' ? 'view-active' : 'secondary-button'}
-            onClick={() => { setView('board'); setEditingId(null); setSelectedIds([]); setBulkTarget(''); }}>Board view</button>
+            onClick={() => {
+              if (view === 'list' && !confirmDiscardListDraft()) return;
+              setView('board'); setEditingId(null); setListEditDirty(false);
+              setSelectedIds([]); setBulkTarget('');
+            }}>Board view</button>
         </div>
         {view === 'list' && <form className="filter-form" onSubmit={applyFilters}>
           <div className="form-field filter-search"><label htmlFor="search">Search</label>
@@ -325,7 +369,7 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           </div>
         </form>}
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} onInterviewChange={refreshDashboard} />}
+        {view === 'board' && <PipelineBoard revision={revision} busy={blocked} onMove={changeStatus} onEdit={edit} onInterviewChange={refreshDashboard} onDirtyChange={setBoardDirty} />}
         {view === 'list' && <>
         {loading && <p role="status">Loading applications…</p>}
         {loadError && <div role="alert"><p className="form-error">{loadError}</p><button className="secondary-button" onClick={refresh}>Retry applications</button></div>}
@@ -362,13 +406,28 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
               onSelect={checked => setSelectedIds(current => checked
                 ? current.includes(application.id) ? current : [...current, application.id]
                 : current.filter(id => id !== application.id))}
-              onEdit={() => { setEditingId(application.id); setCreating(false); }}
-              onCancel={() => setEditingId(null)} onSave={values => edit(application.id, values)}
+              onEdit={() => {
+                if (!confirmDiscardListDraft() ||
+                    (createDirty && !window.confirm('Discard unsaved new application details?'))) return;
+                setEditingId(application.id); setListEditDirty(false);
+                setCreating(false); setCreateDirty(false);
+              }}
+              onCancel={() => { setEditingId(null); setListEditDirty(false); }}
+              onEditDirtyChange={setListEditDirty} onInterviewDraftChange={recordInterviewDirty}
+              onSave={values => edit(application.id, values)}
               onStatus={next => void changeStatus(application.id, next)} onDelete={() => void remove(application)} onInterviewChange={refreshDashboard} />)}</div>}
           {page.totalPages > 1 && <nav className="pagination" aria-label="Application pages">
-            <button className="secondary-button" disabled={blocked || query.page === 0} onClick={() => { setEditingId(null); setQuery(value => ({ ...value, page: value.page - 1 })); }}>Previous</button>
+            <button className="secondary-button" disabled={blocked || query.page === 0} onClick={() => {
+              if (!confirmDiscardListDraft()) return;
+              setEditingId(null); setListEditDirty(false);
+              setQuery(value => ({ ...value, page: value.page - 1 }));
+            }}>Previous</button>
             <span>Page {page.page + 1} of {page.totalPages}</span>
-            <button className="secondary-button" disabled={blocked || query.page + 1 >= page.totalPages} onClick={() => { setEditingId(null); setQuery(value => ({ ...value, page: value.page + 1 })); }}>Next</button>
+            <button className="secondary-button" disabled={blocked || query.page + 1 >= page.totalPages} onClick={() => {
+              if (!confirmDiscardListDraft()) return;
+              setEditingId(null); setListEditDirty(false);
+              setQuery(value => ({ ...value, page: value.page + 1 }));
+            }}>Next</button>
           </nav>}
         </>}
         </>}
