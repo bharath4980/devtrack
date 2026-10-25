@@ -25,9 +25,10 @@ type Props = {
   onDelete: () => void;
   onInterviewChange: () => void;
   onInterviewDraftChange?: (id: number, dirty: boolean) => void;
+  onEditDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onInterviewDraftChange }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onInterviewDraftChange, onEditDirtyChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
   useEffect(() => {
@@ -42,7 +43,8 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         aria-label={`Select ${application.company} — ${application.title}`} />
       <span>Select application</span>
     </label>
-    {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel} /> : <>
+    {editing ? <ApplicationForm application={application} busy={busy} onSave={onSave} onCancel={onCancel}
+      onDirtyChange={onEditDirtyChange} /> : <>
       <div className="application-card-header">
         <div className="application-identity">
           <div className="company-monogram" aria-hidden="true">{application.company.trim().charAt(0).toUpperCase()}</div>
