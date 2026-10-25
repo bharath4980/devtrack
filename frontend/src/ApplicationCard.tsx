@@ -24,11 +24,12 @@ type Props = {
   onStatus: (status: ApplicationStatus) => void;
   onDelete: () => void;
   onInterviewChange: () => void;
+  onScheduleFollowUp: (id: number, date: string) => Promise<void>;
   onInterviewDraftChange?: (id: number, dirty: boolean) => void;
   onEditDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onInterviewDraftChange, onEditDirtyChange }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onScheduleFollowUp, onInterviewDraftChange, onEditDirtyChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function ApplicationCard({ application, editing, busy, selected, 
         {showInterviewPrep ? 'Hide interview prep' : 'Interview prep'}
       </button></div>
       {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy}
+        followUpDate={application.followUpDate} onScheduleFollowUp={onScheduleFollowUp}
         onChanged={onInterviewChange} onDirtyChange={setInterviewDraftDirty} />}
       <ApplicationTimeline applicationId={application.id} status={application.status} />
     </>}
