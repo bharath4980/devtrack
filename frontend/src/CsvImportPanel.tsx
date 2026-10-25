@@ -87,7 +87,7 @@ export default function CsvImportPanel({ disabled, onImported, onCancel }: Props
             <td>{row.applicationDate || 'Not set'}</td>
           </tr>)}</tbody>
         </table>
-      </div>}
+      </div>
       <p className="form-help">The server checks all rows and duplicate jobs again. If one row is invalid
         or duplicated, the entire import is rejected without changing your applications.
         Only new records are created; existing applications are never replaced.</p>
