@@ -105,9 +105,26 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
     setMoreError('');
     setLoadingMore(null);
     const stages = filters.stage ? [filters.stage] : statuses;
-    Promise.all(stages.map(stage => getApplications({
-      page: 0, size: PAGE_SIZE, status: stage, search: filters.search, sort: filters.sort,
-    }, controller.signal))).then(pages => {
+    Promise.all(stages.map(async stage => {
+      const query = { size: PAGE_SIZE, status: stage, search: filters.search, sort: filters.sort };
+      const first = await getApplications({ ...query, page: 0 }, controller.signal);
+      // Refresh every page already shown so later cards (and an open editor) stay visible.
+      const lastPage = backgroundRefresh
+        ? Math.min(columns[stage]?.page ?? 0, first.totalPages - 1) : 0;
+      if (lastPage <= 0) return first;
+      const rest = await Promise.all(Array.from({ length: lastPage }, (_, index) =>
+        getApplications({ ...query, page: index + 1 }, controller.signal)));
+      const seen = new Set<number>();
+      return {
+        ...first,
+        page: lastPage,
+        items: [first, ...rest].flatMap(result => result.items).filter(item => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        }),
+      };
+    })).then(pages => {
       if (!controller.signal.aborted && version === generation.current) {
         lastLoadedQuery.current = queryKey;
         setColumns(Object.fromEntries(stages.map((stage, index) => [stage, pages[index]])) as Columns);
