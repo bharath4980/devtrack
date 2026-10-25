@@ -316,7 +316,10 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
           <div className="csv-action-buttons">
             <button type="button" className="secondary-button"
               disabled={blocked || exporting} aria-expanded={showCsvImport}
-              onClick={() => setShowCsvImport(current => !current)}>
+              onClick={() => {
+                if (showCsvImport) setShowCsvImport(false);
+                else startCsvImport();
+              }}>
               {showCsvImport ? 'Hide CSV import' : 'Import CSV'}
             </button>
             <button type="button" className="secondary-button export-button"
@@ -328,12 +331,20 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
         {exportError && <p className="form-error" role="alert">{exportError}</p>}
         {showCsvImport && <CsvImportPanel disabled={blocked} onCancel={() => setShowCsvImport(false)}
           onImported={count => {
+            const hasUnsavedDraft = createDirty || (editingId !== null && listEditDirty) ||
+              dirtyInterviewIds.length > 0 || boardDirty || dashboardDirty;
             setShowCsvImport(false);
-            setNotice(count + (count === 1 ? ' application imported.' : ' applications imported.'));
-            setQuery({ ...initialQuery });
-            setView('list');
-            setSelectedIds([]);
-            refresh();
+            setNotice(count + (count === 1 ? ' application imported.' : ' applications imported.') +
+              (hasUnsavedDraft ? ' Your unsaved draft was kept. Refresh the list after finishing your edits.' : ''));
+            if (hasUnsavedDraft) {
+              // Refresh dashboard counts without unmounting an unfinished application editor.
+              refreshDashboard();
+            } else {
+              setQuery({ ...initialQuery });
+              setView('list');
+              setSelectedIds([]);
+              refresh();
+            }
           }} />}
         <div className="application-view-switch" role="group" aria-label="Application view">
           <button type="button" aria-pressed={view === 'list'} disabled={blocked}
