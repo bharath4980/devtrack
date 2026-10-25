@@ -1659,3 +1659,45 @@ test('dashboard quick view protects unsaved edits when closing or opening anothe
   await expect(quickView.getByRole('form', { name: 'Edit application' })).toHaveCount(0);
   await expect(quickView).not.toContainText('Private unsaved edit');
 });
+
+test('sign-out does not discard an unsaved dashboard application edit without confirmation', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Signout Draft Example');
+  await page.reload();
+
+  await page.locator('.recent-panel').getByRole('button', { name: 'Open application' }).first().click();
+  const quickView = page.getByRole('region', { name: 'Application quick view' });
+  await quickView.getByRole('button', { name: 'Edit application' }).click();
+  const form = quickView.getByRole('form', { name: 'Edit application' });
+  await form.getByLabel('Notes').fill('Do not lose this note');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(form.getByLabel('Notes')).toHaveValue('Do not lose this note');
+  await expect(page.getByRole('heading', { name: 'Your applications' })).toBeVisible();
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+});
+
+test('sign-out also protects unfinished interview notes in dashboard quick view', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Signout Interview Draft');
+  await page.reload();
+
+  await page.locator('.recent-panel').getByRole('button', { name: 'Open application' }).first().click();
+  const quickView = page.getByRole('region', { name: 'Application quick view' });
+  const interview = quickView.getByRole('region', { name: 'Interview preparation' });
+  await interview.getByRole('button', { name: 'Add interview round' }).click();
+  const form = interview.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Important unsaved interview');
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(form.getByLabel('Round name')).toHaveValue('Important unsaved interview');
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+});
