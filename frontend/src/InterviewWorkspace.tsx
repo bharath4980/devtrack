@@ -160,6 +160,17 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
     }
   }
 
+  async function copyPreparation(round: InterviewRound) {
+    try {
+      await navigator.clipboard.writeText(round.preparationNotes ?? '');
+      setError('');
+      setNotice('Preparation notes copied.');
+    } catch {
+      setNotice('');
+      setError('Could not copy preparation notes. Check clipboard permissions and try again.');
+    }
+  }
+
   async function exportCalendar(round: InterviewRound) {
     if (downloadingId !== null || busy) return;
     setDownloadingId(round.id);
@@ -234,6 +245,10 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
                   onClick={() => void exportCalendar(round)}>
                   {downloadingId === round.id ? 'Preparing calendar…' : 'Apple / other (.ics)'}
                 </button>}
+              {round.preparationNotes && <button type="button" className="secondary-button"
+                disabled={busy || saving} onClick={() => void copyPreparation(round)}>
+                Copy preparation
+              </button>}
               <button type="button" className="secondary-button" disabled={busy || saving}
                 onClick={() => startEdit(round)}>Edit round</button>
               <button type="button" className="danger-button" disabled={busy || saving}
