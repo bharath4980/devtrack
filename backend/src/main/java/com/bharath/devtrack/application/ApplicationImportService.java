@@ -78,7 +78,13 @@ public class ApplicationImportService {
 
             String duplicateKey;
             if (url != null) {
-                JobApplicationService.PostingKey posting = JobApplicationService.postingKey(url);
+                JobApplicationService.PostingKey posting;
+                try {
+                    posting = JobApplicationService.postingKey(url);
+                } catch (ResponseStatusException invalid) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Row " + number + ": posting URL must be a valid http or https URL.");
+                }
                 duplicateKey = "url:" + posting.value();
                 if (applications.findDuplicate(owner.getId(), url, null) != null) {
                     fail(number, "This job posting URL already exists in your account");
