@@ -2035,3 +2035,24 @@ test('application results show the visible range on each page', async ({ page })
   await page.getByRole('button', { name: 'Previous', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Showing 1–10 of 11 applications' })).toBeVisible();
 });
+
+test('saved interview preparation can be copied without changing the round', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await registerAndLogin(page);
+  await seed(page, 'Preparation Copy Company');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Preparation Copy Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Technical preparation');
+  await form.getByLabel('Preparation notes').fill('Review API design and database indexes');
+  await form.getByRole('button', { name: 'Save interview round' }).click();
+  const round = workspace.getByRole('article', { name: 'Technical preparation' });
+  await round.getByRole('button', { name: 'Copy preparation' }).click();
+  await expect(workspace.getByText('Preparation notes copied.')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText()))
+    .toBe('Review API design and database indexes');
+  await expect(round).toContainText('Review API design and database indexes');
+});
