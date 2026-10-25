@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import type { CurrentUser } from './authApi';
+import { getCurrentUser, type CurrentUser } from './authApi';
+import { sessionExpiredEvent } from './api';
 import { createApplication, deleteApplication, downloadApplicationsCsv, getApplications, rescheduleFollowUp, completeFollowUp, updateApplication, updateApplicationStatus, updateBulkApplicationStatus } from './applicationApi';
 import { getDashboardSummary, getDueFollowUps, getUpcomingFollowUps, getUpcomingInterviews, getUpcomingInterviewRounds, getRecentActivity, getDashboardAnalytics, type DashboardSummary, type DueFollowUp, type UpcomingInterview, type UpcomingInterviewRound, type ApplicationActivity, type DashboardAnalytics } from './dashboardApi';
 import { errorMessage } from './apiError';
@@ -250,10 +251,19 @@ export default function ApplicationsPage({ user, onLogout, signingOut, logoutErr
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextSearch = search.trim();
+    // Reapplying the current filters should not discard an open edit or reload the same results.
+    if (query.search === nextSearch && query.status === status && query.sort === sort && query.page === 0) {
+      // Do not reload identical results, but still detect a session revoked in another tab.
+      void getCurrentUser().then(current => {
+        if (!current) window.dispatchEvent(new Event(sessionExpiredEvent));
+      }).catch(error => setActionError(errorMessage(error, 'Could not verify your session.')));
+      return;
+    }
     if (!confirmDiscardListDraft()) return;
     setEditingId(null);
     setListEditDirty(false);
-    setQuery({ search: search.trim(), status, sort, page: 0 });
+    setQuery({ search: nextSearch, status, sort, page: 0 });
   }
 
   function clearFilters() {
