@@ -8,8 +8,9 @@ This guide is for reviewers who want to explore DevTrack without using anyone's 
 2. Create **your own** account with a unique password; never ask for or reuse someone else's credentials. Use fictional job-application data only.
 3. Choose **Add application**. Enter a fictional employer and role (examples below). Use manual entry; optional job-link preview currently supports recognized public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, and BambooHR links. Other links require manual entry.
 4. In **Your applications**, change a status, search or filter, and select **View history** to see recorded events created after the action. Open the **Board** view, select a card, and inspect its recruiter/resume, notes, interview preparation, and history sections. You can leave contact fields empty when using fictional records.
-5. Add a follow-up date to one fictional application, or schedule an interview round using the existing interview preparation form. Return to **Your search, at a glance** to find **Next actions** near the top. Its **Open application** button leads to the same owner-scoped quick view. The full schedule below allows follow-ups to be rescheduled or completed. Counts and reminders reflect only the signed-in account's saved data; no notification is sent to external accounts.
-6. Sign out. These examples do not require exposing personal emails, production database records, or privileged access.
+5. In **Interview prep** for a fictional application, add an interview round with preparation notes and try **Copy preparation**. Schedule an **Application follow-up reminder** for a future day, then use **Complete follow-up** after a simulated recruiter follow-up. The completion clears its due date and appears in **View history**. To demonstrate an active reminder instead, leave another fictional application's follow-up pending.
+6. Return to **Your search, at a glance** to find **Next actions** near the top. Its **Open application** button leads to the same owner-scoped quick view. The full schedule also allows follow-ups to be rescheduled or completed. Counts and reminders reflect only the signed-in account's saved data; no notification is sent to external accounts.
+7. Sign out. These examples do not require exposing personal emails, production database records, or privileged access.
 
 ## Fictional example records
 
