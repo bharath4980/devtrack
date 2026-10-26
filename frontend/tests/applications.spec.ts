@@ -2086,3 +2086,74 @@ test('interview prep schedules an existing application reminder and confirms rep
   const savedCard = page.getByRole('article', { name: 'Interview Reminder Company — Software Engineer' });
   await expect(savedCard.locator('time[datetime="2026-11-12"]')).toBeVisible();
 });
+
+test('interview prep completes a follow-up and refreshes history without losing interview notes', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Interview Completion Company');
+  await page.reload();
+
+  const card = page.getByRole('article', { name: 'Interview Completion Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByLabel('Application follow-up reminder').fill('2026-11-10');
+  await workspace.getByRole('button', { name: 'Schedule reminder' }).click();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+  const complete = workspace.getByRole('button', { name: 'Complete follow-up' });
+
+  // An unfinished interview edit must not be discarded by marking a follow-up complete.
+  await workspace.getByRole('button', { name: 'Add interview round' }).click();
+  const form = workspace.getByRole('form', { name: 'Interview round form' });
+  await form.getByLabel('Round name').fill('Keep these draft notes');
+  await expect(complete).toBeDisabled();
+  await expect(form.getByLabel('Round name')).toHaveValue('Keep these draft notes');
+  page.once('dialog', dialog => dialog.accept());
+  await form.getByRole('button', { name: 'Cancel' }).click();
+
+  await card.getByRole('button', { name: 'View history' }).click();
+  const history = card.locator('.timeline-content');
+  await expect(history).toContainText('Application saved');
+
+  page.once('dialog', dialog => {
+    expect(dialog.message()).toContain('records completion in application history');
+    return dialog.dismiss();
+  });
+  await complete.click();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+
+  page.once('dialog', dialog => dialog.accept());
+  await complete.click();
+  await expect(complete).toHaveCount(0);
+  await expect(card.locator('.application-details')).not.toContainText('Follow up');
+  await expect(workspace.getByText('Follow-up completed. Its reminder was cleared and completion recorded.')).toBeVisible();
+  await expect(history).toContainText('Follow-up completed');
+
+  await page.reload();
+  const saved = page.getByRole('article', { name: 'Interview Completion Company — Software Engineer' });
+  await expect(saved.locator('.application-details')).not.toContainText('Follow up');
+  await saved.getByRole('button', { name: 'View history' }).click();
+  await expect(saved.locator('.timeline-content')).toContainText('Follow-up completed');
+});
+
+test('interview follow-up completion errors retain the reminder and allow retry', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Completion Retry Company');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Completion Retry Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  await workspace.getByLabel('Application follow-up reminder').fill('2026-11-10');
+  await workspace.getByRole('button', { name: 'Schedule reminder' }).click();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+
+  await page.route('**/api/applications/*/follow-up/complete', route =>
+    route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"Temporary failure"}' }));
+  page.once('dialog', dialog => dialog.accept());
+  await workspace.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(workspace.getByRole('alert')).toBeVisible();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+
+  await page.unroute('**/api/applications/*/follow-up/complete');
+  page.once('dialog', dialog => dialog.accept());
+  await workspace.getByRole('button', { name: 'Complete follow-up' }).click();
+  await expect(card.locator('.application-details')).not.toContainText('Follow up');
+});

@@ -22,6 +22,7 @@ type Props = {
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
   onScheduleFollowUp: (id: number, date: string) => Promise<JobApplication>;
+  onCompleteFollowUp: (id: number) => Promise<JobApplication>;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -56,7 +57,7 @@ function attentionLabels(application: JobApplication, today: string) {
   return labels;
 }
 
-export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange, onScheduleFollowUp, onDirtyChange }: Props) {
+export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange, onScheduleFollowUp, onCompleteFollowUp, onDirtyChange }: Props) {
   const [filters, setFilters] = useState<BoardFilters>(initialFilters);
   const [draftSearch, setDraftSearch] = useState('');
   const [draftStage, setDraftStage] = useState<ApplicationStatus | ''>('');
@@ -356,11 +357,25 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
                   return next;
                 });
               }}
+              onCompleteFollowUp={async id => {
+                const updated = await onCompleteFollowUp(id);
+                setColumns(current => {
+                  const next = { ...current };
+                  for (const stage of statuses) {
+                    const result = next[stage];
+                    if (result) next[stage] = {
+                      ...result, items: result.items.map(item => item.id === id ? updated : item),
+                    };
+                  }
+                  return next;
+                });
+              }}
               onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="board-detail-history" aria-label="Application history">
             <h4>Application history</h4>
-            <ApplicationTimeline key={selected.id} applicationId={selected.id} status={selected.status} />
+            <ApplicationTimeline key={selected.id} applicationId={selected.id} status={selected.status}
+              followUpDate={selected.followUpDate} />
           </section>
         </>}
       </section>}

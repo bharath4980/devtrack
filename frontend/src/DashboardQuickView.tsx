@@ -14,6 +14,7 @@ type Props = {
   onSave: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
   onScheduleFollowUp: (id: number, date: string) => Promise<JobApplication>;
+  onCompleteFollowUp: (id: number) => Promise<JobApplication>;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -25,7 +26,7 @@ function safePostingUrl(raw: string | null) {
   } catch { return null; }
 }
 
-export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange, onScheduleFollowUp, onDirtyChange }: Props) {
+export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange, onScheduleFollowUp, onCompleteFollowUp, onDirtyChange }: Props) {
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -122,11 +123,16 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
                 const updated = await onScheduleFollowUp(id, date);
                 setApplication(updated);
               }}
+              onCompleteFollowUp={async id => {
+                const updated = await onCompleteFollowUp(id);
+                setApplication(updated);
+              }}
               onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="quick-view-history" aria-label="Application history">
             <h4>Application history</h4>
-            <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status} />
+            <ApplicationTimeline key={application.id} applicationId={application.id} status={application.status}
+              followUpDate={application.followUpDate} />
           </section>
         </>}
     </>}
