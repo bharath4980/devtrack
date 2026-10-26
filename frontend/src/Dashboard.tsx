@@ -4,7 +4,7 @@ import DashboardQuickView from './DashboardQuickView';
 import type { DashboardSummary, DueFollowUp, UpcomingInterview, UpcomingInterviewRound, ApplicationActivity, DashboardAnalytics } from './dashboardApi';
 import { activityText, activityTime } from './ApplicationTimeline';
 import { interviewTimeInBrowser } from './interviewLocalTime';
-import { statuses, statusLabel, type UpdateJobApplicationRequest } from './types';
+import { statuses, statusLabel, type UpdateJobApplicationRequest, type JobApplication } from './types';
 
 type Props = {
   summary: DashboardSummary | null;
@@ -13,6 +13,7 @@ type Props = {
   followUps: DueFollowUp[];
   upcomingFollowUps: DueFollowUp[];
   onReschedule: (id: number, date: string) => Promise<void>;
+  onScheduleFollowUp: (id: number, date: string) => Promise<JobApplication>;
   onCompleteFollowUp: (id: number) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
@@ -189,7 +190,7 @@ function FollowUpRow({ item, todayUtc, upcoming, busy, onReschedule, onComplete,
   </div>;
 }
 
-export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onCompleteFollowUp, onEdit, onInterviewChange, onDirtyChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
+export default function Dashboard({ summary, interviews, upcomingRounds, followUps, upcomingFollowUps, onReschedule, onScheduleFollowUp, onCompleteFollowUp, onEdit, onInterviewChange, onDirtyChange, revision, busy, analytics, recentActivity, loading, error, onRetry }: Props) {
   const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const [quickViewDirty, setQuickViewDirty] = useState(false);
   useEffect(() => {
@@ -252,6 +253,7 @@ export default function Dashboard({ summary, interviews, upcomingRounds, followU
     {quickViewId !== null && <DashboardQuickView key={quickViewId}
       applicationId={quickViewId} revision={revision} busy={busy}
       onClose={closeQuickView} onSave={onEdit} onInterviewChange={onInterviewChange}
+      onScheduleFollowUp={onScheduleFollowUp}
       onDirtyChange={setQuickViewDirty} />}
     {loading && <div className="panel-state" role="status">Loading dashboard…</div>}
     {error && <div className="panel-state" role="alert"><p className="form-error">{error}</p><button className="secondary-button" onClick={onRetry}>Retry dashboard</button></div>}

@@ -21,6 +21,7 @@ type Props = {
   onMove: (id: number, status: ApplicationStatus) => Promise<void>;
   onEdit: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
+  onScheduleFollowUp: (id: number, date: string) => Promise<JobApplication>;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -55,7 +56,7 @@ function attentionLabels(application: JobApplication, today: string) {
   return labels;
 }
 
-export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange, onDirtyChange }: Props) {
+export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterviewChange, onScheduleFollowUp, onDirtyChange }: Props) {
   const [filters, setFilters] = useState<BoardFilters>(initialFilters);
   const [draftSearch, setDraftSearch] = useState('');
   const [draftStage, setDraftStage] = useState<ApplicationStatus | ''>('');
@@ -341,6 +342,20 @@ export default function PipelineBoard({ revision, busy, onMove, onEdit, onInterv
         {!editing && <>
           <div className="board-detail-workspace">
             <InterviewWorkspace key={selected.id} applicationId={selected.id} busy={busy}
+              followUpDate={selected.followUpDate}
+              onScheduleFollowUp={async (id, date) => {
+                const updated = await onScheduleFollowUp(id, date);
+                setColumns(current => {
+                  const next = { ...current };
+                  for (const stage of statuses) {
+                    const result = next[stage];
+                    if (result) next[stage] = {
+                      ...result, items: result.items.map(item => item.id === id ? updated : item),
+                    };
+                  }
+                  return next;
+                });
+              }}
               onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="board-detail-history" aria-label="Application history">

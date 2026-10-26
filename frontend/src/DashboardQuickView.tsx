@@ -13,6 +13,7 @@ type Props = {
   onClose: () => void;
   onSave: (id: number, values: UpdateJobApplicationRequest) => Promise<void>;
   onInterviewChange: () => void;
+  onScheduleFollowUp: (id: number, date: string) => Promise<JobApplication>;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -24,7 +25,7 @@ function safePostingUrl(raw: string | null) {
   } catch { return null; }
 }
 
-export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange, onDirtyChange }: Props) {
+export default function DashboardQuickView({ applicationId, revision, busy, onClose, onSave, onInterviewChange, onScheduleFollowUp, onDirtyChange }: Props) {
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -116,6 +117,11 @@ export default function DashboardQuickView({ applicationId, revision, busy, onCl
           </div>
           <div className="quick-view-workspace">
             <InterviewWorkspace applicationId={application.id} busy={busy}
+              followUpDate={application.followUpDate}
+              onScheduleFollowUp={async (id, date) => {
+                const updated = await onScheduleFollowUp(id, date);
+                setApplication(updated);
+              }}
               onChanged={onInterviewChange} onDirtyChange={setInterviewDirty} />
           </div>
           <section className="quick-view-history" aria-label="Application history">

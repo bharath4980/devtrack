@@ -2056,3 +2056,33 @@ test('saved interview preparation can be copied without changing the round', asy
     .toBe('Review API design and database indexes');
   await expect(round).toContainText('Review API design and database indexes');
 });
+
+test('interview prep schedules an existing application reminder and confirms replacement', async ({ page }) => {
+  await registerAndLogin(page);
+  await seed(page, 'Interview Reminder Company');
+  await page.reload();
+
+  const card = page.getByRole('article', { name: 'Interview Reminder Company — Software Engineer' });
+  await card.getByRole('button', { name: 'Interview prep' }).click();
+  const workspace = card.getByRole('region', { name: 'Interview preparation' });
+  const reminder = workspace.getByLabel('Application follow-up reminder');
+  await reminder.fill('2026-11-10');
+  await workspace.getByRole('button', { name: 'Schedule reminder' }).click();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+  await expect(workspace.getByRole('button', { name: 'Reschedule reminder' })).toBeDisabled();
+
+  await reminder.fill('2026-11-12');
+  page.once('dialog', dialog => {
+    expect(dialog.message()).toContain('Replace the current application follow-up reminder');
+    return dialog.dismiss();
+  });
+  await workspace.getByRole('button', { name: 'Reschedule reminder' }).click();
+  await expect(card.locator('time[datetime="2026-11-10"]')).toBeVisible();
+
+  page.once('dialog', dialog => dialog.accept());
+  await workspace.getByRole('button', { name: 'Reschedule reminder' }).click();
+  await expect(card.locator('time[datetime="2026-11-12"]')).toBeVisible();
+  await page.reload();
+  const savedCard = page.getByRole('article', { name: 'Interview Reminder Company — Software Engineer' });
+  await expect(savedCard.locator('time[datetime="2026-11-12"]')).toBeVisible();
+});

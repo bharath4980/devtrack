@@ -41,9 +41,18 @@ const otherTimeZones = (typeof Intl.supportedValuesOf === 'function'
   .sort((a, b) => a.localeCompare(b));
 const selectableZoneIds = new Set([...commonZoneIds, ...otherTimeZones]);
 
-type Props = { applicationId: number; busy?: boolean; onChanged?: () => void; onDirtyChange?: (dirty: boolean) => void };
+type Props = {
+  applicationId: number;
+  busy?: boolean;
+  followUpDate?: string | null;
+  onScheduleFollowUp?: (applicationId: number, date: string) => Promise<void>;
+  onChanged?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+};
 
-export default function InterviewWorkspace({ applicationId, busy = false, onChanged, onDirtyChange }: Props) {
+export default function InterviewWorkspace({
+  applicationId, busy = false, followUpDate = null, onScheduleFollowUp, onChanged, onDirtyChange,
+}: Props) {
   const id = useId();
   const [rounds, setRounds] = useState<InterviewRound[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,9 +65,33 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
   const [draft, setDraft] = useState<InterviewRoundInput>({ ...blank });
   const [draftBaseline, setDraftBaseline] = useState<InterviewRoundInput>({ ...blank });
   const [retry, setRetry] = useState(0);
+  const [reminderDate, setReminderDate] = useState(followUpDate ?? '');
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderError, setReminderError] = useState('');
   const savePending = useRef(false);
   const hasUnsavedChanges = (Object.keys(blank) as (keyof InterviewRoundInput)[])
     .some(key => draft[key] !== draftBaseline[key]);
+
+  useEffect(() => {
+    setReminderDate(followUpDate ?? '');
+  }, [applicationId, followUpDate]);
+
+  async function scheduleReminder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!onScheduleFollowUp || !reminderDate || reminderSaving || saving || busy || hasUnsavedChanges) return;
+    if (followUpDate && followUpDate !== reminderDate &&
+        !window.confirm('Replace the current application follow-up reminder for ' + followUpDate + '?')) return;
+    setReminderSaving(true);
+    setReminderError('');
+    try {
+      await onScheduleFollowUp(applicationId, reminderDate);
+      setNotice('Application follow-up reminder saved.');
+    } catch (reason) {
+      setReminderError(errorMessage(reason, 'Could not save the follow-up reminder.'));
+    } finally {
+      setReminderSaving(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -211,6 +244,21 @@ export default function InterviewWorkspace({ applicationId, busy = false, onChan
       {!showForm && !loading && <button type="button" className="secondary-button"
         disabled={busy || saving || rounds.length >= 30} onClick={startNew}>Add interview round</button>}
     </div>
+    {onScheduleFollowUp && <form className="interview-followup-reminder" onSubmit={event => void scheduleReminder(event)}>
+      <label htmlFor={id + '-reminder-date'}>Application follow-up reminder</label>
+      <p className="form-help">One reminder per application, shown on your dashboard. Use it for a thank-you email or recruiter follow-up.</p>
+      <div className="interview-round-actions">
+        <input id={id + '-reminder-date'} type="date" value={reminderDate}
+          disabled={busy || saving || reminderSaving}
+          onChange={event => { setReminderDate(event.target.value); setReminderError(''); }} />
+        <button type="submit" className="secondary-button"
+          disabled={busy || saving || reminderSaving || hasUnsavedChanges || !reminderDate || reminderDate === followUpDate}>
+          {reminderSaving ? 'Saving reminder…' : followUpDate ? 'Reschedule reminder' : 'Schedule reminder'}
+        </button>
+      </div>
+      {hasUnsavedChanges && <p className="form-help">Save or cancel your interview edits before changing the reminder.</p>}
+      {reminderError && <p role="alert" className="form-error">{reminderError}</p>}
+    </form>}
     {loading && <p className="form-help" role="status">Loading interview rounds…</p>}
     {error && <div role="alert" className="form-error">{error}
       {loading === false && rounds.length === 0 && <button type="button" className="secondary-button"
