@@ -25,11 +25,12 @@ type Props = {
   onDelete: () => void;
   onInterviewChange: () => void;
   onScheduleFollowUp: (id: number, date: string) => Promise<void>;
+  onCompleteFollowUp: (id: number) => Promise<void>;
   onInterviewDraftChange?: (id: number, dirty: boolean) => void;
   onEditDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onScheduleFollowUp, onInterviewDraftChange, onEditDirtyChange }: Props) {
+export default function ApplicationCard({ application, editing, busy, selected, onSelect, onEdit, onCancel, onSave, onStatus, onDelete, onInterviewChange, onScheduleFollowUp, onCompleteFollowUp, onInterviewDraftChange, onEditDirtyChange }: Props) {
   const [showInterviewPrep, setShowInterviewPrep] = useState(false);
   const [interviewDraftDirty, setInterviewDraftDirty] = useState(false);
   useEffect(() => {
@@ -87,8 +88,10 @@ export default function ApplicationCard({ application, editing, busy, selected, 
       </button></div>
       {showInterviewPrep && <InterviewWorkspace applicationId={application.id} busy={busy}
         followUpDate={application.followUpDate} onScheduleFollowUp={onScheduleFollowUp}
+        onCompleteFollowUp={onCompleteFollowUp}
         onChanged={onInterviewChange} onDirtyChange={setInterviewDraftDirty} />}
-      <ApplicationTimeline applicationId={application.id} status={application.status} />
+      <ApplicationTimeline applicationId={application.id} status={application.status}
+        followUpDate={application.followUpDate} />
     </>}
   </article>;
 }
