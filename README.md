@@ -23,9 +23,10 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 - **Keep an offline copy:** download an owner-scoped, UTF-8 CSV of all applications without changing or sharing stored records.
 - **Bring applications back safely:** preview and import up to 100 applications from a DevTrack-exported CSV or a CSV with recognized headers. The client validates structure and displays a sample; the authenticated server revalidates every row, checks job-link or company/title/date duplicates, and either commits the entire batch or rejects it without partial changes. Exported IDs are ignored, current statuses and dates are preserved, and existing applications are never overwritten.
 - **Keep application context together:** recruiter name, recruiter email, resume version, and notes appear alongside the application in the list, Pipeline Board details, and dashboard quick view. These fields are preserved in CSV export/import without adding recruiter accounts or sending messages.
-- **Prepare for interviews:** keep up to 30 interview rounds per application with optional local start times and a browser-detected, selectable time zone (common US and international regions plus the browser's full IANA list), recruiter/interviewer contacts, notes, outcomes and follow-ups. Open prefilled event editors in Google Calendar or Outlook without downloading a file, or download a private `.ics` event for Apple Calendar and other apps. The user must review and save each prefilled event; no external account access or automatic invites are involved. Events have a one-hour placeholder duration. Existing date-only rounds remain valid.
+- **Prepare for interviews:** keep up to 30 interview rounds per application with optional local start times and a browser-detected, selectable time zone (common US and international regions plus the browser's full IANA list), recruiter/interviewer contacts, notes, outcomes and follow-ups. Copy saved preparation notes with one click. Open prefilled event editors in Google Calendar or Outlook without downloading a file, or download a private `.ics` event for Apple Calendar and other apps. The user must review and save each prefilled event; no external account access or automatic invites are involved. Events have a one-hour placeholder duration. Existing date-only rounds remain valid.
 - **See planned interview rounds:** the dashboard shows the next five scheduled rounds for active applications, with direct access to each application's interview preparation. Only the round name, date and format appear in the dashboard; contact details and notes stay in the authenticated application view.
 - **Act on next steps:** a **Next actions** queue near the top of the dashboard highlights up to five items from the already-bounded lists of overdue/due-today follow-ups, imminent interviews, and the next seven days of follow-ups. Open the right application directly from each item. The full schedule below still supports rescheduling and completing follow-ups; completion clears the date and records activity without changing stage. Dashboard due dates use the browser's local calendar day. No notifications are sent in the background.
+- **Follow up after interviews:** schedule or reschedule the application's existing reminder from interview preparation in List, Board, or dashboard quick view; confirm before replacing a date. After contacting the recruiter, mark the reminder complete from the same workspace. This clears the due date and records a completion event without losing interview notes or changing the application stage.
 - **In-app reminders only:** reminders appear when you open the signed-in dashboard; they are not email, push, or background notifications.
 - **Review real activity:** examine timestamped creation/status events and recent dashboard activity. Older applications with no recorded events show a clearly labeled **current-status snapshot**, not fabricated history.
 - **Import carefully:** prefill editable company, title, and location from supported public Greenhouse, Lever, Ashby, SmartRecruiters, Workday, or BambooHR links. Unsupported providers fall back to manual entry.
@@ -36,7 +37,7 @@ The engineering focus is secure multi-user data, honest analytics, practical thi
 
 ![DevTrack production architecture and verification flow](docs/images/architecture.svg)
 
-In production, the React app and Spring Boot API share one origin. Spring Security enforces sessions and CSRF checks; controller/service/repository operations scope application access to the authenticated account. Flyway manages PostgreSQL schema changes, and Hibernate validates the schema.
+In production, the React app and Spring Boot API share one origin on Render, with PostgreSQL hosted on Neon. Spring Security enforces sessions and CSRF checks; controller/service/repository operations scope application access to the authenticated account. Flyway manages PostgreSQL schema changes, and Hibernate validates the schema.
 
 [Detailed request flow, migrations, and tradeoffs](docs/engineering.md) · [Authentication and ownership model](docs/authentication.md)
 
@@ -63,7 +64,7 @@ The Render Free instance experienced startup/port-detection failures before PR #
 | --- | --- |
 | Backend | Java 21, Spring Boot 3, Spring Security, Spring Data JPA, Hibernate, Maven |
 | Frontend | React, TypeScript, Vite, responsive CSS |
-| Data | PostgreSQL, Flyway |
+| Data | Neon PostgreSQL, Flyway |
 | Tests | JUnit, H2, PostgreSQL integration checks, Playwright desktop/mobile |
 | Delivery | Docker multi-stage build, GitHub Actions, Render |
 
@@ -169,7 +170,7 @@ GitHub Actions verifies the project in two layers for pull requests and for push
 1. Runs the backend suite with H2.
 2. Re-runs backend tests against a disposable PostgreSQL database, builds the frontend and production Docker image, starts that image, then executes Playwright browser workflows on desktop and mobile Chromium.
 
-The browser suite covers registration/login, CRUD, interview tracking, filters, pagination, validation feedback, persistence after reload, account isolation, expired sessions, and legacy history snapshots. A passing test run is not a substitute for inspecting existing authenticated production records.
+The browser suite covers registration/login, CRUD, interview rounds, follow-up scheduling and completion, filters, pagination, validation feedback, persistence after reload, account isolation, expired sessions, and legacy history snapshots. A passing test run is not a substitute for inspecting existing authenticated production records.
 
 To run the isolated production browser checks locally:
 
@@ -194,7 +195,7 @@ The root `Dockerfile` uses a multi-stage build:
 3. Copy the frontend production bundle into Spring Boot's static resources.
 4. Run the final application as a non-root user from a Java 21 JRE image.
 
-The deployed service uses:
+The deployed Render service connects to Neon PostgreSQL using environment-provided credentials; the GitHub repository contains no production connection details. The service uses:
 
 - `DATABASE_URL`
 - `DATABASE_USER`
