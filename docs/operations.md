@@ -1,12 +1,12 @@
 # Operations and recovery runbook
 
-This runbook describes DevTrack's **existing** Render web service and Spring Boot/PostgreSQL deployment. Its purpose is to distinguish verified application readiness from an open port, and to offer a safe investigation path after deployment trouble.
+This runbook describes DevTrack's **existing** Render web service and Spring Boot application backed by **Neon PostgreSQL**. Its purpose is to distinguish verified application readiness from an open port, and to offer a safe investigation path after deployment trouble.
 
 **Scope:** This runbook documents the existing service and safe checks. Reading it does not change Render settings, credentials, database contents, or user records.
 
 ## Current deployment and health behavior
 
-- GitHub's `main` branch automatically deploys a single Docker-based Spring Boot service on Render Free. The same application serves the compiled React frontend and the API.
+- GitHub's `main` branch automatically deploys a single Docker-based Spring Boot service on Render Free. The same application serves the compiled React frontend and the API. The PostgreSQL database is hosted separately on Neon; Render hosts the application, not its database.
 - The service listens on `0.0.0.0` and the `PORT` environment variable (currently `8080`); the Java 21 runtime uses `-XX:TieredStopAtLevel=1` to reduce warm-up work on limited CPU.
 - Public `GET /api/health` is provided by Spring Boot Actuator and permitted without an account. On a healthy instance it returns HTTP 200 with `{"status":"UP"}`. Health details are deliberately hidden.
 - The standard Spring Boot database health contributor checks PostgreSQL, so an open TCP port is not sufficient for application readiness.
@@ -54,7 +54,7 @@ The service is not managed by a Render Blueprint; adding a `render.yaml` file wo
 | --- | --- | --- |
 | Image build fails | Inspect the build step, Java/Node dependency errors, and Docker image build logs. | Correct on a new branch and rerun CI; do not change credentials or database storage to fix a build error. |
 | No listening port or startup timeout | Compare timestamped startup, JVM work, CPU limits, `PORT`, and Tomcat binding. | Preserve the last live version and diagnose first. Do not blindly redeploy or increase limits. |
-| Hikari or Flyway failure | Check database availability, connection errors and migration validation (without printing secrets). | Investigate the actual dependency; avoid resetting Flyway history, schema, or production database. |
+| Hikari or Flyway failure | Check Neon database availability, connection errors and migration validation (without printing secrets). | Investigate the actual dependency; avoid resetting Flyway history, schema, or production database. |
 | `/api/health` is DOWN/503 | Check health-check response, database status, recent resource pressure and service logs. | Fix the underlying issue; do not mislabel a TCP-only success as healthy. |
 | Render says live, but user flow fails | Remember Render tests process-only liveness. Inspect `/api/health` when possible, application logs, sessions, browser network behavior, and authorized read-only application state. | Treat as an application incident despite live deployment status. |
 | Data appears missing | Verify signed-in account identity and owner scoping, and inspect read-only records if authorized. | **Stop writes, exports, imports, schema resets, and destructive commands.** Do not delete or recreate a database or volume. |
