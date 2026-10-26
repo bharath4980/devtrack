@@ -46,12 +46,13 @@ type Props = {
   busy?: boolean;
   followUpDate?: string | null;
   onScheduleFollowUp?: (applicationId: number, date: string) => Promise<void>;
+  onCompleteFollowUp?: (applicationId: number) => Promise<void>;
   onChanged?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
 export default function InterviewWorkspace({
-  applicationId, busy = false, followUpDate = null, onScheduleFollowUp, onChanged, onDirtyChange,
+  applicationId, busy = false, followUpDate = null, onScheduleFollowUp, onCompleteFollowUp, onChanged, onDirtyChange,
 }: Props) {
   const id = useId();
   const [rounds, setRounds] = useState<InterviewRound[]>([]);
@@ -88,6 +89,22 @@ export default function InterviewWorkspace({
       setNotice('Application follow-up reminder saved.');
     } catch (reason) {
       setReminderError(errorMessage(reason, 'Could not save the follow-up reminder.'));
+    } finally {
+      setReminderSaving(false);
+    }
+  }
+
+  async function completeReminder() {
+    if (!onCompleteFollowUp || !followUpDate || reminderSaving || saving || busy || hasUnsavedChanges) return;
+    if (!window.confirm('Complete this application follow-up? This clears the reminder and records completion in application history.')) return;
+    setReminderSaving(true);
+    setReminderError('');
+    setNotice('');
+    try {
+      await onCompleteFollowUp(applicationId);
+      setNotice('Follow-up completed. Its reminder was cleared and completion recorded.');
+    } catch (reason) {
+      setReminderError(errorMessage(reason, 'Could not complete the follow-up.'));
     } finally {
       setReminderSaving(false);
     }
@@ -255,6 +272,9 @@ export default function InterviewWorkspace({
           disabled={busy || saving || reminderSaving || hasUnsavedChanges || !reminderDate || reminderDate === followUpDate}>
           {reminderSaving ? 'Saving reminder…' : followUpDate ? 'Reschedule reminder' : 'Schedule reminder'}
         </button>
+        {followUpDate && onCompleteFollowUp && <button type="button" className="secondary-button"
+          disabled={busy || saving || reminderSaving || hasUnsavedChanges}
+          onClick={() => void completeReminder()}>Complete follow-up</button>}
       </div>
       {hasUnsavedChanges && <p className="form-help">Save or cancel your interview edits before changing the reminder.</p>}
       {reminderError && <p role="alert" className="form-error">{reminderError}</p>}
