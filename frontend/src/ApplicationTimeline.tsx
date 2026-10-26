@@ -3,7 +3,7 @@ import { getApplicationActivity } from './applicationApi';
 import { statusLabel, type ApplicationStatus } from './types';
 import type { ApplicationActivity } from './dashboardApi';
 
-type Props = { applicationId: number; status: ApplicationStatus };
+type Props = { applicationId: number; status: ApplicationStatus; followUpDate?: string | null };
 
 export function activityText(item: ApplicationActivity): string {
   if (item.type === 'CREATED') return 'Application saved';
@@ -15,7 +15,7 @@ export function activityTime(isoDate: string): string {
   return new Date(isoDate).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
 
-export default function ApplicationTimeline({ applicationId, status }: Props) {
+export default function ApplicationTimeline({ applicationId, status, followUpDate }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<ApplicationActivity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function ApplicationTimeline({ applicationId, status }: Props) {
       .catch(() => { if (!controller.signal.aborted) setError('Could not load history. Try again.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [applicationId, status, expanded]);
+  }, [applicationId, status, followUpDate, expanded]);
 
   // Follow-up events do not start a new application stage.
   const lastRecorded = items.find(item => item.type === 'CREATED' || item.type === 'STATUS_CHANGED');
