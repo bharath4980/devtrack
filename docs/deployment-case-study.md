@@ -2,7 +2,7 @@
 
 ## Context
 
-DevTrack runs its React production bundle and Spring Boot API in one non-root Java 21 Docker image on a Render Free web service, with a separate Render PostgreSQL resource. This design keeps the application simple, but makes cold starts sensitive to restricted instance resources.
+At the time of the October 18, 2026 startup incident, DevTrack ran its React production bundle and Spring Boot API in one non-root Java 21 Docker image on a Render Free web service, with a separate PostgreSQL resource. The application database has **since moved to Neon PostgreSQL**; this case study describes the earlier deployment incident, not the current database hosting provider. The single-service app design keeps delivery simple but makes cold starts sensitive to restricted instance resources.
 
 ## Symptom and investigation
 
